@@ -5,6 +5,32 @@
 
 ---
 
+## 📊 Estado de Progreso de la Implementación
+
+| Bloque | ID | Nombre de la Guía | Estado | Entregable / Progreso |
+| :--- | :--- | :--- | :--- | :--- |
+| **🗄️ BLOQUE A: Base de Datos** | **DB-01** | Proyecto Supabase + Configuración Inicial | ✅ **Completado** | [Guía DB-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-01.md) — *Linked + Started* |
+| | **DB-02** | Schema: Tablas, Relaciones y CHECK constraints | ✅ **Completado** | [Guía DB-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-02.md) — *Migración aplicada* |
+| | **DB-03** | Storage Bucket Privado para PDFs | ⏳ **Pendiente** | [Guía DB-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-03.md) — *Siguiente paso* |
+| | **DB-04** | Row Level Security (RLS) Policies | ⏳ **Pendiente** | *Bloqueado por DB-03* |
+| | **DB-05** | Supabase Auth Configuración | ⏳ **Pendiente** | *Bloqueado por DB-04* |
+| **⚙️ BLOQUE B: Backend** | **BE-01** | Scaffold del proyecto FastAPI | ⏳ **Pendiente** | *Por iniciar* |
+| | **BE-02** | Dockerfile + config DigitalOcean | ⏳ **Pendiente** | *Por iniciar* |
+| | **BE-03** | Endpoint POST /extract-pdf | ⏳ **Pendiente** | *Por iniciar* |
+| | **BE-04** | Algoritmo de detección de tópicos | ⏳ **Pendiente** | *Por iniciar* |
+| | **BE-05** | Chunking y estructuración JSON | ⏳ **Pendiente** | *Por iniciar* |
+| | **BE-06** | Deploy a DigitalOcean + health check | ⏳ **Pendiente** | *Por iniciar* |
+| **🌐 BLOQUE C: Frontend** | **FE-01** | Scaffold Next.js + TS + Tailwind + shadcn/ui | ⏳ **Pendiente** | *Por iniciar* |
+| | **FE-02** | Conexión con Supabase | ⏳ **Pendiente** | *Por iniciar* |
+| | **FE-03** | Auth: login, register, middleware | ⏳ **Pendiente** | *Por iniciar* |
+| | **FE-04** | Layout base + navegación | ⏳ **Pendiente** | *Por iniciar* |
+| **📤 BLOQUE D: Upload** | **UP-01** a **UP-06** | Flujo de Upload y Generación de Plan | ⏳ **Pendiente** | *Por iniciar* |
+| **📚 BLOQUE E: Sesión** | **SE-01** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *Por iniciar* |
+| **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
+| **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
+
+---
+
 ## ¿Cómo usar este documento?
 
 ```
@@ -23,11 +49,11 @@
 ISTQB Study Agent
 │
 ├── 🗄️  BLOQUE A — BASE DE DATOS (Supabase)
-│   ├── DB-01  Proyecto Supabase + configuración inicial
-│   ├── DB-02  Schema: tablas y relaciones
-│   ├── DB-03  Storage bucket para PDFs
-│   ├── DB-04  Row Level Security (RLS) policies
-│   └── DB-05  Supabase Auth configuración
+│   ├── [x] DB-01  Proyecto Supabase + configuración inicial (Completado)
+│   ├── [x] DB-02  Schema: tablas y relaciones (Completado)
+│   ├── [ ] DB-03  Storage bucket para PDFs (Pendiente)
+│   ├── [ ] DB-04  Row Level Security (RLS) policies (Pendiente)
+│   └── [ ] DB-05  Supabase Auth configuración (Pendiente)
 │
 ├── ⚙️  BLOQUE B — BACKEND (FastAPI)
 │   ├── BE-01  Scaffold del proyecto FastAPI
