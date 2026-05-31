@@ -524,9 +524,9 @@ istqb-study-agent/
 
 ### FASE 0 — Setup del Entorno
 ```
-[ ] Crear repositorio en GitHub (monorepo)
-[ ] Definir .env.example sin secrets reales
-[ ] Documentar política de secrets: anon key pública, service_role solo servidor
+[x] Crear repositorio en GitHub (monorepo)
+[x] Definir .env.example sin secrets reales
+[x] Documentar política de secrets: anon key pública, service_role solo servidor
 [ ] Inicializar Next.js con TypeScript + Tailwind + shadcn/ui
 [ ] Crear proyecto FastAPI con estructura base
 [ ] Crear proyecto en Supabase (DB + Storage bucket)
