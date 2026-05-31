@@ -11,8 +11,8 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **🗄️ BLOQUE A: Base de Datos** | **DB-01** | Proyecto Supabase + Configuración Inicial | ✅ **Completado** | [Guía DB-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-01.md) — *Linked + Started* |
 | | **DB-02** | Schema: Tablas, Relaciones y CHECK constraints | ✅ **Completado** | [Guía DB-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-02.md) — *Migración aplicada* |
-| | **DB-03** | Storage Bucket Privado para PDFs | ⏳ **Pendiente** | [Guía DB-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-03.md) — *Siguiente paso* |
-| | **DB-04** | Row Level Security (RLS) Policies | ⏳ **Pendiente** | *Bloqueado por DB-03* |
+| | **DB-03** | Storage Bucket Privado para PDFs | ✅ **Completado** | [Guía DB-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-03.md) — *Bucket y políticas creados* |
+| | **DB-04** | Row Level Security (RLS) Policies | 🔄 **Siguiente** | *Siguiente hito a implementar* |
 | | **DB-05** | Supabase Auth Configuración | ⏳ **Pendiente** | *Bloqueado por DB-04* |
 | **⚙️ BLOQUE B: Backend** | **BE-01** | Scaffold del proyecto FastAPI | ⏳ **Pendiente** | *Por iniciar* |
 | | **BE-02** | Dockerfile + config DigitalOcean | ⏳ **Pendiente** | *Por iniciar* |
@@ -51,7 +51,7 @@ ISTQB Study Agent
 ├── 🗄️  BLOQUE A — BASE DE DATOS (Supabase)
 │   ├── [x] DB-01  Proyecto Supabase + configuración inicial (Completado)
 │   ├── [x] DB-02  Schema: tablas y relaciones (Completado)
-│   ├── [ ] DB-03  Storage bucket para PDFs (Pendiente)
+│   ├── [x] DB-03  Storage bucket para PDFs (Completado)
 │   ├── [ ] DB-04  Row Level Security (RLS) policies (Pendiente)
 │   └── [ ] DB-05  Supabase Auth configuración (Pendiente)
 │

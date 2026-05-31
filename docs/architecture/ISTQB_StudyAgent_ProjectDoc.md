@@ -529,7 +529,7 @@ istqb-study-agent/
 [x] Documentar política de secrets: anon key pública, service_role solo servidor
 [ ] Inicializar Next.js con TypeScript + Tailwind + shadcn/ui
 [ ] Crear proyecto FastAPI con estructura base
-[/] Crear proyecto en Supabase (DB Schema completado, Storage bucket pendiente)
+[x] Crear proyecto en Supabase (DB Schema y Storage bucket completados)
 [ ] Conectar DigitalOcean App Platform con GitHub repo
 [ ] Conectar Vercel con GitHub repo
 [ ] Configurar variables de entorno en cada servicio
