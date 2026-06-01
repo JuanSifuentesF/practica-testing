@@ -16,3 +16,21 @@ yarn-error.log*
 .docusaurus/
 .DS_Store
 Thumbs.db
+
+# Python virtual environment
+venv/
+backend/venv/
+
+# Variables de entorno (contienen secrets)
+.env
+.env.local
+backend/.env
+
+# Python virtual environment
+venv/
+backend/venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class

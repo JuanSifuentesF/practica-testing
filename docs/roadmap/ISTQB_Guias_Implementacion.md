@@ -14,7 +14,7 @@
 | | **DB-03** | Storage Bucket Privado para PDFs | ✅ **Completado** | [Guía DB-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-03.md) — *Bucket y políticas creados* |
 | | **DB-04** | Row Level Security (RLS) Policies | 🔄 **Siguiente** | *Siguiente hito a implementar* |
 | | **DB-05** | Supabase Auth Configuración | ⏳ **Pendiente** | *Bloqueado por DB-04* |
-| **⚙️ BLOQUE B: Backend** | **BE-01** | Scaffold del proyecto FastAPI | ⏳ **Pendiente** | *Por iniciar* |
+| **⚙️ BLOQUE B: Backend** | **BE-01** | Scaffold del proyecto FastAPI | ✅ **Completado** | [Guía BE-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-01.md) — *Scaffold funcional* |
 | | **BE-02** | Dockerfile + config DigitalOcean | ⏳ **Pendiente** | *Por iniciar* |
 | | **BE-03** | Endpoint POST /extract-pdf | ⏳ **Pendiente** | *Por iniciar* |
 | | **BE-04** | Algoritmo de detección de tópicos | ⏳ **Pendiente** | *Por iniciar* |
@@ -56,8 +56,8 @@ ISTQB Study Agent
 │   └── [ ] DB-05  Supabase Auth configuración (Pendiente)
 │
 ├── ⚙️  BLOQUE B — BACKEND (FastAPI)
-│   ├── BE-01  Scaffold del proyecto FastAPI
-│   ├── BE-02  Dockerfile + config DigitalOcean
+│   ├── [x] BE-01  Scaffold del proyecto FastAPI (Completado)
+│   ├── [ ] BE-02  Dockerfile + config DigitalOcean (Pendiente)
 │   ├── BE-03  Endpoint POST /extract-pdf con pdfplumber
 │   ├── BE-04  Algoritmo de detección de tópicos FL-x.x.x
 │   ├── BE-05  Chunking y estructuración del JSON de salida

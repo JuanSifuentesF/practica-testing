@@ -1,0 +1,45 @@
+# ═══════════════════════════════════════════════════════════════
+# DEPENDENCIAS DEL BACKEND — ISTQB Study Agent
+# ═══════════════════════════════════════════════════════════════
+#
+# Instalar con: pip install -r requirements.txt
+# Dentro del entorno virtual activado.
+#
+# Política de versionado: usamos >= para permitir parches de
+# seguridad, pero fijamos la versión mayor para evitar cambios
+# incompatibles (breaking changes).
+# ═══════════════════════════════════════════════════════════════
+
+# --- Framework Web ---
+# FastAPI: framework ASGI moderno con validación automática,
+# documentación OpenAPI y soporte nativo de async/await.
+fastapi>=0.115.0
+
+# Uvicorn: servidor ASGI de alto rendimiento que ejecuta FastAPI.
+# [standard] incluye uvloop (Linux) y httptools para máximo performance.
+uvicorn[standard]>=0.32.0
+
+# --- Procesamiento de PDFs ---
+# pdfplumber: extrae texto, tablas y metadatos de archivos PDF.
+# Es la librería principal para la extracción del syllabus ISTQB.
+pdfplumber>=0.11.0
+
+# PyMuPDF (fitz): alternativa de alto rendimiento para PDFs complejos.
+# Se usa como fallback cuando pdfplumber no extrae bien el texto
+# (ej. PDFs escaneados o con capas de watermark pesadas).
+pymupdf>=1.24.0
+
+# --- Manejo de Archivos ---
+# python-multipart: permite recibir archivos via multipart/form-data
+# en los endpoints de FastAPI (requerido para UploadFile).
+python-multipart>=0.0.17
+
+# --- Configuración ---
+# python-dotenv: carga variables de entorno desde archivos .env
+# para separar la configuración del código fuente.
+python-dotenv>=1.0.0
+
+# --- Validación de Datos ---
+# pydantic-settings: extensión de Pydantic para manejar configuración
+# desde variables de entorno con validación de tipos.
+pydantic-settings>=2.6.0
