@@ -1,0 +1,120 @@
+# ═══════════════════════════════════════════════════════════════
+# app.yaml — DigitalOcean App Platform Spec
+# ═══════════════════════════════════════════════════════════════
+#
+# Este archivo define cómo DigitalOcean construye y despliega
+# el microservicio FastAPI del ISTQB Study Agent.
+#
+# Referencia de la spec:
+# https://docs.digitalocean.com/products/app-platform/reference/app-spec/
+#
+# Para aplicar cambios sin usar el dashboard:
+#   doctl apps update <APP_ID> --spec .do/app.yaml
+# ═══════════════════════════════════════════════════════════════
+
+# Nombre de la aplicación en el dashboard de DigitalOcean.
+# Este nombre aparece en la URL generada automáticamente:
+# https://istqb-study-agent-api-xxxxx.ondigitalocean.app
+name: istqb-study-agent-api
+
+# Región del datacenter donde se despliega la aplicación.
+# "nyc" = New York. Elegimos una región cercana para baja latencia.
+# Opciones comunes: nyc, sfo, ams, sgp, lon, fra, tor, blr, syd.
+region: nyc
+
+# ─── Servicios ───
+# Un "service" en App Platform es un proceso que recibe tráfico
+# HTTP público. Para workers (procesos sin tráfico HTTP), se
+# usa la clave "workers" en lugar de "services".
+services:
+  # Nombre interno del servicio (usado en logs y métricas).
+  - name: api
+
+    # ─── Fuente del código ───
+    # App Platform clonará este repositorio de GitHub para
+    # construir la imagen Docker.
+    github:
+      # Formato: usuario/repositorio
+      # IMPORTANTE: Reemplaza con tu usuario real de GitHub.
+      repo: JuanSifuentesF/practica-testing
+      # Branch a monitorear. Cada push a este branch
+      # dispara un re-deploy automático.
+      branch: main
+      # Activar deploys automáticos al detectar nuevos commits.
+      deploy_on_push: true
+
+    # ─── Configuración del build ───
+    # Ruta al Dockerfile RELATIVA a la raíz del repositorio.
+    dockerfile_path: backend/Dockerfile
+
+    # Directorio raíz del "build context" de Docker.
+    # Docker ejecutará el build DESDE este directorio.
+    # Es equivalente al "." en `docker build .` pero relativo
+    # a la raíz del repo.
+    source_dir: backend
+
+    # ─── Tipo de instancia ───
+    # "basic-xxs" es el plan más económico de App Platform:
+    # - 1 vCPU compartida
+    # - 256 MB RAM
+    # - $5/mes (cubierto por los $200 de créditos)
+    #
+    # Para nuestro caso de uso (extraer texto de PDFs), es
+    # suficiente porque:
+    # 1. La extracción es I/O-bound (leer bytes del PDF).
+    # 2. Solo un usuario a la vez (uso personal).
+    # 3. El procesamiento más pesado (regex) es CPU ligero.
+    #
+    # Si en el futuro la extracción es lenta, escalar a
+    # "basic-xs" (512 MB RAM, $10/mes) o "basic-s" (1 GB, $12/mes).
+    instance_size_slug: basic-xxs
+
+    # Número de instancias (contenedores) a ejecutar.
+    # 1 es suficiente para uso personal.
+    instance_count: 1
+
+    # ─── Puerto HTTP ───
+    # El puerto donde el contenedor escucha peticiones HTTP.
+    # Debe coincidir con el EXPOSE y CMD del Dockerfile.
+    http_port: 8000
+
+    # ─── Health Check ───
+    # App Platform usa este endpoint para verificar que el
+    # servicio está operativo. Si falla después de un deploy,
+    # App Platform hace rollback automático.
+    #
+    # Coincide con el endpoint GET /health creado en BE-01.
+    health_check:
+      http_path: /health
+      # Tiempo en segundos antes de considerar que el check falló.
+      timeout_seconds: 10
+      # Intervalo entre checks (cada 30 segundos).
+      period_seconds: 30
+      # Número de checks fallidos consecutivos antes de reiniciar.
+      failure_threshold: 3
+      # Número de checks exitosos para considerar el servicio sano.
+      success_threshold: 1
+
+    # ─── Variables de entorno ───
+    # Estas variables se inyectan al contenedor en runtime.
+    # NO van en el Dockerfile ni en la imagen.
+    #
+    # Por ahora solo definimos los metadatos de la app.
+    # En guías futuras (BE-03+) agregaremos:
+    # - SUPABASE_URL
+    # - SUPABASE_SERVICE_ROLE_KEY
+    #
+    # NOTA: Los valores con secrets reales se configuran
+    # en el dashboard de DigitalOcean, NO en este archivo.
+    # Este archivo puede estar en el repositorio público.
+    envs:
+      - key: PROJECT_NAME
+        value: "ISTQB Study Agent API"
+      - key: VERSION
+        value: "0.1.0"
+      - key: DEBUG
+        value: "false"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: PORT
+        value: "8000"

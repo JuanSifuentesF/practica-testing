@@ -50,7 +50,8 @@ Desarrolladores o testers que quieren certificarse en ISTQB con tiempo limitado 
 | **OpenCode** | Asistente IA en terminal para codear | Gratis / propio |
 | **GitHub Actions** | CI/CD automático para deploy | Gratis (Student) |
 | **DigitalOcean** | Hosting FastAPI — $200 créditos activos | $0 (créditos) |
-| **Namecheap** | Dominio .me gratis 1 año (Student Pack) | $0 |
+| **Name.com** | Dominio custom `.app`, `.dev` o `.studio` (Student Pack) | $0 |
+| **Namecheap** | Dominio `.me` gratis 1 año como fallback/personal | $0 |
 | **Vercel** | Deploy Next.js automático desde GitHub | $0 |
 | **Supabase** | PostgreSQL + Storage (free tier) | $0 |
 
@@ -85,6 +86,16 @@ Desarrolladores o testers que quieren certificarse en ISTQB con tiempo limitado 
 │  CI/CD          GitHub Actions      Gratis              │
 └─────────────────────────────────────────────────────────┘
 ```
+
+### Estrategia de hosting y dominio para producción
+
+- **Frontend:** Vercel como hosting principal de Next.js, con dominio custom y SSL automático.
+- **Backend:** DigitalOcean App Platform para FastAPI, inicialmente con URL `*.ondigitalocean.app` y opción posterior de `api.tudominio.app`.
+- **Base de datos/Auth/Storage:** Supabase con RLS, bucket privado y redirect URLs actualizadas al dominio final.
+- **Dominio recomendado:** Name.com con `.app` para enfoque de producto o `.dev` para enfoque técnico. Namecheap `.me` queda como fallback si se busca marca personal o si no hay disponibilidad en Name.com.
+- **SSL:** gestionado por Vercel para el frontend; no es necesario comprar certificado adicional para el MVP.
+- **Plan detallado:** [Plan de Hosting, Dominio y Producción](../production/hosting_domain_plan.md).
+- **Inventario de beneficios:** [Beneficios GitHub Student Pack](../production/beneficios_github_student_pack.md).
 
 ---
 
@@ -592,7 +603,8 @@ istqb-study-agent/
 [ ] Auth completa: registro + login + logout
 [ ] Manejo de errores en todos los endpoints
 [ ] Loading states y skeletons en UI
-[ ] Dominio .me configurado (Namecheap → Vercel)
+[ ] Dominio custom configurado (Name.com `.app`/`.dev` recomendado; Namecheap `.me` fallback)
+[ ] DNS, SSL y Supabase Auth Redirect URLs verificados
 [ ] Variables de entorno revisadas en producción
 [ ] Prueba end-to-end completa con PDF real
 [ ] Simulacro final de 40 preguntas
@@ -611,7 +623,7 @@ istqb-study-agent/
 | DigitalOcean | $0 | $200 créditos (~4-6 meses) |
 | Supabase | $0 | 500MB DB + 1GB Storage free |
 | OpenAI API | ~$3-8/mes | Uso personal estimado; modelo configurable |
-| Dominio .me | $0 | 1 año gratis Student Pack |
+| Dominio custom | $0 | Name.com `.app`/`.dev` recomendado; Namecheap `.me` fallback |
 | GitHub Copilot Pro+ | $39/mes | Ya pagado, cubre asistencia de código |
 | **Total operativo app** | **~$3-8/mes** | Solo consumo OpenAI |
 
@@ -678,6 +690,7 @@ OpenCode en terminal es útil para consultas rápidas sin salir del contexto de 
 - Service role solo en servidor; frontend únicamente con anon key.
 - Extracción PDF protegida con fixtures, snapshots y alertas si faltan tópicos.
 - Modelo OpenAI configurable por `OPENAI_MODEL`; costos se revisan antes de producción.
+- Hosting y dominio documentados en `docs/production/hosting_domain_plan.md`; Name.com `.app`/`.dev` es la recomendación inicial y Namecheap `.me` queda como fallback.
 
 ---
 

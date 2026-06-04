@@ -98,7 +98,7 @@ ISTQB Study Agent
     ├── PR-01  GitHub Actions: CI/CD frontend → Vercel
     ├── PR-02  GitHub Actions: CI/CD backend → DigitalOcean
     ├── PR-03  Variables de entorno en producción
-    ├── PR-04  Dominio .me en Namecheap → Vercel
+    ├── PR-04  Dominio custom (Name.com/Namecheap) → Vercel
     └── PR-05  Prueba end-to-end completa + simulacro final
 ```
 
@@ -980,14 +980,15 @@ CHECKPOINT ✅:
   - No hay secrets expuestos en el bundle frontend de Vercel
 ```
 
-#### PR-04 — Dominio .me en Namecheap → Vercel
+#### PR-04 — Dominio custom (Name.com/Namecheap) → Vercel
 ```
 OBJETIVO:
-  La app es accesible desde tu dominio personal.
+  La app es accesible desde un dominio propio con SSL y Auth funcionando.
 
 CUBRE:
-  - Reclamar dominio .me en Namecheap (Student Pack)
-  - Configurar DNS de Namecheap apuntando a Vercel
+  - Revisar docs/production/hosting_domain_plan.md antes de elegir dominio
+  - Reclamar dominio en Name.com (.app/.dev recomendado) o Namecheap (.me fallback)
+  - Configurar DNS del registrador apuntando a Vercel
   - Agregar dominio custom en Vercel dashboard
   - Certificado SSL automático (Vercel lo maneja)
   - Actualizar redirect URLs en Supabase Auth
@@ -995,7 +996,7 @@ CUBRE:
 DEPENDENCIAS: PR-01, PR-03
 
 CHECKPOINT ✅:
-  - https://tudominio.me carga la app correctamente
+  - https://tudominio.app, .dev o .me carga la app correctamente
   - El certificado SSL está activo (candado en el browser)
   - El login/registro funciona con el dominio custom
 ```

@@ -34,3 +34,7 @@ backend/venv/
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Docker (archivos locales que no deben subirse)
+# El Dockerfile y .dockerignore SÍ se suben al repo.
+docker-compose.override.yml

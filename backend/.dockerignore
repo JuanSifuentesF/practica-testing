@@ -1,0 +1,55 @@
+# ═══════════════════════════════════════════════════════════════
+# .dockerignore — Backend ISTQB Study Agent
+# ═══════════════════════════════════════════════════════════════
+#
+# Archivos y directorios excluidos del "build context" de Docker.
+# Esto acelera el build y reduce el tamaño de la imagen final.
+# ═══════════════════════════════════════════════════════════════
+
+# --- Entorno virtual de Python ---
+# El contenedor instala sus propias dependencias desde
+# requirements.txt. No necesita el venv local.
+venv/
+.venv/
+
+# --- Bytecode compilado de Python ---
+# Python los regenera automáticamente al importar módulos.
+# Incluirlos sería basura innecesaria en la imagen.
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# --- Variables de entorno locales ---
+# Los secrets NO deben estar en la imagen Docker.
+# En producción, se inyectan como variables de entorno
+# del contenedor (configuradas en DigitalOcean dashboard).
+.env
+.env.local
+.env.*.local
+
+# --- IDE y editor ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- Git ---
+.git/
+.gitignore
+
+# --- Docker (evitar recursión) ---
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# --- Tests y documentación ---
+tests/
+docs/
+*.md
+LICENSE
+
+# --- Archivos del sistema operativo ---
+.DS_Store
+Thumbs.db
