@@ -20,6 +20,7 @@
 10. [Fases de Desarrollo](#10-fases-de-desarrollo)
 11. [Estimación de Costos](#11-estimación-de-costos)
 12. [Criterios de Éxito](#12-criterios-de-éxito)
+13. [Hosting, Dominio y Producción](#13-hosting-dominio-y-producción)
 
 ---
 
@@ -90,7 +91,7 @@ Desarrolladores o testers que quieren certificarse en ISTQB con tiempo limitado 
 ### Estrategia de hosting y dominio para producción
 
 - **Frontend:** Vercel como hosting principal de Next.js, con dominio custom y SSL automático.
-- **Backend:** DigitalOcean App Platform para FastAPI, inicialmente con URL `*.ondigitalocean.app` y opción posterior de `api.tudominio.app`.
+- **Backend:** DigitalOcean App Platform para FastAPI, inicialmente con URL `*.ondigitalocean.app` y opción posterior de `api.istqb-agent.app`.
 - **Base de datos/Auth/Storage:** Supabase con RLS, bucket privado y redirect URLs actualizadas al dominio final.
 - **Dominio recomendado:** Name.com con `.app` para enfoque de producto o `.dev` para enfoque técnico. Namecheap `.me` queda como fallback si se busca marca personal o si no hay disponibilidad en Name.com.
 - **SSL:** gestionado por Vercel para el frontend; no es necesario comprar certificado adicional para el MVP.
@@ -668,6 +669,44 @@ Costo total para preparar el examen: $2-4 USD
 - [ ] Completar material ISTQB en 7-10 días con 180 min/día divididos en mañana/noche
 - [ ] Score en simulacro final > 70% (umbral real del examen ISTQB)
 - [ ] El usuario siente que aprendió, no solo memorizó
+
+---
+
+## 13. Hosting, Dominio y Producción
+
+### Decisión de despliegue
+
+| Necesidad | Servicio elegido | Motivo |
+|---|---|---|
+| Hosting frontend | Vercel | Está optimizado para Next.js, despliega desde GitHub y gestiona SSL automático. |
+| Hosting backend | DigitalOcean App Platform | Ejecuta FastAPI con Docker y aprovecha los créditos del Student Pack. |
+| Base de datos/Auth/Storage | Supabase | PostgreSQL, autenticación, storage privado y RLS en una sola plataforma. |
+| Dominio app | Name.com | `istqb-agent.app`, sujeto a disponibilidad. |
+| Dominio portafolio | Name.com | `holajuan.dev`, sujeto a disponibilidad. |
+| Dominio fallback | Namecheap | Opción `.me` solo si no hay buen nombre disponible en Name.com. |
+
+### Separación de responsabilidades
+
+Name.com o Namecheap funcionan principalmente como **registradores de dominio**: sirven para reservar el nombre público de la web, por ejemplo `istqb-agent.app` para esta app o `holajuan.dev` para el portafolio. Vercel funciona como **hosting del frontend**: sirve los archivos y páginas de Next.js, recibe el tráfico real de usuarios y conecta el dominio con la aplicación.
+
+La relación esperada es:
+
+```text
+Name.com / Namecheap  →  DNS del dominio  →  Vercel  →  App Next.js
+                                                     →  Supabase / FastAPI
+```
+
+### SSL y HTTPS
+
+SSL permite que la app cargue con `https://` en lugar de `http://`. Esto cifra la comunicación entre el navegador y la aplicación, evita advertencias de seguridad en el browser y es necesario para una experiencia confiable de login, formularios, cookies y autenticación.
+
+Para este proyecto no se necesita comprar ni administrar un certificado SSL aparte en el MVP, porque Vercel lo genera y renueva automáticamente cuando el dominio custom queda bien configurado.
+
+### Seguimiento operativo
+
+- Plan detallado de producción: [Plan de Hosting, Dominio y Producción](../production/hosting_domain_plan.md).
+- Inventario de beneficios disponibles: [Beneficios GitHub Student Pack](../production/beneficios_github_student_pack.md).
+- Roadmap relacionado: Bloque G — Producción (`PR-01` a `PR-05`).
 
 ---
 

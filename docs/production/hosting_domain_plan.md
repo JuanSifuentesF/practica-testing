@@ -15,11 +15,12 @@ Usar una arquitectura de producción dividida por responsabilidad:
 | Frontend | Vercel | Hosting principal de Next.js, dominio custom y SSL automático. |
 | Backend | DigitalOcean App Platform | Hosting de FastAPI usando Docker y health check. |
 | Base de datos/Auth/Storage | Supabase | PostgreSQL, Auth, Storage privado y RLS. |
-| Dominio | Name.com | Opción recomendada si hay disponibilidad de `.app` o `.dev`. |
-| Dominio fallback | Namecheap | Usar `.me` si se quiere una URL más personal o si Name.com no tiene una buena opción disponible. |
+| Dominio app | Name.com | `istqb-agent.app`, sujeto a disponibilidad. |
+| Dominio portafolio | Name.com | `holajuan.dev`, sujeto a disponibilidad. |
+| Dominio fallback | Namecheap | Usar `.me` solo si no hay una buena opción disponible en Name.com. |
 | CI/CD | GitHub Actions + integraciones nativas | Deploy automatizado desde GitHub. |
 
-**Recomendación de dominio:** priorizar Name.com con `.app` para producto (`istqbstudy.app`, `studyistqb.app`) o `.dev` para perfil técnico (`istqbstudy.dev`). Usar Namecheap `.me` solo si el proyecto se quiere presentar como herramienta personal o portfolio.
+**Decisión de dominio objetivo:** usar `istqb-agent.app` para la app ISTQB Study Agent y `holajuan.dev` para el portafolio personal. Ambos nombres quedan sujetos a disponibilidad en Name.com antes de reclamarlos.
 
 ---
 
@@ -30,7 +31,7 @@ Usar una arquitectura de producción dividida por responsabilidad:
 - Vercel gestiona SSL automáticamente, así que el certificado gratis de Namecheap no aporta mucho para este stack.
 - Namecheap `.me` sigue siendo válido, pero suena más a marca personal que a producto educativo.
 
-**Decisión práctica:** elegir Name.com si hay un nombre corto, claro y disponible. Si no, usar Namecheap `.me` como fallback sin bloquear el despliegue.
+**Decisión práctica:** intentar primero con `istqb-agent.app` y `holajuan.dev` en Name.com. Si alguno no está disponible, buscar una variante corta antes de caer en Namecheap `.me` como fallback.
 
 ---
 
@@ -85,7 +86,7 @@ Variables esperadas:
 - Usa el `Dockerfile` de `backend/`.
 - Usa `.do/app.yaml` para definir build, runtime y health check.
 - Puede iniciar con dominio interno `*.ondigitalocean.app`.
-- Solo necesita dominio custom propio si se quiere exponer `api.tudominio.com`.
+- Solo necesita dominio custom propio si se quiere exponer `api.istqb-agent.app`.
 
 Variables esperadas:
 
@@ -105,9 +106,9 @@ URLs a registrar cuando exista dominio:
 
 | Uso | URL |
 |---|---|
-| Site URL | `https://tudominio.app` o dominio elegido |
+| Site URL | `https://istqb-agent.app` si el dominio está disponible |
 | Redirect local | `http://localhost:3000/auth/callback` |
-| Redirect producción | `https://tudominio.app/auth/callback` |
+| Redirect producción | `https://istqb-agent.app/auth/callback` |
 
 ---
 
@@ -117,8 +118,8 @@ URLs a registrar cuando exista dominio:
 
 Configurar en Vercel siguiendo las instrucciones que entregue el dashboard:
 
-- Dominio raíz: `tudominio.app`
-- Alias recomendado: `www.tudominio.app`
+- Dominio raíz: `istqb-agent.app`
+- Alias recomendado: `www.istqb-agent.app`
 - SSL: automático en Vercel
 
 ### Backend API
@@ -130,7 +131,7 @@ Fase inicial recomendada:
 
 Fase posterior opcional:
 
-- Crear `api.tudominio.app` apuntando a DigitalOcean.
+- Crear `api.istqb-agent.app` apuntando a DigitalOcean.
 - Configurar SSL del subdominio en DigitalOcean.
 - Actualizar `FASTAPI_URL`.
 
@@ -152,8 +153,9 @@ Este plan se conecta con el Bloque G del roadmap:
 
 ## Checklist De Producción
 
-- [ ] Elegir dominio candidato en Name.com (`.app` recomendado, `.dev` alternativa).
-- [ ] Confirmar fallback Namecheap `.me` si Name.com no tiene disponibilidad adecuada.
+- [ ] Verificar disponibilidad de `istqb-agent.app` en Name.com.
+- [ ] Verificar disponibilidad de `holajuan.dev` en Name.com.
+- [ ] Confirmar fallback Namecheap `.me` solo si Name.com no tiene disponibilidad adecuada.
 - [ ] Conectar frontend a Vercel desde GitHub.
 - [ ] Conectar backend a DigitalOcean App Platform.
 - [ ] Configurar variables de entorno en Vercel.
@@ -185,7 +187,7 @@ Inventario completo: [Beneficios GitHub Student Pack](beneficios_github_student_
 
 ## Decisiones Pendientes
 
-- Nombre exacto del dominio.
+- Confirmar disponibilidad real de `istqb-agent.app` y `holajuan.dev` antes de reclamarlos.
 - Si la app será solo personal o abierta a más usuarios.
-- Si el backend necesita subdominio propio (`api.tudominio.app`) o basta con la URL de DigitalOcean.
+- Si el backend necesita subdominio propio (`api.istqb-agent.app`) o basta con la URL de DigitalOcean.
 - Si se activará monitoreo con Sentry después del MVP.

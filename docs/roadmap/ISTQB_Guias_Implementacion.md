@@ -996,7 +996,7 @@ CUBRE:
 DEPENDENCIAS: PR-01, PR-03
 
 CHECKPOINT ✅:
-  - https://tudominio.app, .dev o .me carga la app correctamente
+  - https://istqb-agent.app o el dominio final elegido carga la app correctamente
   - El certificado SSL está activo (candado en el browser)
   - El login/registro funciona con el dominio custom
 ```
