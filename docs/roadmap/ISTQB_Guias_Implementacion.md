@@ -15,11 +15,11 @@
 | | **DB-04** | Row Level Security (RLS) Policies | 🔄 **Siguiente** | *Siguiente hito a implementar* |
 | | **DB-05** | Supabase Auth Configuración | ⏳ **Pendiente** | *Bloqueado por DB-04* |
 | **⚙️ BLOQUE B: Backend** | **BE-01** | Scaffold del proyecto FastAPI | ✅ **Completado** | [Guía BE-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-01.md) — *Scaffold funcional* |
-| | **BE-02** | Dockerfile + config DigitalOcean | ⏳ **Pendiente** | *Por iniciar* |
-| | **BE-03** | Endpoint POST /extract-pdf | ⏳ **Pendiente** | *Por iniciar* |
-| | **BE-04** | Algoritmo de detección de tópicos | ⏳ **Pendiente** | *Por iniciar* |
-| | **BE-05** | Chunking y estructuración JSON | ⏳ **Pendiente** | *Por iniciar* |
-| | **BE-06** | Deploy a DigitalOcean + health check | ⏳ **Pendiente** | *Por iniciar* |
+| | **BE-02** | Dockerfile + config DigitalOcean | ✅ **Completado** | [Guía BE-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-02.md) — *Dockerfile + app.yaml funcionales* |
+| | **BE-03** | Endpoint POST /extract-pdf | ✅ **Completado** | [Guía BE-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-03.md) — *pdfplumber integrado* |
+| | **BE-04** | Algoritmo de detección de tópicos | ✅ **Completado** | [Guía BE-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-04.md) — *Regex FL-x.x.x funcional* |
+| | **BE-05** | Chunking y estructuración JSON | ✅ **Completado** | [Guía BE-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-05.md) — *JSON estructurado con tópicos* |
+| | **BE-06** | Deploy a DigitalOcean + health check | ✅ **Completado** | [Guía BE-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-06.md) — *API en https://squid-app-y364m.ondigitalocean.app* |
 | **🌐 BLOQUE C: Frontend** | **FE-01** | Scaffold Next.js + TS + Tailwind + shadcn/ui | ⏳ **Pendiente** | *Por iniciar* |
 | | **FE-02** | Conexión con Supabase | ⏳ **Pendiente** | *Por iniciar* |
 | | **FE-03** | Auth: login, register, middleware | ⏳ **Pendiente** | *Por iniciar* |
@@ -57,11 +57,11 @@ ISTQB Study Agent
 │
 ├── ⚙️  BLOQUE B — BACKEND (FastAPI)
 │   ├── [x] BE-01  Scaffold del proyecto FastAPI (Completado)
-│   ├── [ ] BE-02  Dockerfile + config DigitalOcean (Pendiente)
-│   ├── BE-03  Endpoint POST /extract-pdf con pdfplumber
-│   ├── BE-04  Algoritmo de detección de tópicos FL-x.x.x
-│   ├── BE-05  Chunking y estructuración del JSON de salida
-│   └── BE-06  Deploy a DigitalOcean + health check
+│   ├── [x] BE-02  Dockerfile + config DigitalOcean (Completado)
+│   ├── [x] BE-03  Endpoint POST /extract-pdf con pdfplumber (Completado)
+│   ├── [x] BE-04  Algoritmo de detección de tópicos FL-x.x.x (Completado)
+│   ├── [x] BE-05  Chunking y estructuración del JSON de salida (Completado)
+│   └── [x] BE-06  Deploy a DigitalOcean + health check (Completado)
 │
 ├── 🌐  BLOQUE C — FRONTEND BASE (Next.js)
 │   ├── FE-01  Scaffold Next.js + TypeScript + Tailwind + shadcn/ui
