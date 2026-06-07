@@ -82,4 +82,5 @@ app.add_middleware(
 # En guías futuras agregaremos más routers:
 #   - app.routers.pdf      → POST /extract-pdf (BE-03)
 # ═══════════════════════════════════════════════════════════════
+app.include_router(health.router)
 app.include_router(pdf.router)

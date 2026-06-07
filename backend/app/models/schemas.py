@@ -197,3 +197,182 @@ class ErrorResponse(BaseModel):
         ),
         examples=["INVALID_FILE_TYPE"],
     )
+    
+    # ═══════════════════════════════════════════════════════════════
+# SCHEMAS DE DETECCIÓN DE TÓPICOS (BE-04)
+# ═══════════════════════════════════════════════════════════════
+
+
+class DetectedTopicSchema(BaseModel):
+    """
+    Modelo que representa UN tópico detectado del syllabus ISTQB.
+
+    Cada tópico tiene un código único (FL-x.x.x), un nivel cognitivo K
+    (K1, K2 o K3), un nombre descriptivo, y el texto del syllabus que
+    le corresponde.
+
+    Ejemplo:
+        {
+            "code": "FL-1.1.1",
+            "level_k": "K1",
+            "name": "Identify Typical Test Objectives",
+            "text": "Testing has different objectives depending on...",
+            "chapter": 1,
+            "section": "1.1"
+        }
+    """
+
+    code: str = Field(
+        ...,
+        pattern=r"^FL-\d+\.\d+\.\d+$",
+        description=(
+            "Código único del tópico en formato FL-x.x.x. "
+            "Ejemplo: FL-1.1.1, FL-2.3.1, FL-4.2.4."
+        ),
+        examples=["FL-1.1.1"],
+    )
+
+    level_k: str = Field(
+        ...,
+        pattern=r"^K[123]$",
+        description=(
+            "Nivel cognitivo del tópico según la taxonomía de Bloom: "
+            "K1 (recordar), K2 (comprender), K3 (aplicar)."
+        ),
+        examples=["K1"],
+    )
+
+    name: str = Field(
+        ...,
+        min_length=3,
+        description=(
+            "Nombre del objetivo de aprendizaje tal como aparece en "
+            "el syllabus. Ejemplo: 'Identify Typical Test Objectives'."
+        ),
+        examples=["Identify Typical Test Objectives"],
+    )
+
+    text: str = Field(
+        ...,
+        min_length=10,
+        description=(
+            "Texto completo del syllabus asociado a este tópico. "
+            "Incluye todo el contenido desde el encabezado FL-x.x.x "
+            "hasta el inicio del siguiente tópico."
+        ),
+    )
+
+    chapter: int = Field(
+        ...,
+        ge=1,
+        le=6,
+        description=(
+            "Número de capítulo del syllabus al que pertenece este tópico "
+            "(1-6). Se extrae del primer dígito del código FL-x.x.x."
+        ),
+        examples=[1],
+    )
+
+    section: str = Field(
+        ...,
+        description=(
+            "Sección del syllabus (ej: '1.1', '2.3', '4.2'). "
+            "Se extrae de los dos primeros números del código FL-x.x.x."
+        ),
+        examples=["1.1"],
+    )
+
+
+class KLevelDistribution(BaseModel):
+    """
+    Distribución de tópicos por nivel K.
+
+    Permite al frontend mostrar estadísticas del syllabus y al
+    servicio de generación de plan (UP-04) calcular las horas
+    estimadas de estudio.
+
+    Ejemplo:
+        {
+            "K1": 15,
+            "K2": 38,
+            "K3": 6
+        }
+    """
+
+    K1: int = Field(
+        default=0,
+        ge=0,
+        description="Cantidad de tópicos con nivel K1 (recordar).",
+    )
+
+    K2: int = Field(
+        default=0,
+        ge=0,
+        description="Cantidad de tópicos con nivel K2 (comprender).",
+    )
+
+    K3: int = Field(
+        default=0,
+        ge=0,
+        description="Cantidad de tópicos con nivel K3 (aplicar).",
+    )
+
+
+class TopicDetectionResponse(BaseModel):
+    """
+    Respuesta completa del algoritmo de detección de tópicos.
+
+    Incluye todos los tópicos detectados, estadísticas de distribución,
+    y warnings si la detección fue incompleta.
+
+    Este schema será consumido por:
+    1. ExtractorService (BE-05) para construir el JSON final.
+    2. Next.js (UP-03) para validar que la extracción fue exitosa.
+    3. El servicio de generación de plan (UP-04) para asignar tópicos
+       a sesiones de estudio.
+
+    Ejemplo:
+        {
+            "topics": [...],
+            "total_topics": 40,
+            "level_distribution": {"K1": 12, "K2": 20, "K3": 8},
+            "warnings": [],
+            "is_complete": true
+        }
+    """
+
+    topics: list[DetectedTopicSchema] = Field(
+        ...,
+        description="Lista de todos los tópicos detectados en el syllabus.",
+    )
+
+    total_topics: int = Field(
+        ...,
+        ge=0,
+        description="Número total de tópicos detectados.",
+        examples=[40],
+    )
+
+    level_distribution: KLevelDistribution = Field(
+        ...,
+        description="Distribución de tópicos por nivel K (K1, K2, K3).",
+    )
+
+    warnings: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Lista de advertencias generadas durante la detección. "
+            "Ejemplos: tópicos faltantes, niveles K no encontrados, "
+            "texto vacío para un tópico. Una lista vacía indica que "
+            "la detección fue perfecta."
+        ),
+    )
+
+    is_complete: bool = Field(
+        ...,
+        description=(
+            "True si se detectaron al menos el 90% de los tópicos "
+            "esperados del syllabus (>= 53 de 59 para v4.0). "
+            "False si faltan tópicos significativos."
+        ),
+    )
