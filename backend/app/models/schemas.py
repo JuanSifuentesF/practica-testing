@@ -159,7 +159,7 @@ class PdfExtractResponse(BaseModel):
         ge=0,
         description=(
             "Longitud total del texto extraído en caracteres. Sirve como "
-            "indicador rápido de calidad: el syllabus ISTQB v4.0 debería "
+            "indicador rápido de calidad: el syllabus ISTQB CTFL v4.0.1 debería "
             "tener aproximadamente 200,000-300,000 caracteres."
         ),
         examples=[250000],
@@ -254,7 +254,7 @@ class DetectedTopicSchema(BaseModel):
 
     text: str = Field(
         ...,
-        min_length=10,
+        min_length=1,
         description=(
             "Texto completo del syllabus asociado a este tópico. "
             "Incluye todo el contenido desde el encabezado FL-x.x.x "
@@ -372,7 +372,197 @@ class TopicDetectionResponse(BaseModel):
         ...,
         description=(
             "True si se detectaron al menos el 90% de los tópicos "
-            "esperados del syllabus (>= 53 de 59 para v4.0). "
+            "esperados del syllabus (>= 58 de 64 para CTFL v4.0.1). "
             "False si faltan tópicos significativos."
+        ),
+    )
+    
+    # ═══════════════════════════════════════════════════════════════
+# SCHEMAS DE EXTRACCIÓN COMPLETA (BE-05)
+# ═══════════════════════════════════════════════════════════════
+#
+# Estos schemas representan el JSON FINAL que Next.js consumirá
+# directamente en la guía UP-03. Son el "contrato" entre el
+# backend (FastAPI) y el frontend (Next.js).
+#
+# Diferencia con los schemas de BE-04:
+#   BE-04: TopicDetectionResponse → tópicos como LISTA (interno)
+#   BE-05: FullExtractionResponse → tópicos como DICCIONARIO (API)
+
+
+class TopicInfo(BaseModel):
+    """
+    Información de UN tópico en el formato final para Next.js.
+
+    A diferencia de DetectedTopicSchema (BE-04), este schema:
+    1. NO incluye 'code' — porque el código ES la clave del diccionario.
+    2. NO incluye 'start_pos' — dato interno del detector, irrelevante
+       para el frontend.
+    3. SÍ incluye 'chapter' y 'section' — para agrupación visual en
+       la UI del plan de estudio.
+
+    Este modelo representa el VALOR del diccionario en:
+        { "FL-1.1.1": TopicInfo, "FL-1.1.2": TopicInfo, ... }
+
+    Ejemplo:
+        {
+            "level_k": "K1",
+            "name": "Identify Typical Test Objectives",
+            "text": "Testing has different objectives depending on...",
+            "chapter": 1,
+            "section": "1.1"
+        }
+    """
+
+    level_k: str = Field(
+        ...,
+        pattern=r"^K[123]$",
+        description=(
+            "Nivel cognitivo según la taxonomía de Bloom: "
+            "K1 (recordar), K2 (comprender), K3 (aplicar)."
+        ),
+        examples=["K1"],
+    )
+
+    name: str = Field(
+        ...,
+        min_length=3,
+        description=(
+            "Nombre del objetivo de aprendizaje tal como aparece "
+            "en el syllabus ISTQB."
+        ),
+        examples=["Identify Typical Test Objectives"],
+    )
+
+    text: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "Texto completo del syllabus asociado a este tópico. "
+            "Incluye todo el contenido desde el encabezado FL-x.x.x "
+            "hasta el inicio del siguiente tópico."
+        ),
+    )
+
+    chapter: int = Field(
+        ...,
+        ge=1,
+        le=6,
+        description="Número de capítulo del syllabus (1-6).",
+        examples=[1],
+    )
+
+    section: str = Field(
+        ...,
+        description="Sección del syllabus (ej: '1.1', '2.3').",
+        examples=["1.1"],
+    )
+
+
+class FullExtractionResponse(BaseModel):
+    """
+    Respuesta COMPLETA del pipeline de extracción y análisis.
+
+    Este es el JSON FINAL que Next.js consumirá en UP-03.
+    Combina los resultados de:
+    1. PdfExtractorService (BE-03) → metadatos del PDF.
+    2. TopicDetectorService (BE-04) → tópicos detectados.
+    3. ExtractorService (BE-05) → transformación y cálculos.
+
+    La estructura está optimizada para el consumo del frontend:
+    - topics: diccionario indexado por código FL-x.x.x (acceso O(1)).
+    - estimated_study_hours: calculado automáticamente por el backend.
+    - is_complete: indica si el frontend debería alertar al usuario
+      sobre posibles problemas en la extracción.
+
+    Ejemplo:
+        {
+            "filename": "ISTQB_CTFL_v4.0.pdf",
+            "total_pages": 135,
+            "extraction_method": "pdfplumber",
+            "topics": {
+                "FL-1.1.1": {
+                    "level_k": "K1",
+                    "name": "Identify Typical Test Objectives",
+                    "text": "Testing has different objectives...",
+                    "chapter": 1,
+                    "section": "1.1"
+                }
+            },
+            "total_topics": 64,
+            "level_distribution": {"K1": 14, "K2": 42, "K3": 8},
+            "estimated_study_hours": 61.0,
+            "warnings": [],
+            "is_complete": true
+        }
+    """
+
+    filename: str = Field(
+        ...,
+        description="Nombre original del archivo PDF subido.",
+        examples=["ISTQB_CTFL_v4.0.pdf"],
+    )
+
+    total_pages: int = Field(
+        ...,
+        ge=1,
+        description="Número total de páginas del PDF.",
+        examples=[135],
+    )
+
+    extraction_method: str = Field(
+        ...,
+        description=(
+            "Método de extracción de texto utilizado: "
+            "'pdfplumber' o 'pymupdf'."
+        ),
+        examples=["pdfplumber"],
+    )
+
+    topics: dict[str, TopicInfo] = Field(
+        ...,
+        description=(
+            "Diccionario de tópicos detectados, indexado por código "
+            "FL-x.x.x. Cada valor es un objeto TopicInfo con el nivel K, "
+            "nombre, texto, capítulo y sección."
+        ),
+    )
+
+    total_topics: int = Field(
+        ...,
+        ge=0,
+        description="Número total de tópicos detectados.",
+        examples=[64],
+    )
+
+    level_distribution: KLevelDistribution = Field(
+        ...,
+        description="Distribución de tópicos por nivel K (K1, K2, K3).",
+    )
+
+    estimated_study_hours: float = Field(
+        ...,
+        ge=0.0,
+        description=(
+            "Horas estimadas de estudio calculadas automáticamente. "
+            "Fórmula: (K1 × 0.5) + (K2 × 1.0) + (K3 × 1.5). "
+            "Usado por UP-04 para generar el plan de estudio."
+        ),
+        examples=[61.0],
+    )
+
+    warnings: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Advertencias generadas durante la extracción y detección. "
+            "Lista vacía indica que todo fue perfecto."
+        ),
+    )
+
+    is_complete: bool = Field(
+        ...,
+        description=(
+            "True si se detectaron >= 90% de los tópicos esperados. "
+            "Si es False, el frontend debe alertar al usuario."
         ),
     )

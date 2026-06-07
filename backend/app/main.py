@@ -37,6 +37,7 @@ app = FastAPI(
     docs_url="/docs",       # Swagger UI en http://localhost:8000/docs
     redoc_url="/redoc",     # ReDoc en http://localhost:8000/redoc
     openapi_url="/openapi.json",  # Schema OpenAPI en formato JSON
+    redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@2.1.5/bundles/redoc.standalone.js",
 )
 
 # ═══════════════════════════════════════════════════════════════

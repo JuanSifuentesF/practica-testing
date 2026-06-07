@@ -51,12 +51,12 @@ logger = logging.getLogger(__name__)
 # diferentes, SOLO necesitas actualizar esta lista.
 
 EXPECTED_TOPICS_V4: list[str] = [
-    # Capítulo 1: Fundamentals of Testing (12 tópicos)
+    # Capítulo 1: Fundamentals of Testing (14 tópicos)
     "FL-1.1.1", "FL-1.1.2",
-    "FL-1.2.1", "FL-1.2.2",
+    "FL-1.2.1", "FL-1.2.2", "FL-1.2.3",
     "FL-1.3.1",
     "FL-1.4.1", "FL-1.4.2", "FL-1.4.3", "FL-1.4.4", "FL-1.4.5",
-    "FL-1.5.1", "FL-1.5.2",
+    "FL-1.5.1", "FL-1.5.2", "FL-1.5.3",
     # Capítulo 2: Testing Throughout the SDLC (10 tópicos)
     "FL-2.1.1", "FL-2.1.2", "FL-2.1.3", "FL-2.1.4", "FL-2.1.5", "FL-2.1.6",
     "FL-2.2.1", "FL-2.2.2", "FL-2.2.3",
@@ -64,24 +64,25 @@ EXPECTED_TOPICS_V4: list[str] = [
     # Capítulo 3: Static Testing (8 tópicos)
     "FL-3.1.1", "FL-3.1.2", "FL-3.1.3",
     "FL-3.2.1", "FL-3.2.2", "FL-3.2.3", "FL-3.2.4", "FL-3.2.5",
-    # Capítulo 4: Test Analysis and Design (10 tópicos)
+    # Capítulo 4: Test Analysis and Design (14 tópicos)
     "FL-4.1.1",
     "FL-4.2.1", "FL-4.2.2", "FL-4.2.3", "FL-4.2.4",
     "FL-4.3.1", "FL-4.3.2", "FL-4.3.3",
     "FL-4.4.1", "FL-4.4.2", "FL-4.4.3",
-    # Capítulo 5: Managing the Test Activities (17 tópicos)
+    "FL-4.5.1", "FL-4.5.2", "FL-4.5.3",
+    # Capítulo 5: Managing the Test Activities (16 tópicos)
     "FL-5.1.1", "FL-5.1.2", "FL-5.1.3", "FL-5.1.4", "FL-5.1.5",
     "FL-5.1.6", "FL-5.1.7",
     "FL-5.2.1", "FL-5.2.2", "FL-5.2.3", "FL-5.2.4",
     "FL-5.3.1", "FL-5.3.2", "FL-5.3.3",
-    "FL-5.4.1",
+    "FL-5.4.1", "FL-5.5.1",
     # Capítulo 6: Test Tools (2 tópicos)
     "FL-6.1.1",
     "FL-6.2.1",
 ]
 
 # Umbral para considerar la detección como "completa".
-# 90% de 59 tópicos = 53.1, redondeamos a 53.
+# 90% de 64 tópicos = 57.6; en la práctica, al menos 58.
 COMPLETENESS_THRESHOLD = 0.90
 
 

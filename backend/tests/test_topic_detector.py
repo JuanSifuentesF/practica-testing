@@ -11,7 +11,7 @@ Ejecución:
     python -m tests.test_topic_detector
 
 Salida esperada:
-    ✅ Test 1 PASÓ: Se detectaron tópicos (59 encontrados)
+    ✅ Test 1 PASÓ: Se detectaron tópicos (64 encontrados)
     ✅ Test 2 PASÓ: Distribución K correcta
     ✅ Test 3 PASÓ: FL-1.1.1 detectado con K1
     ✅ Test 4 PASÓ: FL-4.2.1 detectado con K3
@@ -30,7 +30,9 @@ import sys
 sys.path.insert(0, ".")
 
 from app.services.topic_detector import TopicDetectorService
-from tests.fixtures.sample_syllabus_text import (EXPECTED_TOPIC_CODES,
+from tests.fixtures.sample_syllabus_text import (EXPECTED_K_DISTRIBUTION,
+                                                 EXPECTED_TOPIC_CODES,
+                                                 EXPECTED_TOTAL_TOPICS,
                                                  SAMPLE_SYLLABUS_TEXT)
 
 
@@ -44,8 +46,9 @@ def main() -> None:
     total += 1
     result = service.detect(SAMPLE_SYLLABUS_TEXT)
     try:
-        assert result.total_topics > 0, (
-            f"Se esperaban tópicos pero se encontraron {result.total_topics}"
+        assert result.total_topics == EXPECTED_TOTAL_TOPICS, (
+            f"Se esperaban {EXPECTED_TOTAL_TOPICS} tópicos pero se "
+            f"encontraron {result.total_topics}"
         )
         print(f"✅ Test 1 PASÓ: Se detectaron tópicos ({result.total_topics} encontrados)")
         passed += 1
@@ -55,9 +58,10 @@ def main() -> None:
     # ─── Test 2: Distribución K ───
     total += 1
     try:
-        assert result.level_distribution.get("K1", 0) > 0, "No se encontraron tópicos K1"
-        assert result.level_distribution.get("K2", 0) > 0, "No se encontraron tópicos K2"
-        assert result.level_distribution.get("K3", 0) > 0, "No se encontraron tópicos K3"
+        assert result.level_distribution == EXPECTED_K_DISTRIBUTION, (
+            f"Distribución K: {result.level_distribution}, "
+            f"esperada: {EXPECTED_K_DISTRIBUTION}"
+        )
         k_total = sum(result.level_distribution.values())
         assert k_total == result.total_topics, (
             f"Suma de distribución K ({k_total}) != total_topics ({result.total_topics})"
@@ -118,7 +122,13 @@ def main() -> None:
     # ─── Test 6: Completitud ───
     total += 1
     try:
-        # El fixture tiene los 59 tópicos, así que debería ser completo
+        # El fixture tiene todos los tópicos oficiales, así que debería ser completo.
+        actual_codes = {t.code for t in result.topics}
+        expected_codes = set(EXPECTED_TOPIC_CODES)
+        missing = expected_codes - actual_codes
+        extra = actual_codes - expected_codes
+        assert not missing, f"Tópicos faltantes: {sorted(missing)}"
+        assert not extra, f"Tópicos extra: {sorted(extra)}"
         assert result.is_complete, (
             f"La detección no es completa. Total: {result.total_topics}, "
             f"Warnings: {result.warnings}"

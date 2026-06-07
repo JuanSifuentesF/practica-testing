@@ -74,6 +74,11 @@ approach that focuses on those activities supporting the achievement of
 appropriate levels of quality. QA is a process-oriented, preventive approach
 that focuses on the implementation and improvement of processes.
 
+FL-1.2.3 (K2) Distinguish between Root Cause, Error, Defect, and Failure
+A person can make an error, which may introduce a defect into a work product.
+When code with a defect is executed, it may cause a failure. The root cause
+is the fundamental reason why the error occurred.
+
 1.3 Testing Principles
 
 FL-1.3.1 (K2) Explain the Seven Testing Principles
@@ -126,6 +131,11 @@ The whole team approach means that every team member can perform any task,
 and that the entire team is responsible for quality. The whole team approach
 benefits from the diverse skill sets of all team members.
 
+FL-1.5.3 (K2) Distinguish the Benefits and Drawbacks of Independence of Testing
+Independent testers can find different defects and provide an objective view.
+However, too much independence can isolate testers from developers and reduce
+shared responsibility for quality.
+
 Chapter 2: Testing Throughout the Software Development Lifecycle
 
 2.1 Testing in the Context of a Software Development Lifecycle
@@ -152,7 +162,7 @@ DevOps is an approach that promotes collaboration between development and
 operations. It enables fast feedback, shift-left testing, CI/CD pipelines,
 and promotes automated testing as a key practice.
 
-FL-2.1.5 (K1) Explain the Shift-Left Approach
+FL-2.1.5 (K2) Explain the Shift-Left Approach
 The shift-left approach means testing earlier in the SDLC. This includes
 reviewing requirements before coding, writing tests before code, and
 performing static analysis continuously.
@@ -175,7 +185,7 @@ white-box testing. Functional testing evaluates functions, non-functional
 testing evaluates characteristics like performance, and white-box testing
 is based on the internal structure.
 
-FL-2.2.3 (K1) Distinguish Confirmation Testing from Regression Testing
+FL-2.2.3 (K2) Distinguish Confirmation Testing from Regression Testing
 Confirmation testing confirms that a defect has been fixed. Regression testing
 detects unintended side-effects of changes. Both are performed at all test levels.
 
@@ -284,6 +294,23 @@ FL-4.4.3 (K2) Explain Checklist-Based Testing
 Checklist-based testing uses a list of items to be tested or conditions to be verified.
 Checklists are built based on experience, standards, or user requirements.
 
+4.5 Collaboration-Based Test Approaches
+
+FL-4.5.1 (K2) Explain How to Write User Stories in Collaboration with Developers and Business Representatives
+User stories are written collaboratively to capture user needs, business value,
+and expected behavior. Good user stories are understandable, testable, and small
+enough to be implemented within an iteration.
+
+FL-4.5.2 (K2) Classify the Different Options for Writing Acceptance Criteria
+Acceptance criteria can be written using rule-oriented or scenario-oriented
+formats. Scenario-oriented criteria often use Given-When-Then to describe
+preconditions, actions, and expected outcomes.
+
+FL-4.5.3 (K3) Use Acceptance Test-Driven Development to Derive Test Cases
+Acceptance test-driven development derives test cases from acceptance criteria
+before implementation. The tests clarify expectations and support shared
+understanding between business, development, and testing roles.
+
 Chapter 5: Managing the Test Activities
 
 5.1 Test Planning
@@ -310,11 +337,11 @@ FL-5.1.5 (K3) Apply Test Case Prioritization
 Test cases can be prioritized based on risk, coverage, and requirements. Risk-based
 prioritization executes the most important tests first.
 
-FL-5.1.6 (K2) Recall the Concepts of Test Pyramid
+FL-5.1.6 (K1) Recall the Concepts of Test Pyramid
 The test pyramid shows that there should be many unit tests, fewer integration
 tests, and even fewer end-to-end tests. This optimizes testing cost and speed.
 
-FL-5.1.7 (K1) Summarize the Testing Quadrants and Their Relationships with Test Levels and Test Types
+FL-5.1.7 (K2) Summarize the Testing Quadrants and Their Relationships with Test Levels and Test Types
 The testing quadrants classify tests along two dimensions: technology-facing vs.
 business-facing, and supporting the team vs. critiquing the product.
 
@@ -357,6 +384,13 @@ FL-5.4.1 (K2) Summarize How Configuration Management Supports Testing
 Configuration management ensures that test items, test environments, and testware
 are identified, version-controlled, tracked, and maintained throughout the project.
 
+5.5 Defect Management
+
+FL-5.5.1 (K3) Prepare a Defect Report
+A defect report should contain enough information to reproduce, analyze, and
+resolve the defect. It typically includes summary, steps to reproduce, expected
+and actual results, severity, priority, environment, and attachments.
+
 Chapter 6: Test Tools
 
 6.1 Tool Support for Testing
@@ -391,6 +425,7 @@ EXPECTED_TOPIC_CODES: list[str] = [
     "FL-1.1.2",
     "FL-1.2.1",
     "FL-1.2.2",
+    "FL-1.2.3",
     "FL-1.3.1",
     "FL-1.4.1",
     "FL-1.4.2",
@@ -399,6 +434,7 @@ EXPECTED_TOPIC_CODES: list[str] = [
     "FL-1.4.5",
     "FL-1.5.1",
     "FL-1.5.2",
+    "FL-1.5.3",
     # Capítulo 2: Testing Throughout the SDLC
     "FL-2.1.1",
     "FL-2.1.2",
@@ -431,6 +467,9 @@ EXPECTED_TOPIC_CODES: list[str] = [
     "FL-4.4.1",
     "FL-4.4.2",
     "FL-4.4.3",
+    "FL-4.5.1",
+    "FL-4.5.2",
+    "FL-4.5.3",
     # Capítulo 5: Managing the Test Activities
     "FL-5.1.1",
     "FL-5.1.2",
@@ -447,6 +486,7 @@ EXPECTED_TOPIC_CODES: list[str] = [
     "FL-5.3.2",
     "FL-5.3.3",
     "FL-5.4.1",
+    "FL-5.5.1",
     # Capítulo 6: Test Tools
     "FL-6.1.1",
     "FL-6.2.1",
@@ -454,10 +494,10 @@ EXPECTED_TOPIC_CODES: list[str] = [
 
 # Distribución esperada de niveles K en el syllabus v4.0
 EXPECTED_K_DISTRIBUTION: dict[str, int] = {
-    "K1": 15,
-    "K2": 38,
-    "K3": 6,
+    "K1": 14,
+    "K2": 42,
+    "K3": 8,
 }
 
 # Total de tópicos esperados
-EXPECTED_TOTAL_TOPICS: int = len(EXPECTED_TOPIC_CODES)  # 59
+EXPECTED_TOTAL_TOPICS: int = len(EXPECTED_TOPIC_CODES)  # 64
