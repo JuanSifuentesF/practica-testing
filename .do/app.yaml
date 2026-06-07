@@ -99,15 +99,16 @@ services:
     # Estas variables se inyectan al contenedor en runtime.
     # NO van en el Dockerfile ni en la imagen.
     #
-    # Por ahora solo definimos los metadatos de la app.
-    # En guías futuras (BE-03+) agregaremos:
-    # - SUPABASE_URL
-    # - SUPABASE_SERVICE_ROLE_KEY
+    # Tipos de variables:
+    #   - Sin type: → texto plano, visible en el app.yaml.
+    #   - type: SECRET → encriptado, NO visible en el código fuente.
+    #     Los valores de tipo SECRET se configuran EXCLUSIVAMENTE
+    #     en el dashboard de DigitalOcean (Settings → App-Level Env Vars).
     #
-    # NOTA: Los valores con secrets reales se configuran
-    # en el dashboard de DigitalOcean, NO en este archivo.
-    # Este archivo puede estar en el repositorio público.
+    # ⚠️ NUNCA pongas valores reales de secrets en este archivo.
+    #    Este archivo se sube al repositorio público.
     envs:
+      # --- Metadatos de la aplicación (públicos) ---
       - key: PROJECT_NAME
         value: "ISTQB Study Agent API"
       - key: VERSION
@@ -118,3 +119,15 @@ services:
         value: "0.0.0.0"
       - key: PORT
         value: "8000"
+
+      # --- Supabase (SECRETS — configurar en DO dashboard) ---
+      # Los valores se dejan vacíos aquí porque son secrets.
+      # Se configurarán en el dashboard de DO en el Paso E.
+      #
+      # Referencia: credenciales creadas en la guía DB-01, Paso B.
+      - key: SUPABASE_URL
+        type: SECRET
+        value: "CONFIGURAR_EN_DASHBOARD"
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        type: SECRET
+        value: "CONFIGURAR_EN_DASHBOARD"

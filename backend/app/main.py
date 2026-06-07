@@ -47,26 +47,25 @@ app = FastAPI(
 # CORS controla qué dominios pueden hacer peticiones HTTP a
 # nuestro backend desde un navegador.
 #
-# Sin esta configuración, el frontend de Next.js en
-# http://localhost:3000 NO podría llamar al backend en
-# http://localhost:8000 — el navegador bloquearía la petición
-# con un error de CORS.
-#
 # allow_origins: lista de dominios permitidos.
-#   - localhost:3000 → frontend en desarrollo local.
-#   - En producción, agregaremos el dominio real.
+#   - localhost     → desarrollo local
+#   - vercel.app    → frontend en producción (se actualizará
+#                     con el dominio real en la guía FE-01)
+#   - ondigitalocean.app → URL del backend en DO (para Swagger UI)
 #
-# allow_methods: métodos HTTP permitidos.
-#   - ["*"] permite GET, POST, PUT, DELETE, etc.
-#
-# allow_headers: headers personalizados permitidos.
-#   - ["*"] permite Authorization, Content-Type, etc.
+# ⚠️ IMPORTANTE: Cuando despliegues el frontend en la guía FE-01,
+# reemplaza "https://tu-frontend.vercel.app" con la URL real.
 # ═══════════════════════════════════════════════════════════════
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",    # Frontend Next.js en desarrollo
+        # --- Desarrollo local ---
+        "http://localhost:3000",    # Frontend Next.js
         "http://127.0.0.1:3000",   # Variante de localhost
+        # --- Producción ---
+        # URL del frontend en Vercel (actualizar en FE-01 con la URL real).
+        # Por ahora dejamos un placeholder que se actualizará.
+        # "https://tu-frontend.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
