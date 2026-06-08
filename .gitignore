@@ -4,9 +4,12 @@
 
 # Dependencias de Node.js
 node_modules/
+frontend/
+.next/
 .next/
 out/
 build/
+frontend/.next/
 
 # Logs de sistema y archivos temporales
 npm-debug.log*
