@@ -12,18 +12,18 @@
 | **🗄️ BLOQUE A: Base de Datos** | **DB-01** | Proyecto Supabase + Configuración Inicial | ✅ **Completado** | [Guía DB-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-01.md) — *Linked + Started* |
 | | **DB-02** | Schema: Tablas, Relaciones y CHECK constraints | ✅ **Completado** | [Guía DB-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-02.md) — *Migración aplicada* |
 | | **DB-03** | Storage Bucket Privado para PDFs | ✅ **Completado** | [Guía DB-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-03.md) — *Bucket y políticas creados* |
-| | **DB-04** | Row Level Security (RLS) Policies | 🔄 **Siguiente** | *Siguiente hito a implementar* |
-| | **DB-05** | Supabase Auth Configuración | ⏳ **Pendiente** | *Bloqueado por DB-04* |
+| | **DB-04** | Row Level Security (RLS) Policies | ✅ **Completado** | [Guía DB-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-04.md) — *Migración aplicada* |
+| | **DB-05** | Supabase Auth Configuración | ✅ **Completado** | [Guía DB-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-05.md) — *Trigger + Auth configurados* |
 | **⚙️ BLOQUE B: Backend** | **BE-01** | Scaffold del proyecto FastAPI | ✅ **Completado** | [Guía BE-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-01.md) — *Scaffold funcional* |
 | | **BE-02** | Dockerfile + config DigitalOcean | ✅ **Completado** | [Guía BE-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-02.md) — *Dockerfile + app.yaml funcionales* |
 | | **BE-03** | Endpoint POST /extract-pdf | ✅ **Completado** | [Guía BE-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-03.md) — *pdfplumber integrado* |
 | | **BE-04** | Algoritmo de detección de tópicos | ✅ **Completado** | [Guía BE-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-04.md) — *Regex FL-x.x.x funcional* |
 | | **BE-05** | Chunking y estructuración JSON | ✅ **Completado** | [Guía BE-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-05.md) — *JSON estructurado con tópicos* |
 | | **BE-06** | Deploy a DigitalOcean + health check | ✅ **Completado** | [Guía BE-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-06.md) — *API en https://squid-app-y364m.ondigitalocean.app* |
-| **🌐 BLOQUE C: Frontend** | **FE-01** | Scaffold Next.js + TS + Tailwind + shadcn/ui | ⏳ **Pendiente** | *Por iniciar* |
-| | **FE-02** | Conexión con Supabase | ⏳ **Pendiente** | *Por iniciar* |
-| | **FE-03** | Auth: login, register, middleware | ⏳ **Pendiente** | *Por iniciar* |
-| | **FE-04** | Layout base + navegación | ⏳ **Pendiente** | *Por iniciar* |
+| **🌐 BLOQUE C: Frontend** | **FE-01** | Scaffold Next.js + TS + Tailwind + shadcn/ui | ✅ **Completado** | [Guía FE-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/FE-01.md) — *Scaffold funcional* |
+| | **FE-02** | Conexión con Supabase | ✅ **Completado** | [Guía FE-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/FE-02.md) — *Clientes Supabase creados* |
+| | **FE-03** | Auth: login, register, middleware | ✅ **Completado** | [Guía FE-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/FE-03.md) — *Auth funcional* |
+| | **FE-04** | Layout base + navegación | ✅ **Completado** | [Guía FE-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/FE-04.md) — *Layout + header + menú* |
 | **📤 BLOQUE D: Upload** | **UP-01** a **UP-06** | Flujo de Upload y Generación de Plan | ⏳ **Pendiente** | *Por iniciar* |
 | **📚 BLOQUE E: Sesión** | **SE-01** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *Por iniciar* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
@@ -52,8 +52,8 @@ ISTQB Study Agent
 │   ├── [x] DB-01  Proyecto Supabase + configuración inicial (Completado)
 │   ├── [x] DB-02  Schema: tablas y relaciones (Completado)
 │   ├── [x] DB-03  Storage bucket para PDFs (Completado)
-│   ├── [ ] DB-04  Row Level Security (RLS) policies (Pendiente)
-│   └── [ ] DB-05  Supabase Auth configuración (Pendiente)
+│   ├── [x] DB-04  Row Level Security (RLS) policies (Completado)
+│   └── [x] DB-05  Supabase Auth configuración (Completado)
 │
 ├── ⚙️  BLOQUE B — BACKEND (FastAPI)
 │   ├── [x] BE-01  Scaffold del proyecto FastAPI (Completado)
@@ -64,10 +64,10 @@ ISTQB Study Agent
 │   └── [x] BE-06  Deploy a DigitalOcean + health check (Completado)
 │
 ├── 🌐  BLOQUE C — FRONTEND BASE (Next.js)
-│   ├── FE-01  Scaffold Next.js + TypeScript + Tailwind + shadcn/ui
-│   ├── FE-02  Conexión con Supabase (cliente + servidor)
-│   ├── FE-03  Auth: registro, login, logout, middleware
-│   └── FE-04  Layout base + navegación
+│   ├── [x] FE-01  Scaffold Next.js + TypeScript + Tailwind + shadcn/ui (Completado)
+│   ├── [x] FE-02  Conexión con Supabase (cliente + servidor) (Completado)
+│   ├── [x] FE-03  Auth: registro, login, logout, middleware (Completado)
+│   └── [x] FE-04  Layout base + navegación (Completado)
 │
 ├── 📤  BLOQUE D — FLUJO DE UPLOAD Y PLAN
 │   ├── UP-01  UI: página de setup (upload PDF + config días/horarios)
