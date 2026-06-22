@@ -27,6 +27,7 @@
 | **📤 BLOQUE D: Upload** | **UP-01** a **UP-06** | Flujo de Upload y Generación de Plan | ⏳ **Pendiente** | *Por iniciar* |
 | **📚 BLOQUE E: Sesión** | **SE-01** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *Por iniciar* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
+| **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 | **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
 
 ---
@@ -93,6 +94,11 @@ ISTQB Study Agent
 │   ├── DA-03  UI: heatmap de tópicos por estado
 │   ├── DA-04  UI: tiempo real vs estimado (BarChart)
 │   └── DA-05  UI: fecha estimada de examen + contadores
+│
+├── 🧪  BLOQUE QA — TESTING E2E
+│   ├── QA-01  Configurar Cypress + data-testid en componentes clave
+│   ├── QA-02  Tests de auth: login, register, logout, redirects
+│   └── QA-03  Tests de flujo completo: upload → plan → sesión → dashboard
 │
 └── 🚀  BLOQUE G — PRODUCCIÓN
     ├── PR-01  GitHub Actions: CI/CD frontend → Vercel
@@ -915,6 +921,72 @@ CHECKPOINT ✅:
 
 ---
 
+### 🧪 BLOQUE QA — TESTING E2E (Cypress)
+
+---
+
+#### QA-01 — Configurar Cypress + data-testid
+```
+OBJETIVO:
+  Tener Cypress instalado y componentes marcados para tests.
+
+CUBRE:
+  - Instalar Cypress en frontend/
+  - Convención: todos los elementos interactivos deben tener data-testid
+  - Agregar data-testid en: botones, inputs, enlaces, formularios, avatar
+  - Configurar tsconfig para soporte de tipos Cypress
+  - Scripts en package.json: "cypress:open", "cypress:run"
+
+DEPENDENCIAS: FE-04 (frontend base completo)
+
+CHECKPOINT ✅:
+  - npx cypress open abre el test runner
+  - Al menos 10 componentes clave tienen data-testid
+```
+
+#### QA-02 — Tests de Auth
+```
+OBJETIVO:
+  Validar que registro, login, logout y redirects funcionan.
+
+CUBRE:
+  - Test: visitar /dashboard sin sesión → redirect a /login
+  - Test: login con credenciales válidas → redirect a /dashboard
+  - Test: login con credenciales inválidas → mensaje de error
+  - Test: registro → redirect a /dashboard
+  - Test: logout → redirect a /login
+  - Test: visitar /login con sesión activa → redirect a /dashboard
+
+DEPENDENCIAS: QA-01, FE-03
+
+CHECKPOINT ✅:
+  - Los 6 tests pasan en Cypress
+  - Los data-testid cubren inputs, botones y formularios de auth
+```
+
+#### QA-03 — Test de Flujo Completo
+```
+OBJETIVO:
+  Validar el flujo crítico de principio a fin.
+
+CUBRE:
+  - Test: upload de PDF → aparece en documentos
+  - Test: generar plan → 14 sesiones creadas
+  - Test: completar teoría → botón ir al quiz visible
+  - Test: responder quiz y enviar → feedback visible
+  - Test: dashboard muestra métricas actualizadas
+  - Test responsive: mobile (375px) y desktop (1280px)
+
+DEPENDENCIAS: QA-02, UP-06, SE-08, DA-05
+
+CHECKPOINT ✅:
+  - Todo el flujo crítico pasa en Cypress
+  - Tests responsive pasan en ambas resoluciones
+  - < 30 segundos por test (rendimiento aceptable)
+```
+
+---
+
 ### 🚀 BLOQUE G — PRODUCCIÓN
 
 ---
@@ -1055,8 +1127,9 @@ FE-01 (necesita DB-01 para credenciales)
                                     └── UP-05 (necesita DB-02)
                                          └── UP-06
                                               └── SE-01...SE-08
-                                                   └── DA-01...DA-05
-                                                        └── PR-01...PR-05
+                                                    └── DA-01...DA-05
+                                                         └── QA-01...QA-03
+                                                              └── PR-01...PR-05
 ```
 
 ---
