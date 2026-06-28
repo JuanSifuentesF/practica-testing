@@ -24,7 +24,9 @@
 | | **FE-02** | Conexión con Supabase | ✅ **Completado** | [Guía FE-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/FE-02.md) — *Clientes Supabase creados* |
 | | **FE-03** | Auth: login, register, middleware | ✅ **Completado** | [Guía FE-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/FE-03.md) — *Auth funcional* |
 | | **FE-04** | Layout base + navegación | ✅ **Completado** | [Guía FE-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/FE-04.md) — *Layout + header + menú* |
-| **📤 BLOQUE D: Upload** | **UP-01** a **UP-06** | Flujo de Upload y Generación de Plan | ⏳ **Pendiente** | *Por iniciar* |
+| **📤 BLOQUE D: Upload** | **UP-01** | UI: página de setup (upload PDF + config días/horarios) | ✅ **Completado** | [Guía UP-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-01.md) — *Checkpoints verificados* |
+| | **UP-02** | API Route `/api/upload` → Supabase Storage | ✅ **Completado** | [Guía UP-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-02.md) — *Fix de tipos Supabase v2.108+ aplicado* |
+| | **UP-03** a **UP-06** | Extracción de tópicos + generación de plan | ⏳ **Pendiente** | *Por iniciar* |
 | **📚 BLOQUE E: Sesión** | **SE-01** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *Por iniciar* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
@@ -71,8 +73,9 @@ ISTQB Study Agent
 │   └── [x] FE-04  Layout base + navegación (Completado)
 │
 ├── 📤  BLOQUE D — FLUJO DE UPLOAD Y PLAN
-│   ├── UP-01  UI: página de setup (upload PDF + config días/horarios)
-│   ├── UP-02  API Route /api/upload → Supabase Storage
+│   ├── [x] UP-01  UI: página de setup (upload PDF + config días/horarios) (Completado)
+│   ├── [x] UP-02  API Route /api/upload → Supabase Storage (Completado)
+│   ├── UP-03  Llamada Next.js → FastAPI /extract-pdf
 │   ├── UP-03  Llamada Next.js → FastAPI /extract-pdf
 │   ├── UP-04  Prompt de generación de plan + API Route /api/plan/generate
 │   ├── UP-05  Guardar plan en Supabase (study_plans + sessions)
