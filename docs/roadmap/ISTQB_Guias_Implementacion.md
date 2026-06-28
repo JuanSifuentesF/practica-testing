@@ -27,7 +27,8 @@
 | **📤 BLOQUE D: Upload** | **UP-01** | UI: página de setup (upload PDF + config días/horarios) | ✅ **Completado** | [Guía UP-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-01.md) — *Checkpoints verificados* |
 | | **UP-02** | API Route `/api/upload` → Supabase Storage | ✅ **Completado** | [Guía UP-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-02.md) — *Fix de tipos Supabase v2.108+ aplicado* |
 | | **UP-03** | Llamada Next.js → FastAPI `/extract-pdf-full` | ✅ **Completado** | [Guía UP-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-03.md) — *Extracción validada con 63 tópicos* |
-| | **UP-04** a **UP-06** | Generación y visualización de plan | ⏳ **Pendiente** | *Por iniciar* |
+| | **UP-04** | Prompt de generación de plan + API Route | ✅ **Completado** | [Guía UP-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-04.md) — *Multi-proveedor (Gemini + GPT-5) funcional* |
+| | **UP-05** a **UP-06** | Persistencia y visualización de plan | ⏳ **Pendiente** | *Por iniciar* |
 | **📚 BLOQUE E: Sesión** | **SE-01** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *Por iniciar* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
@@ -77,7 +78,7 @@ ISTQB Study Agent
 │   ├── [x] UP-01  UI: página de setup (upload PDF + config días/horarios) (Completado)
 │   ├── [x] UP-02  API Route /api/upload → Supabase Storage (Completado)
 │   ├── [x] UP-03  Llamada Next.js → FastAPI /extract-pdf-full (Completado)
-│   ├── UP-04  Prompt de generación de plan + API Route /api/plan/generate
+│   ├── [x] UP-04  Prompt de generación de plan + API Route (Completado — Gemini 2.5 Flash + GPT-5)
 │   ├── UP-05  Guardar plan en Supabase (study_plans + sessions)
 │   └── UP-06  UI: visualización del plan generado (calendario)
 │
@@ -552,14 +553,18 @@ CHECKPOINT ✅:
   - Si la extracción retorna menos tópicos de los esperados → no se genera el plan automáticamente
 ```
 
-#### UP-04 — Prompt de generación de plan + API Route
+#### UP-04 — Prompt de generación de plan + API Route (+ Selector Multi-Modelo)
 ```
 OBJETIVO:
-  OpenAI genera el plan intensivo de 14 sesiones basado en los tópicos.
+  La IA genera el plan intensivo de 14 sesiones basado en los tópicos.
+  El usuario puede elegir entre Gemini 2.5 Flash y GPT-5 desde la UI.
 
 CUBRE:
-  - lib/openai.ts: cliente OpenAI configurado
-  - Variable de entorno OPENAI_MODEL para cambiar modelo sin tocar código
+  - lib/openai.ts: cliente OpenAI configurado (mantenido para compatibilidad)
+  - Selector de modelo en la UI (study-config.tsx): Gemini 2.5 Flash | GPT-5
+  - Backend multi-proveedor: createPlanModelRuntime() según model_provider
+  - Gemini via endpoint OpenAI-compatible (GEMINI_API_KEY + GEMINI_OPENAI_BASE_URL)
+  - GPT-5 via API OpenAI directa (OPENAI_API_KEY)
   - Diseño del prompt de generación de plan:
       - Input: tópicos + nivel K + días objetivo + horarios
       - Output JSON: 14 sesiones con tópicos asignados
@@ -567,16 +572,22 @@ CUBRE:
       - Orden: K1 primero, K3 al final
       - Agrupación temática lógica (no mezclar FL-1 con FL-5)
   - API Route: /api/plan/generate
-  - Validar el JSON retornado por OpenAI (puede fallar formato)
+  - Validar el JSON retornado (puede fallar formato o inventar códigos)
   - Validar ownership del document_id antes de generar el plan
+  - Página /plan con PlanPreview temporal via sessionStorage (antes de UP-05)
+  - Script de comparación: test-compare-gemini-models.mjs
 
 DEPENDENCIAS: UP-03
 
 CHECKPOINT ✅:
-  - /api/plan/generate retorna plan con 14 sesiones
+  - /api/plan/generate retorna plan con 14 sesiones (63 tópicos reales)
   - Las sesiones respetan el orden K1 → K3
   - El JSON tiene la estructura exacta definida en el schema
-  - Cambiar OPENAI_MODEL no requiere cambios de código
+  - Gemini 2.5 Flash genera plan válido (18,646 tokens, 46s)
+  - Gemini 2.5 Pro genera plan válido (14,154 tokens, 43s)
+  - GPT-5 requiere cuota/billing en OpenAI — funcionalidad lista, probada al autenticar
+  - El selector de modelo en /setup envía model_provider sin exponer API keys
+  - /plan muestra el plan temporal hasta que UP-05 lo persista
 ```
 
 #### UP-05 — Guardar plan en Supabase
@@ -1151,7 +1162,7 @@ SEMANA 2 (upload + plan + auth)
   Día 6:  FE-02, FE-03
   Día 7:  FE-04, UP-01
   Día 8:  UP-02, UP-03
-  Día 9:  UP-04, UP-05
+  Día 9:  UP-04 (✅ completado), UP-05
   Día 10: UP-06
 
 SEMANA 3 (sesión de estudio)
