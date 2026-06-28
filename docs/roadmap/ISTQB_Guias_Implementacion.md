@@ -26,7 +26,8 @@
 | | **FE-04** | Layout base + navegación | ✅ **Completado** | [Guía FE-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/FE-04.md) — *Layout + header + menú* |
 | **📤 BLOQUE D: Upload** | **UP-01** | UI: página de setup (upload PDF + config días/horarios) | ✅ **Completado** | [Guía UP-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-01.md) — *Checkpoints verificados* |
 | | **UP-02** | API Route `/api/upload` → Supabase Storage | ✅ **Completado** | [Guía UP-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-02.md) — *Fix de tipos Supabase v2.108+ aplicado* |
-| | **UP-03** a **UP-06** | Extracción de tópicos + generación de plan | ⏳ **Pendiente** | *Por iniciar* |
+| | **UP-03** | Llamada Next.js → FastAPI `/extract-pdf-full` | ✅ **Completado** | [Guía UP-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-03.md) — *Extracción validada con 63 tópicos* |
+| | **UP-04** a **UP-06** | Generación y visualización de plan | ⏳ **Pendiente** | *Por iniciar* |
 | **📚 BLOQUE E: Sesión** | **SE-01** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *Por iniciar* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
@@ -75,8 +76,7 @@ ISTQB Study Agent
 ├── 📤  BLOQUE D — FLUJO DE UPLOAD Y PLAN
 │   ├── [x] UP-01  UI: página de setup (upload PDF + config días/horarios) (Completado)
 │   ├── [x] UP-02  API Route /api/upload → Supabase Storage (Completado)
-│   ├── UP-03  Llamada Next.js → FastAPI /extract-pdf
-│   ├── UP-03  Llamada Next.js → FastAPI /extract-pdf
+│   ├── [x] UP-03  Llamada Next.js → FastAPI /extract-pdf-full (Completado)
 │   ├── UP-04  Prompt de generación de plan + API Route /api/plan/generate
 │   ├── UP-05  Guardar plan en Supabase (study_plans + sessions)
 │   └── UP-06  UI: visualización del plan generado (calendario)
@@ -529,14 +529,14 @@ CHECKPOINT ✅:
   - Un usuario no puede sobreescribir rutas de otro usuario
 ```
 
-#### UP-03 — Llamada Next.js → FastAPI /extract-pdf
+#### UP-03 — Llamada Next.js → FastAPI /extract-pdf-full
 ```
 OBJETIVO:
   Next.js obtiene los tópicos estructurados del PDF subido.
 
 CUBRE:
   - Desde la API Route de upload, descargar el PDF de Storage
-  - Enviar el PDF a FastAPI POST /extract-pdf
+  - Enviar el PDF a FastAPI POST /extract-pdf-full
   - Recibir el JSON de tópicos estructurados
   - Guardar topics_json en la tabla documents
   - Manejar timeout (FastAPI puede tardar 3-5 seg)
