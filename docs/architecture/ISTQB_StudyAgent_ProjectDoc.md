@@ -578,7 +578,7 @@ istqb-study-agent/
 
 ### FASE 3 — Sesión de Estudio
 ```
-[ ] UI: Pantalla de teoría con markdown rendering
+[ ] UI: Pantalla de teoría con JSON estructurado + timer
 [ ] API Route /api/sessions/[id]/theory → OpenAI
 [ ] UI: Pantalla de quiz (cards con opciones A/B/C/D)
 [ ] API Route /api/sessions/[id]/quiz → OpenAI

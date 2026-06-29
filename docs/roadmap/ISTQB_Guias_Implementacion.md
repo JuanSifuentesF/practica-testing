@@ -32,7 +32,8 @@
 | | **UP-06** | UI: visualización de plan como calendario | ✅ **Completado** | [Guía UP-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-06.md) — *Calendario dinámico funcional con 10 componentes* |
 | | **SE-01** | API Routes de sesión + página /session funcional | ✅ **Completado** | [Guía SE-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-01.md) — *2 endpoints + página /session funcional* |
 | | **SE-02** | Prompt de teoría + API Route `/api/sessions/[id]/theory` | ✅ **Completado** | [Guía SE-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-02.md) — *Gemini genera teoría con idempotencia y cache* |
-| **📚 BLOQUE E: Sesión** | **SE-03** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *SE-03 por iniciar tras SE-02* |
+| **📚 BLOQUE E: Sesión** | **SE-03** | UI: TheoryPanel (lectura de teoría + timer) | 📝 **Guía generada** | [Guía SE-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-03.md) — *Pendiente implementación* |
+| | **SE-04** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *Por iniciar tras SE-03* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 | **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
@@ -88,7 +89,7 @@ ISTQB Study Agent
 ├── 📚  BLOQUE E — SESIÓN DE ESTUDIO
 │   ├── [x] SE-01  API Routes de sesión + página /session (Completado — 2 endpoints + vista funcional)
 │   ├── [x] SE-02  Prompt de teoría + API Route /api/sessions/[id]/theory (Completado — Gemini + cache + idempotencia)
-│   ├── SE-03  UI: TheoryPanel (45 min, markdown rendering, timer)
+│   ├── SE-03  UI: TheoryPanel (45 min, JSON estructurado, timer) — Guía generada
 │   ├── SE-04  Prompt de quiz + API Route /api/sessions/[id]/quiz
 │   ├── SE-05  UI: QuizCard (opciones A/B/C/D, sin feedback inmediato)
 │   ├── SE-06  Envío en conjunto + API Route /api/sessions/[id]/evaluate
@@ -703,7 +704,7 @@ OBJETIVO:
 
 CUBRE:
   - Timer visible de 45 minutos (cuenta regresiva)
-  - Renderizado de markdown del contenido teórico
+  - Renderizado del JSON estructurado generado en SE-02 (`TheoryContent.topics[]`)
   - Secciones colapsables: Introducción, Conceptos clave, Ejemplos, Resumen
   - Botón "Listo, ir al quiz" (disponible siempre, no bloquear)
   - Indicador del tópico actual (FL-x.x.x + nombre)
@@ -711,10 +712,12 @@ CUBRE:
 
 DEPENDENCIAS: SE-02, FE-04
 
+ESTADO: 📝 Guía generada — pendiente implementación (29 junio 2026)
+
 CHECKPOINT ✅:
   - El timer corre correctamente
-  - El markdown renderiza con formato correcto (bold, listas, etc.)
-  - El botón "Ir al quiz" navega a la pantalla de quiz
+  - El contenido JSON de teoría renderiza secciones completas por tópico
+  - El botón "Ir al quiz" navega al placeholder de quiz (`phase=quiz`)
 ```
 
 #### SE-04 — Prompt de quiz + API Route
