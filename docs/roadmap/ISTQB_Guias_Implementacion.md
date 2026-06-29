@@ -33,7 +33,8 @@
 | | **SE-01** | API Routes de sesión + página /session funcional | ✅ **Completado** | [Guía SE-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-01.md) — *2 endpoints + página /session funcional* |
 | | **SE-02** | Prompt de teoría + API Route `/api/sessions/[id]/theory` | ✅ **Completado** | [Guía SE-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-02.md) — *Gemini genera teoría con idempotencia y cache* |
 | **📚 BLOQUE E: Sesión** | **SE-03** | UI: TheoryPanel (lectura de teoría + timer) | ✅ **Completado** | [Guía SE-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-03.md) — *5 archivos, tsc limpio, 11/11 checkpoints* |
-| | **SE-04** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *Por iniciar tras SE-03* |
+| | **SE-04** | Prompt de quiz + API Route `/api/sessions/[id]/quiz` | 📝 **Guía validada** | [Guía SE-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-04.md) — *Pendiente implementación manual* |
+| | **SE-05** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *Por iniciar tras SE-04* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 | **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
@@ -90,7 +91,7 @@ ISTQB Study Agent
 │   ├── [x] SE-01  API Routes de sesión + página /session (Completado — 2 endpoints + vista funcional)
 │   ├── [x] SE-02  Prompt de teoría + API Route /api/sessions/[id]/theory (Completado — Gemini + cache + idempotencia)
 │   ├── [x] SE-03  UI: TheoryPanel (45 min, JSON estructurado, timer) (Completado — 4 componentes + page.tsx refactorizado)
-│   ├── SE-04  Prompt de quiz + API Route /api/sessions/[id]/quiz
+│   ├── SE-04  Prompt de quiz + API Route /api/sessions/[id]/quiz — Guía validada, pendiente implementación
 │   ├── SE-05  UI: QuizCard (opciones A/B/C/D, sin feedback inmediato)
 │   ├── SE-06  Envío en conjunto + API Route /api/sessions/[id]/evaluate
 │   ├── SE-07  Lógica adaptativa: advance | reinforce | restructure
@@ -723,7 +724,7 @@ CHECKPOINT ✅:
 #### SE-04 — Prompt de quiz + API Route
 ```
 OBJETIVO:
-  OpenAI genera 10-12 preguntas estilo ISTQB real.
+  Gemini/OpenAI-compatible genera 10-12 preguntas estilo ISTQB real.
 
 CUBRE:
   - Prompt de generación de quiz:
@@ -737,6 +738,8 @@ CUBRE:
   - Validar que el JSON tiene exactamente el formato esperado
 
 DEPENDENCIAS: SE-02
+
+ESTADO: 📝 Guía validada — pendiente implementación manual (29 junio 2026)
 
 CHECKPOINT ✅:
   - Genera 10 preguntas con 4 opciones cada una
