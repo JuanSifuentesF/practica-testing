@@ -29,7 +29,7 @@
 | | **UP-03** | Llamada Next.js → FastAPI `/extract-pdf-full` | ✅ **Completado** | [Guía UP-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-03.md) — *Extracción validada con 63 tópicos* |
 | | **UP-04** | Prompt de generación de plan + API Route | ✅ **Completado** | [Guía UP-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-04.md) — *Multi-proveedor (Gemini + GPT-5) funcional* |
 | | **UP-05** | Persistencia del plan en Supabase | ✅ **Completado** | [Guía UP-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-05.md) — *study_plans + sessions + topic_progress funcional* |
-| | **UP-06** | UI: visualización de plan como calendario | 📝 **Guía generada** | [Guía UP-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-06.md) — *Pendiente implementación manual* |
+| | **UP-06** | UI: visualización de plan como calendario | ✅ **Completado** | [Guía UP-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-06.md) — *Calendario dinámico funcional con 10 componentes* |
 | **📚 BLOQUE E: Sesión** | **SE-01** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *Por iniciar* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
@@ -81,7 +81,7 @@ ISTQB Study Agent
 │   ├── [x] UP-03  Llamada Next.js → FastAPI /extract-pdf-full (Completado)
 │   ├── [x] UP-04  Prompt de generación de plan + API Route (Completado — Gemini 2.5 Flash + GPT-5)
 │   ├── [x] UP-05  Guardar plan en Supabase (Completado — study_plans + sessions + topic_progress)
-│   └── [ ] UP-06  UI: visualización del plan generado (Guía generada — pendiente implementación)
+│   └── [x] UP-06  UI: visualización del plan generado (Completado — calendario dinámico + placeholder /session)
 │
 ├── 📚  BLOQUE E — SESIÓN DE ESTUDIO
 │   ├── SE-01  API Route /api/sessions/next (próxima sesión)
@@ -1165,7 +1165,7 @@ SEMANA 2 (upload + plan + auth)
   Día 7:  FE-04, UP-01
   Día 8:  UP-02, UP-03
   Día 9:  UP-04 (✅ completado), UP-05 (✅ completado)
-  Día 10: UP-06 (📝 guía generada; pendiente implementación)
+  Día 10: UP-06 (✅ completado)
 
 SEMANA 3 (sesión de estudio)
   Día 11: SE-01, SE-02
