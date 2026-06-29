@@ -31,7 +31,7 @@
 | | **UP-05** | Persistencia del plan en Supabase | ✅ **Completado** | [Guía UP-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-05.md) — *study_plans + sessions + topic_progress funcional* |
 | | **UP-06** | UI: visualización de plan como calendario | ✅ **Completado** | [Guía UP-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-06.md) — *Calendario dinámico funcional con 10 componentes* |
 | | **SE-01** | API Routes de sesión + página /session funcional | ✅ **Completado** | [Guía SE-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-01.md) — *2 endpoints + página /session funcional* |
-| | **SE-02** | Prompt de teoría + API Route `/api/sessions/[id]/theory` | 📝 **Guía generada** | [Guía SE-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-02.md) — *Pendiente implementación manual* |
+| | **SE-02** | Prompt de teoría + API Route `/api/sessions/[id]/theory` | ✅ **Completado** | [Guía SE-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-02.md) — *Gemini genera teoría con idempotencia y cache* |
 | **📚 BLOQUE E: Sesión** | **SE-03** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *SE-03 por iniciar tras SE-02* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
@@ -87,7 +87,7 @@ ISTQB Study Agent
 │
 ├── 📚  BLOQUE E — SESIÓN DE ESTUDIO
 │   ├── [x] SE-01  API Routes de sesión + página /session (Completado — 2 endpoints + vista funcional)
-│   ├── [ ] SE-02  Prompt de teoría + API Route /api/sessions/[id]/theory (Guía generada — pendiente implementación)
+│   ├── [x] SE-02  Prompt de teoría + API Route /api/sessions/[id]/theory (Completado — Gemini + cache + idempotencia)
 │   ├── SE-03  UI: TheoryPanel (45 min, markdown rendering, timer)
 │   ├── SE-04  Prompt de quiz + API Route /api/sessions/[id]/quiz
 │   ├── SE-05  UI: QuizCard (opciones A/B/C/D, sin feedback inmediato)
@@ -687,7 +687,7 @@ CUBRE:
 
 DEPENDENCIAS: SE-01
 
-ESTADO: 📝 Guía generada y validada; pendiente implementación manual
+ESTADO: ✅ Completado — endpoints funcionales (validado 29 junio 2026)
 
 CHECKPOINT ✅:
   - Para FL-1.1.1 con método 'theory': retorna definición de defecto/fallo/error
@@ -1181,7 +1181,7 @@ SEMANA 2 (upload + plan + auth)
   Día 10: UP-06 (✅ completado)
 
 SEMANA 3 (sesión de estudio)
-  Día 11: SE-01 (✅ completado), SE-02 (📝 guía generada; pendiente implementación)
+  Día 11: SE-01 (✅ completado), SE-02 (✅ completado)
   Día 12: SE-03, SE-04
   Día 13: SE-05, SE-06
   Día 14: SE-07, SE-08
