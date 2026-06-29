@@ -31,7 +31,8 @@
 | | **UP-05** | Persistencia del plan en Supabase | ✅ **Completado** | [Guía UP-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-05.md) — *study_plans + sessions + topic_progress funcional* |
 | | **UP-06** | UI: visualización de plan como calendario | ✅ **Completado** | [Guía UP-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-06.md) — *Calendario dinámico funcional con 10 componentes* |
 | | **SE-01** | API Routes de sesión + página /session funcional | ✅ **Completado** | [Guía SE-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-01.md) — *2 endpoints + página /session funcional* |
-| **📚 BLOQUE E: Sesión** | **SE-02** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *SE-02 por iniciar* |
+| | **SE-02** | Prompt de teoría + API Route `/api/sessions/[id]/theory` | 📝 **Guía generada** | [Guía SE-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-02.md) — *Pendiente implementación manual* |
+| **📚 BLOQUE E: Sesión** | **SE-03** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *SE-03 por iniciar tras SE-02* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 | **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
@@ -86,7 +87,7 @@ ISTQB Study Agent
 │
 ├── 📚  BLOQUE E — SESIÓN DE ESTUDIO
 │   ├── [x] SE-01  API Routes de sesión + página /session (Completado — 2 endpoints + vista funcional)
-│   ├── SE-02  Prompt de teoría + API Route /api/sessions/[id]/theory
+│   ├── [ ] SE-02  Prompt de teoría + API Route /api/sessions/[id]/theory (Guía generada — pendiente implementación)
 │   ├── SE-03  UI: TheoryPanel (45 min, markdown rendering, timer)
 │   ├── SE-04  Prompt de quiz + API Route /api/sessions/[id]/quiz
 │   ├── SE-05  UI: QuizCard (opciones A/B/C/D, sin feedback inmediato)
@@ -669,14 +670,16 @@ CHECKPOINT ✅:
 #### SE-02 — Prompt de teoría + API Route
 ```
 OBJETIVO:
-  OpenAI genera contenido teórico adaptado al método y tópico.
+  Gemini/OpenAI-compatible genera contenido teórico adaptado al método y tópico.
 
 CUBRE:
   - Prompt de teoría:
       - Input: tópico FL-x.x.x, texto del syllabus, método (theory/examples/analogies)
-      - Output: { introduction, key_concepts[], examples[], connections[], summary }
+      - Output: { topics: [{ introduction, key_concepts[], examples[], connections[], summary }] }
   - API Route: /api/sessions/[id]/theory
   - Guardar theory_content en la sesión
+  - JSON mode + parser defensivo + validación estricta antes de persistir
+  - Idempotencia: segunda llamada retorna cache; force=true regenera
   - El método cambia el estilo de explicación:
       theory    → definiciones formales + principios
       examples  → casos reales del mundo del testing
@@ -684,10 +687,13 @@ CUBRE:
 
 DEPENDENCIAS: SE-01
 
+ESTADO: 📝 Guía generada y validada; pendiente implementación manual
+
 CHECKPOINT ✅:
   - Para FL-1.1.1 con método 'theory': retorna definición de defecto/fallo/error
   - Para FL-1.1.1 con método 'examples': retorna casos reales
   - El JSON tiene la estructura { introduction, key_concepts, examples, summary }
+  - theory_content se persiste en sessions y status pasa a active
 ```
 
 #### SE-03 — UI: TheoryPanel (45 min)
@@ -1175,7 +1181,7 @@ SEMANA 2 (upload + plan + auth)
   Día 10: UP-06 (✅ completado)
 
 SEMANA 3 (sesión de estudio)
-  Día 11: SE-01 (✅ completado), SE-02
+  Día 11: SE-01 (✅ completado), SE-02 (📝 guía generada; pendiente implementación)
   Día 12: SE-03, SE-04
   Día 13: SE-05, SE-06
   Día 14: SE-07, SE-08
