@@ -34,7 +34,7 @@
 | | **SE-02** | Prompt de teoría + API Route `/api/sessions/[id]/theory` | ✅ **Completado** | [Guía SE-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-02.md) — *Gemini genera teoría con idempotencia y cache* |
 | **📚 BLOQUE E: Sesión** | **SE-03** | UI: TheoryPanel (lectura de teoría + timer) | ✅ **Completado** | [Guía SE-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-03.md) — *5 archivos, tsc limpio, 11/11 checkpoints* |
 | | **SE-04** | Prompt de quiz + API Route `/api/sessions/[id]/quiz` | ✅ **Completado** | [Guía SE-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-04.md) — *3 archivos + tsc limpio, 10/10 checkpoints* |
-| | **SE-05** | UI: QuizCard (opciones A/B/C/D, sin feedback inmediato) | 📝 **Guía validada** | [Guía SE-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-05.md) — *Pendiente implementación manual* |
+| | **SE-05** | UI: QuizCard (opciones A/B/C/D, sin feedback inmediato) | ✅ **Completado** | [Guía SE-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-05.md) — *4 archivos + 1 modificado, tsc limpio, build OK, 11/11 checkpoints* |
 | | **SE-06** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *Por iniciar tras SE-05* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
@@ -93,7 +93,7 @@ ISTQB Study Agent
 │   ├── [x] SE-02  Prompt de teoría + API Route /api/sessions/[id]/theory (Completado — Gemini + cache + idempotencia)
 │   ├── [x] SE-03  UI: TheoryPanel (45 min, JSON estructurado, timer) (Completado — 4 componentes + page.tsx refactorizado)
 │   ├── [x] SE-04  Prompt de quiz + API Route /api/sessions/[id]/quiz (Completado — 3 archivos + cache en memoria)
-│   ├── SE-05  UI: QuizCard (opciones A/B/C/D, sin feedback inmediato) (Guía validada — pendiente implementación manual)
+│   ├── [x] SE-05  UI: QuizCard (opciones A/B/C/D, sin feedback inmediato) (Completado — 4 componentes + page.tsx refactorizado, 11/11 checkpoints)
 │   ├── SE-06  Envío en conjunto + API Route /api/sessions/[id]/evaluate
 │   ├── SE-07  Lógica adaptativa: advance | reinforce | restructure
 │   └── SE-08  UI: FeedbackPanel (score, errores, decisión, próxima sesión)
@@ -764,7 +764,7 @@ CUBRE:
 
 DEPENDENCIAS: SE-04, FE-04
 
-ESTADO: 📝 Guía validada — pendiente implementación manual (29 junio 2026)
+ESTADO: ✅ Completado — 4 archivos + 1 modificado, tsc limpio, build OK, 11/11 checkpoints (29 junio 2026)
 
 CHECKPOINT ✅:
   - Se puede navegar entre preguntas libremente
