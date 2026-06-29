@@ -28,7 +28,8 @@
 | | **UP-02** | API Route `/api/upload` → Supabase Storage | ✅ **Completado** | [Guía UP-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-02.md) — *Fix de tipos Supabase v2.108+ aplicado* |
 | | **UP-03** | Llamada Next.js → FastAPI `/extract-pdf-full` | ✅ **Completado** | [Guía UP-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-03.md) — *Extracción validada con 63 tópicos* |
 | | **UP-04** | Prompt de generación de plan + API Route | ✅ **Completado** | [Guía UP-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-04.md) — *Multi-proveedor (Gemini + GPT-5) funcional* |
-| | **UP-05** a **UP-06** | Persistencia y visualización de plan | ⏳ **Pendiente** | *Por iniciar* |
+| | **UP-05** | Persistencia del plan en Supabase | ✅ **Completado** | [Guía UP-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-05.md) — *study_plans + sessions + topic_progress funcional* |
+| | **UP-06** | UI: visualización de plan como calendario | 📝 **Guía generada** | [Guía UP-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-06.md) — *Pendiente implementación manual* |
 | **📚 BLOQUE E: Sesión** | **SE-01** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *Por iniciar* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
@@ -79,8 +80,8 @@ ISTQB Study Agent
 │   ├── [x] UP-02  API Route /api/upload → Supabase Storage (Completado)
 │   ├── [x] UP-03  Llamada Next.js → FastAPI /extract-pdf-full (Completado)
 │   ├── [x] UP-04  Prompt de generación de plan + API Route (Completado — Gemini 2.5 Flash + GPT-5)
-│   ├── UP-05  Guardar plan en Supabase (study_plans + sessions)
-│   └── UP-06  UI: visualización del plan generado (calendario)
+│   ├── [x] UP-05  Guardar plan en Supabase (Completado — study_plans + sessions + topic_progress)
+│   └── [ ] UP-06  UI: visualización del plan generado (Guía generada — pendiente implementación)
 │
 ├── 📚  BLOQUE E — SESIÓN DE ESTUDIO
 │   ├── SE-01  API Route /api/sessions/next (próxima sesión)
@@ -556,7 +557,7 @@ CHECKPOINT ✅:
 #### UP-04 — Prompt de generación de plan + API Route (+ Selector Multi-Modelo)
 ```
 OBJETIVO:
-  La IA genera el plan intensivo de 14 sesiones basado en los tópicos.
+  La IA genera el plan intensivo basado en los tópicos y objective_days.
   El usuario puede elegir entre Gemini 2.5 Flash y GPT-5 desde la UI.
 
 CUBRE:
@@ -567,8 +568,8 @@ CUBRE:
   - GPT-5 via API OpenAI directa (OPENAI_API_KEY)
   - Diseño del prompt de generación de plan:
       - Input: tópicos + nivel K + días objetivo + horarios
-      - Output JSON: 14 sesiones con tópicos asignados
-      - Plan base: 7 días, 2 sesiones diarias, 90 min por sesión
+      - Output JSON: objective_days × 2 sesiones con tópicos asignados
+      - Plan base configurable: 1-30 días, 2 sesiones diarias, 90 min por sesión
       - Orden: K1 primero, K3 al final
       - Agrupación temática lógica (no mezclar FL-1 con FL-5)
   - API Route: /api/plan/generate
@@ -580,7 +581,7 @@ CUBRE:
 DEPENDENCIAS: UP-03
 
 CHECKPOINT ✅:
-  - /api/plan/generate retorna plan con 14 sesiones (63 tópicos reales)
+  - /api/plan/generate retorna plan con objective_days × 2 sesiones (63 tópicos reales)
   - Las sesiones respetan el orden K1 → K3
   - El JSON tiene la estructura exacta definida en el schema
   - Gemini 2.5 Flash genera plan válido (18,646 tokens, 46s)
@@ -600,36 +601,37 @@ CUBRE:
   - Insertar en sessions una fila por cada sesión del plan
   - Insertar en topic_progress una fila por cada tópico
     (status: 'pending' para todos al inicio)
-  - Todo en una función RPC/transacción en Supabase (si falla algo, no queda a medias)
+  - Persistencia consistente con rollback compensatorio en Route Handler
   - Retornar { plan_id } al frontend
 
 DEPENDENCIAS: UP-04, DB-02
 
 CHECKPOINT ✅:
   - study_plans tiene 1 registro del plan
-  - sessions tiene 14 registros (7 morning + 7 night)
-  - topic_progress tiene 40 registros en status 'pending'
+  - sessions tiene objective_days × 2 registros (morning + night)
+  - topic_progress tiene ~63 registros en status 'pending'
   - Verificar en Supabase Table Editor
 ```
 
 #### UP-06 — UI: visualización del plan generado
 ```
 OBJETIVO:
-  El usuario ve su plan de 7 días antes de empezar.
+  El usuario ve su plan como calendario antes de empezar, sin importar si eligió 7, 14 o más días.
 
 CUBRE:
-  - Mostrar calendario de 7 días con sesiones mañana/noche
+  - Mostrar calendario dinámico de objective_days con sesiones mañana/noche
   - Cada sesión muestra: hora, tópicos, nivel K, duración
-  - Botón "Empezar primera sesión"
+  - Botón "Empezar primera sesión" con session_id
+  - Placeholder temporal /session hasta SE-01 para evitar 404
   - Indicador de dificultad por día (badge: Fácil/Medio/Difícil)
   - Fecha estimada de examen visible
 
 DEPENDENCIAS: UP-05, FE-04
 
 CHECKPOINT ✅:
-  - El calendario muestra las 14 sesiones correctamente
+  - El calendario muestra objective_days × 2 sesiones correctamente
   - Los tópicos de cada sesión coinciden con lo guardado en DB
-  - El botón "Empezar" navega a la primera sesión
+  - El botón "Empezar" navega a /session?session_id=<id>
 ```
 
 ---
@@ -985,7 +987,7 @@ OBJETIVO:
 
 CUBRE:
   - Test: upload de PDF → aparece en documentos
-  - Test: generar plan → 14 sesiones creadas
+  - Test: generar plan → objective_days × 2 sesiones creadas
   - Test: completar teoría → botón ir al quiz visible
   - Test: responder quiz y enviar → feedback visible
   - Test: dashboard muestra métricas actualizadas
@@ -1095,7 +1097,7 @@ OBJETIVO:
 CUBRE:
   - Registrar usuario nuevo en producción
   - Subir el PDF del ISTQB
-  - Generar el plan de 7 días
+  - Generar un plan configurable (ej. 7 o 14 días)
   - Completar una sesión morning completa (teoría + quiz + feedback)
   - Verificar que el dashboard se actualiza
   - Ejecutar el simulacro de 40 preguntas (sesión especial)
@@ -1162,8 +1164,8 @@ SEMANA 2 (upload + plan + auth)
   Día 6:  FE-02, FE-03
   Día 7:  FE-04, UP-01
   Día 8:  UP-02, UP-03
-  Día 9:  UP-04 (✅ completado), UP-05
-  Día 10: UP-06
+  Día 9:  UP-04 (✅ completado), UP-05 (✅ completado)
+  Día 10: UP-06 (📝 guía generada; pendiente implementación)
 
 SEMANA 3 (sesión de estudio)
   Día 11: SE-01, SE-02
