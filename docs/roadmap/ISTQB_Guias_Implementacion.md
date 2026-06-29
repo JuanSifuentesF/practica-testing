@@ -30,7 +30,8 @@
 | | **UP-04** | Prompt de generación de plan + API Route | ✅ **Completado** | [Guía UP-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-04.md) — *Multi-proveedor (Gemini + GPT-5) funcional* |
 | | **UP-05** | Persistencia del plan en Supabase | ✅ **Completado** | [Guía UP-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-05.md) — *study_plans + sessions + topic_progress funcional* |
 | | **UP-06** | UI: visualización de plan como calendario | ✅ **Completado** | [Guía UP-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-06.md) — *Calendario dinámico funcional con 10 componentes* |
-| **📚 BLOQUE E: Sesión** | **SE-01** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | 📝 **SE-01 guía generada** | [Guía SE-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-01.md) — *Pendiente implementación manual* |
+| | **SE-01** | API Routes de sesión + página /session funcional | ✅ **Completado** | [Guía SE-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-01.md) — *2 endpoints + página /session funcional* |
+| **📚 BLOQUE E: Sesión** | **SE-02** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *SE-02 por iniciar* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 | **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
@@ -84,7 +85,7 @@ ISTQB Study Agent
 │   └── [x] UP-06  UI: visualización del plan generado (Completado — calendario dinámico + placeholder /session)
 │
 ├── 📚  BLOQUE E — SESIÓN DE ESTUDIO
-│   ├── [ ] SE-01  API Routes de sesión + página /session (Guía generada — pendiente implementación)
+│   ├── [x] SE-01  API Routes de sesión + página /session (Completado — 2 endpoints + vista funcional)
 │   ├── SE-02  Prompt de teoría + API Route /api/sessions/[id]/theory
 │   ├── SE-03  UI: TheoryPanel (45 min, markdown rendering, timer)
 │   ├── SE-04  Prompt de quiz + API Route /api/sessions/[id]/quiz
@@ -656,7 +657,7 @@ CUBRE:
 
 DEPENDENCIAS: UP-06
 
-ESTADO: 📝 Guía generada y validada; pendiente implementación manual
+ESTADO: ✅ Completado — endpoints funcionales (validado 28 junio 2026)
 
 CHECKPOINT ✅:
   - Retorna la sesión morning del día 1 para un plan nuevo
@@ -1174,7 +1175,7 @@ SEMANA 2 (upload + plan + auth)
   Día 10: UP-06 (✅ completado)
 
 SEMANA 3 (sesión de estudio)
-  Día 11: SE-01 (📝 guía generada; pendiente implementación), SE-02
+  Día 11: SE-01 (✅ completado), SE-02
   Día 12: SE-03, SE-04
   Día 13: SE-05, SE-06
   Día 14: SE-07, SE-08
