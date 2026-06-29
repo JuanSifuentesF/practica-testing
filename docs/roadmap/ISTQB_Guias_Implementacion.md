@@ -32,7 +32,7 @@
 | | **UP-06** | UI: visualización de plan como calendario | ✅ **Completado** | [Guía UP-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-06.md) — *Calendario dinámico funcional con 10 componentes* |
 | | **SE-01** | API Routes de sesión + página /session funcional | ✅ **Completado** | [Guía SE-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-01.md) — *2 endpoints + página /session funcional* |
 | | **SE-02** | Prompt de teoría + API Route `/api/sessions/[id]/theory` | ✅ **Completado** | [Guía SE-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-02.md) — *Gemini genera teoría con idempotencia y cache* |
-| **📚 BLOQUE E: Sesión** | **SE-03** | UI: TheoryPanel (lectura de teoría + timer) | 📝 **Guía generada** | [Guía SE-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-03.md) — *Pendiente implementación* |
+| **📚 BLOQUE E: Sesión** | **SE-03** | UI: TheoryPanel (lectura de teoría + timer) | ✅ **Completado** | [Guía SE-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-03.md) — *5 archivos, tsc limpio, 11/11 checkpoints* |
 | | **SE-04** a **SE-08** | Ciclo de Sesiones de Estudio Adaptativo | ⏳ **Pendiente** | *Por iniciar tras SE-03* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
@@ -89,7 +89,7 @@ ISTQB Study Agent
 ├── 📚  BLOQUE E — SESIÓN DE ESTUDIO
 │   ├── [x] SE-01  API Routes de sesión + página /session (Completado — 2 endpoints + vista funcional)
 │   ├── [x] SE-02  Prompt de teoría + API Route /api/sessions/[id]/theory (Completado — Gemini + cache + idempotencia)
-│   ├── SE-03  UI: TheoryPanel (45 min, JSON estructurado, timer) — Guía generada
+│   ├── [x] SE-03  UI: TheoryPanel (45 min, JSON estructurado, timer) (Completado — 4 componentes + page.tsx refactorizado)
 │   ├── SE-04  Prompt de quiz + API Route /api/sessions/[id]/quiz
 │   ├── SE-05  UI: QuizCard (opciones A/B/C/D, sin feedback inmediato)
 │   ├── SE-06  Envío en conjunto + API Route /api/sessions/[id]/evaluate
@@ -712,7 +712,7 @@ CUBRE:
 
 DEPENDENCIAS: SE-02, FE-04
 
-ESTADO: 📝 Guía generada — pendiente implementación (29 junio 2026)
+ESTADO: ✅ Completado — 4 componentes + page.tsx refactorizado, tsc limpio, 11/11 checkpoints (29 junio 2026)
 
 CHECKPOINT ✅:
   - El timer corre correctamente
