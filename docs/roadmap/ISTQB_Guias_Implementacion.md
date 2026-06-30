@@ -35,7 +35,7 @@
 | **📚 BLOQUE E: Sesión** | **SE-03** | UI: TheoryPanel (lectura de teoría + timer) | ✅ **Completado** | [Guía SE-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-03.md) — *5 archivos, tsc limpio, 11/11 checkpoints* |
 | | **SE-04** | Prompt de quiz + API Route `/api/sessions/[id]/quiz` | ✅ **Completado** | [Guía SE-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-04.md) — *3 archivos + tsc limpio, 10/10 checkpoints* |
 | | **SE-05** | UI: QuizCard (opciones A/B/C/D, sin feedback inmediato) | ✅ **Completado** | [Guía SE-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-05.md) — *4 archivos + 1 modificado, tsc limpio, build OK, 11/11 checkpoints* |
-| | **SE-06** | Envío en conjunto + API Route `/api/sessions/[id]/evaluate` | 📝 **Guía validada** | [Guía SE-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-06.md) — *Pendiente implementación manual: 3 archivos nuevos + 2 modificados* |
+| | **SE-06** | Envío en conjunto + API Route `/api/sessions/[id]/evaluate` | ✅ **Completado** | [Guía SE-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-06.md) — *3 archivos nuevos + 2 modificados, tsc limpio, build OK, /evaluate funcional* |
 | | **SE-07** | Lógica adaptativa: advance, reinforce, restructure | ⏳ **Pendiente** | *Por iniciar tras SE-06* |
 | | **SE-08** | UI: FeedbackPanel (score, errores, decisión, próxima sesión) | ⏳ **Pendiente** | *Por iniciar tras SE-07* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
@@ -96,7 +96,7 @@ ISTQB Study Agent
 │   ├── [x] SE-03  UI: TheoryPanel (45 min, JSON estructurado, timer) (Completado — 4 componentes + page.tsx refactorizado)
 │   ├── [x] SE-04  Prompt de quiz + API Route /api/sessions/[id]/quiz (Completado — 3 archivos + cache en memoria)
 │   ├── [x] SE-05  UI: QuizCard (opciones A/B/C/D, sin feedback inmediato) (Completado — 4 componentes + page.tsx refactorizado, 11/11 checkpoints)
-│   ├── SE-06  Envío en conjunto + API Route /api/sessions/[id]/evaluate (Guía validada — pendiente implementación manual)
+│   ├── [x] SE-06  Envío en conjunto + API Route /api/sessions/[id]/evaluate (Completado — types + prompt + evaluate route + QuizCard modificado)
 │   ├── SE-07  Lógica adaptativa: advance | reinforce | restructure
 │   └── SE-08  UI: FeedbackPanel (score, errores, decisión, próxima sesión)
 │
@@ -791,7 +791,7 @@ CUBRE:
 
 DEPENDENCIAS: SE-05, DB-02
 
-ESTADO: 📝 Guía validada — pendiente implementación manual (29 junio 2026)
+ESTADO: ✅ Completado — 3 archivos nuevos + 2 modificados, tsc limpio, build OK, /evaluate funcional, 6/6 checkpoints (29 junio 2026)
 
 CHECKPOINT ✅:
   - Responder 10 preguntas → /evaluate retorna el JSON completo
