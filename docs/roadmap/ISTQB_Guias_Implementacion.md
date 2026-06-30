@@ -38,7 +38,7 @@
 | | **SE-06** | Envío en conjunto + API Route `/api/sessions/[id]/evaluate` | ✅ **Completado** | [Guía SE-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-06.md) — *3 archivos nuevos + 2 modificados, tsc limpio, build OK, /evaluate funcional* |
 | | **SE-07** | Lógica adaptativa: advance, reinforce, restructure | ✅ **Completado** | [Guía SE-07](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-07.md) — *2 archivos nuevos + 2 modificados, tsc limpio, build OK, RESTRUCTURE verificado* |
 | | **SE-08** | UI: FeedbackPanel (score, errores, decisión, próxima sesión) | ✅ **Completado** | [Guía SE-08](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-08.md) — *1 archivo nuevo + 1 modificado, tsc limpio, build OK, FeedbackPanel conectado* |
-| **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
+| **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | 📝 **En progreso** | [Guía DA-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-01.md) — *DA-01 guía validada, pendiente implementación manual; DA-02..DA-05 pendientes* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 | **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
 
@@ -101,7 +101,7 @@ ISTQB Study Agent
 │   └── [x] SE-08  UI: FeedbackPanel (score, errores, decisión, próxima sesión) (Completado — FeedbackPanel conectado, BLOQUE E finalizado)
 │
 ├── 📊  BLOQUE F — DASHBOARD DE PROGRESO
-│   ├── DA-01  API Route /api/dashboard/metrics
+│   ├── DA-01  API Route /api/dashboard/metrics (Guía validada — pendiente implementación manual)
 │   ├── DA-02  UI: gráfica de score por sesión (LineChart)
 │   ├── DA-03  UI: heatmap de tópicos por estado
 │   ├── DA-04  UI: tiempo real vs estimado (BarChart)
@@ -877,7 +877,9 @@ CUBRE:
   - Leer estimated_end_date de study_plans
   - Retornar JSON completo con todas las métricas
 
-DEPENDENCIAS: SE-07, DB-02
+DEPENDENCIAS: SE-08, UP-05, SE-06, SE-07, DB-02
+
+ESTADO: 📝 Guía validada — pendiente implementación manual (30 junio 2026)
 
 CHECKPOINT ✅:
   - Retorna JSON con todas las métricas después de 2+ sesiones completadas
