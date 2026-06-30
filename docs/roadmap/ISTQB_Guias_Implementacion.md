@@ -37,7 +37,7 @@
 | | **SE-05** | UI: QuizCard (opciones A/B/C/D, sin feedback inmediato) | ✅ **Completado** | [Guía SE-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-05.md) — *4 archivos + 1 modificado, tsc limpio, build OK, 11/11 checkpoints* |
 | | **SE-06** | Envío en conjunto + API Route `/api/sessions/[id]/evaluate` | ✅ **Completado** | [Guía SE-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-06.md) — *3 archivos nuevos + 2 modificados, tsc limpio, build OK, /evaluate funcional* |
 | | **SE-07** | Lógica adaptativa: advance, reinforce, restructure | ✅ **Completado** | [Guía SE-07](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-07.md) — *2 archivos nuevos + 2 modificados, tsc limpio, build OK, RESTRUCTURE verificado* |
-| | **SE-08** | UI: FeedbackPanel (score, errores, decisión, próxima sesión) | ⏳ **Pendiente** | *Por iniciar tras SE-07* |
+| | **SE-08** | UI: FeedbackPanel (score, errores, decisión, próxima sesión) | 📝 **Guía validada** | [Guía SE-08](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-08.md) — *Pendiente implementación manual: 1 archivo nuevo + 1 modificado* |
 | **📊 BLOQUE F: Dashboard** | **DA-01** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 | **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
@@ -98,7 +98,7 @@ ISTQB Study Agent
 │   ├── [x] SE-05  UI: QuizCard (opciones A/B/C/D, sin feedback inmediato) (Completado — 4 componentes + page.tsx refactorizado, 11/11 checkpoints)
 │   ├── [x] SE-06  Envío en conjunto + API Route /api/sessions/[id]/evaluate (Completado — types + prompt + evaluate route + QuizCard modificado)
 │   ├── [x] SE-07  Lógica adaptativa: advance | reinforce | restructure (Completado — /adapt + topic_progress + refuerzos + estimated_end_date)
-│   └── SE-08  UI: FeedbackPanel (score, errores, decisión, próxima sesión)
+│   └── SE-08  UI: FeedbackPanel (score, errores, decisión, próxima sesión) (Guía validada — pendiente implementación manual)
 │
 ├── 📊  BLOQUE F — DASHBOARD DE PROGRESO
 │   ├── DA-01  API Route /api/dashboard/metrics
@@ -847,6 +847,8 @@ CUBRE:
   - Botón "Siguiente sesión" (si la hay)
 
 DEPENDENCIAS: SE-07, FE-04
+
+ESTADO: 📝 Guía validada — pendiente implementación manual (30 junio 2026)
 
 CHECKPOINT ✅:
   - El score y la decisión se muestran correctamente
