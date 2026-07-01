@@ -40,7 +40,8 @@
 | | **SE-08** | UI: FeedbackPanel (score, errores, decisión, próxima sesión) | ✅ **Completado** | [Guía SE-08](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-08.md) — *1 archivo nuevo + 1 modificado, tsc limpio, build OK, FeedbackPanel conectado* |
 | **📊 BLOQUE F: Dashboard** | ✅ **DA-01** | API Route `/api/dashboard/metrics` | ✅ **Completado** | [Guía DA-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-01.md) — *2 archivos nuevos + 1 modificado, tsc limpio, build OK, endpoint responde JSON con métricas reales* |
 | | **DA-02** | UI: gráfica de score por sesión (LineChart) | 📝 **Guía validada** | [Guía DA-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-02.md) — *Pendiente implementación manual: 1 archivo nuevo + 1 modificado* |
-| | **DA-03** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar tras DA-02* |
+| | **DA-03** | UI: heatmap de tópicos por estado | 📝 **Guía validada** | [Guía DA-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-03.md) — *Pendiente implementación manual: 1 archivo nuevo + 3 modificados* |
+| | **DA-04** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar tras DA-03* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 | **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
 
@@ -105,7 +106,7 @@ ISTQB Study Agent
 ├── 📊  BLOQUE F — DASHBOARD DE PROGRESO
 │   ├── [x] DA-01  API Route /api/dashboard/metrics (Completado — 5/5 checkpoints, endpoint funcional)
 │   ├── DA-02  UI: gráfica de score por sesión (LineChart) (Guía validada — pendiente implementación manual)
-│   ├── DA-03  UI: heatmap de tópicos por estado
+│   ├── DA-03  UI: heatmap de tópicos por estado (Guía validada — pendiente implementación manual)
 │   ├── DA-04  UI: tiempo real vs estimado (BarChart)
 │   └── DA-05  UI: fecha estimada de examen + contadores
 │
@@ -918,18 +919,21 @@ OBJETIVO:
   Visualización del estado de todos los tópicos FL-x.x.x.
 
 CUBRE:
-  - Grid de todos los tópicos (40 celdas)
+  - Grid de todos los tópicos retornados por topic_progress (sin hardcodear 40)
   - Color por estado: gris (pending), azul (in_progress), verde (mastered), rojo (failed)
-  - Tooltip al hover: nombre del tópico, intentos, mejor score
+  - Tooltip al hover/focus: nombre del tópico, nivel K, intentos, mejor score y último score
   - Leyenda de colores
   - Agrupado por sección (FL-1.x, FL-2.x, etc.)
+  - DTO TopicHeatmapItem para no exponer user_id/study_plan_id en el cliente
 
-DEPENDENCIAS: DA-01, FE-04
+DEPENDENCIAS: UP-05, DA-01, DA-02, FE-04
+
+ESTADO: 📝 Guía validada/regenerada — pendiente implementación manual (30 junio 2026)
 
 CHECKPOINT ✅:
-  - Los 40 tópicos aparecen en el grid
+  - Todos los tópicos retornados por el API aparecen en el grid
   - Los colores coinciden con el status real en topic_progress
-  - Al hacer hover se muestra el nombre del tópico
+  - Al hacer hover/focus se muestra el nombre del tópico, K-level, intentos y scores
 ```
 
 #### DA-04 — UI: tiempo real vs estimado
