@@ -31,6 +31,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import type { DashboardMetrics } from "@/types/dashboard";
+import { DashboardSummaryCards } from "@/components/dashboard/dashboard-summary-cards";
 import { ScoreChart } from "@/components/dashboard/score-chart";
 import { TimeComparisonChart } from "@/components/dashboard/time-comparison-chart";
 import { TopicHeatmap } from "@/components/dashboard/topic-heatmap";
@@ -48,48 +49,6 @@ interface DashboardState {
   isLoading: boolean;
   /** Mensaje de error si el fetch falló */
   error: string | null;
-}
-
-// ──────────────────────────────────────────────────────────────
-// Helpers de fecha
-// ──────────────────────────────────────────────────────────────
-
-/**
- * Formatea un DATE de PostgreSQL (YYYY-MM-DD) sin desfase por zona horaria.
- *
- * ¿Por qué no usar solo new Date(isoDate).toLocaleDateString()?
- *   Porque PostgreSQL DATE llega como "2026-07-09". JavaScript lo interpreta
- *   como medianoche UTC y, dependiendo de la zona horaria local, puede mostrar
- *   el día anterior. Forzamos UTC para que el día visual coincida con la DB.
- */
-function formatDateEsMx(isoDate: string): string {
-  try {
-    return new Intl.DateTimeFormat("es-MX", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(new Date(`${isoDate}T00:00:00Z`));
-  } catch {
-    return isoDate;
-  }
-}
-
-function daysUntilIsoDate(isoDate: string): number | null {
-  const targetMs = Date.parse(`${isoDate}T00:00:00Z`);
-
-  if (Number.isNaN(targetMs)) {
-    return null;
-  }
-
-  const now = new Date();
-  const todayUtcMs = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-  );
-
-  return Math.ceil((targetMs - todayUtcMs) / (1000 * 60 * 60 * 24));
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -294,75 +253,8 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* ─── Tarjetas de métricas rápidas ─── */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Tarjeta 1: Progreso general */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <h3 className="text-sm font-medium text-slate-400">Progreso</h3>
-          <p className="text-3xl font-bold text-emerald-400 mt-1">
-            {metrics.completion_percent.toFixed(1)}%
-          </p>
-          <p className="text-xs text-slate-500 mt-1">
-            {metrics.topic_status.mastered} de {metrics.topic_status.total}{" "}
-            tópicos dominados
-          </p>
-        </div>
-
-        {/* Tarjeta 2: Sesiones completadas */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <h3 className="text-sm font-medium text-slate-400">
-            Sesiones Completadas
-          </h3>
-          <p className="text-3xl font-bold text-blue-400 mt-1">
-            {metrics.completed_sessions}{" "}
-            <span className="text-lg text-slate-500 font-normal">
-              / {metrics.total_sessions}
-            </span>
-          </p>
-          <p className="text-xs text-slate-500 mt-1">
-            Plan de {metrics.objective_days} días
-          </p>
-        </div>
-
-        {/* Tarjeta 3: Racha actual */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <h3 className="text-sm font-medium text-slate-400">Racha Actual</h3>
-          <p className="text-3xl font-bold text-amber-400 mt-1">
-            {metrics.current_streak}{" "}
-            <span className="text-lg font-normal">
-              {metrics.current_streak === 1 ? "día" : "días"}
-            </span>
-          </p>
-          <p className="text-xs text-slate-500 mt-1">
-            {metrics.current_streak > 0
-              ? "¡Sigue así! 🔥"
-              : "Completa una sesión hoy"}
-          </p>
-        </div>
-
-        {/* Tarjeta 4: Fecha estimada */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <h3 className="text-sm font-medium text-slate-400">Fecha Estimada</h3>
-          <p className="text-xl font-bold text-purple-400 mt-1">
-            {formatDateEsMx(metrics.estimated_end_date)}
-          </p>
-          <p className="text-xs text-slate-500 mt-1">
-            {(() => {
-              const diffDays = daysUntilIsoDate(metrics.estimated_end_date);
-
-              if (diffDays === null) {
-                return "Fecha estimada de examen";
-              }
-
-              return diffDays > 0
-                ? `${diffDays} días restantes`
-                : diffDays === 0
-                  ? "¡Es hoy!"
-                  : "Fecha pasada";
-            })()}
-          </p>
-        </div>
-      </div>
+      {/* ─── Resumen ejecutivo DA-05 ─── */}
+      <DashboardSummaryCards metrics={metrics} />
 
       {/* ─── Gráfica de scores (DA-02) ─── */}
       <ScoreChart data={metrics.scores_by_session} />
