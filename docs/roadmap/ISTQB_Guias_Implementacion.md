@@ -42,7 +42,7 @@
 | | **DA-02** | UI: gráfica de score por sesión (LineChart) | ✅ **Completado** | [Guía DA-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-02.md) — *ScoreChart implementado + integrado en dashboard* |
 | | **DA-03** | UI: heatmap de tópicos por estado | ✅ **Completado** | [Guía DA-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-03.md) — *TopicHeatmap implementado + API enriquecida + 63 tópicos validados* |
 | | **DA-04** | UI: tiempo real vs estimado (BarChart) | ✅ **Completado** | [Guía DA-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-04.md) — *TimeComparisonChart + tsc limpio + build OK* |
-| | **DA-05** | UI: fecha estimada de examen + contadores | ⏳ **Pendiente** | *Por iniciar* |
+| | **DA-05** | UI: fecha estimada de examen + contadores | ✅ **Completado** | [Guía DA-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-05.md) — *DashboardSummaryCards + tsc limpio + build OK* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 | **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
 
@@ -109,7 +109,7 @@ ISTQB Study Agent
 │   ├── [x] DA-02  UI: gráfica de score por sesión (LineChart) (Completado — ScoreChart + dashboard integrado)
 │   ├── [x] DA-03  UI: heatmap de tópicos por estado (Completado — TopicHeatmap + 63 tópicos validados)
 │   ├── [x] DA-04  UI: tiempo real vs estimado (BarChart) (Completado — TimeComparisonChart + tsc limpio + build OK)
-│   └── DA-05  UI: fecha estimada de examen + contadores
+│   └── [x] DA-05  UI: fecha estimada de examen + contadores (Completado — DashboardSummaryCards + tsc limpio + build OK)
 │
 ├── 🧪  BLOQUE QA — TESTING E2E
 │   ├── QA-01  Configurar Cypress + data-testid en componentes clave
