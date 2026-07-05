@@ -43,8 +43,8 @@
 | | **DA-03** | UI: heatmap de tópicos por estado | ✅ **Completado** | [Guía DA-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-03.md) — *TopicHeatmap implementado + API enriquecida + 63 tópicos validados* |
 | | **DA-04** | UI: tiempo real vs estimado (BarChart) | ✅ **Completado** | [Guía DA-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-04.md) — *TimeComparisonChart + tsc limpio + build OK* |
 | | **DA-05** | UI: fecha estimada de examen + contadores | ✅ **Completado** | [Guía DA-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-05.md) — *DashboardSummaryCards + tsc limpio + build OK* |
-| **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 | **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
+| **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 
 ---
 
@@ -111,17 +111,17 @@ ISTQB Study Agent
 │   ├── [x] DA-04  UI: tiempo real vs estimado (BarChart) (Completado — TimeComparisonChart + tsc limpio + build OK)
 │   └── [x] DA-05  UI: fecha estimada de examen + contadores (Completado — DashboardSummaryCards + tsc limpio + build OK)
 │
-├── 🧪  BLOQUE QA — TESTING E2E
-│   ├── QA-01  Configurar Cypress + data-testid en componentes clave
-│   ├── QA-02  Tests de auth: login, register, logout, redirects
-│   └── QA-03  Tests de flujo completo: upload → plan → sesión → dashboard
+├── 🚀  BLOQUE G — PRODUCCIÓN
+│   ├── PR-01  GitHub Actions: CI/CD frontend → Vercel
+│   ├── PR-02  GitHub Actions: CI/CD backend → DigitalOcean
+│   ├── PR-03  Variables de entorno en producción
+│   ├── PR-04  Dominio custom (Name.com/Namecheap) → Vercel
+│   └── PR-05  Prueba end-to-end completa + simulacro final
 │
-└── 🚀  BLOQUE G — PRODUCCIÓN
-    ├── PR-01  GitHub Actions: CI/CD frontend → Vercel
-    ├── PR-02  GitHub Actions: CI/CD backend → DigitalOcean
-    ├── PR-03  Variables de entorno en producción
-    ├── PR-04  Dominio custom (Name.com/Namecheap) → Vercel
-    └── PR-05  Prueba end-to-end completa + simulacro final
+└── 🧪  BLOQUE QA — TESTING E2E
+    ├── QA-01  Configurar Cypress + data-testid en componentes clave
+    ├── QA-02  Tests de auth: login, register, logout, redirects
+    └── QA-03  Tests de flujo completo: upload → plan → sesión → dashboard
 ```
 
 ---
