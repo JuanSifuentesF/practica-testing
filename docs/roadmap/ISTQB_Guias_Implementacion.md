@@ -39,9 +39,9 @@
 | | **SE-07** | Lógica adaptativa: advance, reinforce, restructure | ✅ **Completado** | [Guía SE-07](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-07.md) — *2 archivos nuevos + 2 modificados, tsc limpio, build OK, RESTRUCTURE verificado* |
 | | **SE-08** | UI: FeedbackPanel (score, errores, decisión, próxima sesión) | ✅ **Completado** | [Guía SE-08](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-08.md) — *1 archivo nuevo + 1 modificado, tsc limpio, build OK, FeedbackPanel conectado* |
 | **📊 BLOQUE F: Dashboard** | ✅ **DA-01** | API Route `/api/dashboard/metrics` | ✅ **Completado** | [Guía DA-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-01.md) — *2 archivos nuevos + 1 modificado, tsc limpio, build OK, endpoint responde JSON con métricas reales* |
-| | **DA-02** | UI: gráfica de score por sesión (LineChart) | 📝 **Guía validada** | [Guía DA-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-02.md) — *Pendiente implementación manual: 1 archivo nuevo + 1 modificado* |
-| | **DA-03** | UI: heatmap de tópicos por estado | 📝 **Guía validada** | [Guía DA-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-03.md) — *Pendiente implementación manual: 1 archivo nuevo + 3 modificados* |
-| | **DA-04** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar tras DA-03* |
+| | **DA-02** | UI: gráfica de score por sesión (LineChart) | ✅ **Completado** | [Guía DA-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-02.md) — *ScoreChart implementado + integrado en dashboard* |
+| | **DA-03** | UI: heatmap de tópicos por estado | ✅ **Completado** | [Guía DA-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-03.md) — *TopicHeatmap implementado + API enriquecida + 63 tópicos validados* |
+| | **DA-04** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 | **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
 
@@ -105,8 +105,8 @@ ISTQB Study Agent
 │
 ├── 📊  BLOQUE F — DASHBOARD DE PROGRESO
 │   ├── [x] DA-01  API Route /api/dashboard/metrics (Completado — 5/5 checkpoints, endpoint funcional)
-│   ├── DA-02  UI: gráfica de score por sesión (LineChart) (Guía validada — pendiente implementación manual)
-│   ├── DA-03  UI: heatmap de tópicos por estado (Guía validada — pendiente implementación manual)
+│   ├── [x] DA-02  UI: gráfica de score por sesión (LineChart) (Completado — ScoreChart + dashboard integrado)
+│   ├── [x] DA-03  UI: heatmap de tópicos por estado (Completado — TopicHeatmap + 63 tópicos validados)
 │   ├── DA-04  UI: tiempo real vs estimado (BarChart)
 │   └── DA-05  UI: fecha estimada de examen + contadores
 │
@@ -905,7 +905,7 @@ CUBRE:
 
 DEPENDENCIAS: DA-01, FE-04
 
-ESTADO: 📝 Guía validada — pendiente implementación manual (30 junio 2026)
+ESTADO: ✅ Completado (5 julio 2026) — ScoreChart integrado, tsc limpio
 
 CHECKPOINT ✅:
   - La gráfica muestra correctamente el historial de scores
@@ -928,7 +928,7 @@ CUBRE:
 
 DEPENDENCIAS: UP-05, DA-01, DA-02, FE-04
 
-ESTADO: 📝 Guía validada/regenerada — pendiente implementación manual (30 junio 2026)
+ESTADO: ✅ Completado (5 julio 2026) — 8/8 checkpoints, tsc limpio, API retorna 63 tópicos sanitizados
 
 CHECKPOINT ✅:
   - Todos los tópicos retornados por el API aparecen en el grid
