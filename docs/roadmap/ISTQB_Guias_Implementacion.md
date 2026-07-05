@@ -41,7 +41,8 @@
 | **📊 BLOQUE F: Dashboard** | ✅ **DA-01** | API Route `/api/dashboard/metrics` | ✅ **Completado** | [Guía DA-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-01.md) — *2 archivos nuevos + 1 modificado, tsc limpio, build OK, endpoint responde JSON con métricas reales* |
 | | **DA-02** | UI: gráfica de score por sesión (LineChart) | ✅ **Completado** | [Guía DA-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-02.md) — *ScoreChart implementado + integrado en dashboard* |
 | | **DA-03** | UI: heatmap de tópicos por estado | ✅ **Completado** | [Guía DA-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-03.md) — *TopicHeatmap implementado + API enriquecida + 63 tópicos validados* |
-| | **DA-04** a **DA-05** | Dashboard de Progreso y Métricas | ⏳ **Pendiente** | *Por iniciar* |
+| | **DA-04** | UI: tiempo real vs estimado (BarChart) | ✅ **Completado** | [Guía DA-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-04.md) — *TimeComparisonChart + tsc limpio + build OK* |
+| | **DA-05** | UI: fecha estimada de examen + contadores | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 | **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
 
@@ -107,7 +108,7 @@ ISTQB Study Agent
 │   ├── [x] DA-01  API Route /api/dashboard/metrics (Completado — 5/5 checkpoints, endpoint funcional)
 │   ├── [x] DA-02  UI: gráfica de score por sesión (LineChart) (Completado — ScoreChart + dashboard integrado)
 │   ├── [x] DA-03  UI: heatmap de tópicos por estado (Completado — TopicHeatmap + 63 tópicos validados)
-│   ├── DA-04  UI: tiempo real vs estimado (BarChart)
+│   ├── [x] DA-04  UI: tiempo real vs estimado (BarChart) (Completado — TimeComparisonChart + tsc limpio + build OK)
 │   └── DA-05  UI: fecha estimada de examen + contadores
 │
 ├── 🧪  BLOQUE QA — TESTING E2E
@@ -1215,7 +1216,7 @@ SEMANA 3 (sesión de estudio)
 
 SEMANA 4 (dashboard + producción)
   Día 15: DA-01, DA-02
-  Día 16: DA-03, DA-04, DA-05
+  Día 16: DA-03, DA-04 (✅ completado), DA-05
   Día 17: PR-01, PR-02
   Día 18: PR-03, PR-04
   Día 19: PR-05 — ¡Go live! 🚀
