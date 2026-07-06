@@ -43,7 +43,9 @@
 | | **DA-03** | UI: heatmap de tópicos por estado | ✅ **Completado** | [Guía DA-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-03.md) — *TopicHeatmap implementado + API enriquecida + 63 tópicos validados* |
 | | **DA-04** | UI: tiempo real vs estimado (BarChart) | ✅ **Completado** | [Guía DA-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-04.md) — *TimeComparisonChart + tsc limpio + build OK* |
 | | **DA-05** | UI: fecha estimada de examen + contadores | ✅ **Completado** | [Guía DA-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-05.md) — *DashboardSummaryCards + tsc limpio + build OK* |
-| **🚀 BLOQUE G: Prod** | **PR-01** a **PR-05** | Producción, CI/CD y Go Live | ⏳ **Pendiente** | *Por iniciar* |
+| **🚀 BLOQUE G: Prod** | **PR-01** | GitHub Actions: CI/CD frontend → Vercel | ⏳ **Pendiente** | [Guía PR-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PR-01.md) — *Guía generada, por implementar* |
+| | **PR-02** | GitHub Actions: CI/CD backend → DigitalOcean | ⏳ **Pendiente** | [Guía PR-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PR-02.md) — *Guía generada, por implementar* |
+| | **PR-03** a **PR-05** | Variables, Dominio y Simulación | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 
 ---
@@ -112,8 +114,8 @@ ISTQB Study Agent
 │   └── [x] DA-05  UI: fecha estimada de examen + contadores (Completado — DashboardSummaryCards + tsc limpio + build OK)
 │
 ├── 🚀  BLOQUE G — PRODUCCIÓN
-│   ├── PR-01  GitHub Actions: CI/CD frontend → Vercel
-│   ├── PR-02  GitHub Actions: CI/CD backend → DigitalOcean
+│   ├── [ ] PR-01  GitHub Actions: CI/CD frontend → Vercel (Guía generada)
+│   ├── [ ] PR-02  GitHub Actions: CI/CD backend → DigitalOcean (Guía generada)
 │   ├── PR-03  Variables de entorno en producción
 │   ├── PR-04  Dominio custom (Name.com/Namecheap) → Vercel
 │   └── PR-05  Prueba end-to-end completa + simulacro final
