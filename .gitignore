@@ -2,6 +2,9 @@
 .env*.local
 .env
 
+# Documentacion local de trabajo
+docs/
+
 # Dependencias de Node.js
 node_modules/
 frontend/
