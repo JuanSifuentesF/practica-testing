@@ -14,7 +14,7 @@ Guía para consultar el balance y uso mensual de tu cuenta de DigitalOcean usand
 ## Paso 1: Configurar el Token como variable de entorno (seguro)
 
 ```powershell
-$env:DO_TOKEN = "dop_v1_0b01775f6ace380fcae5e7e68c3af566b18ab9df52e05972980944cc962d1d0e"
+$env:DO_TOKEN = "DIGITALOCEAN_ACCESS_TOKEN_PLACEHOLDER"
 ```
 
 > ⚠️ Esto solo vive en la sesión actual de PowerShell. Al cerrar la terminal, desaparece.
