@@ -1,0 +1,17 @@
+﻿Ôùç injected env (7) from .env.local // tip: Ôùê secrets for agents [www.dotenvx.com]
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+TEST: Gemini v├¡a SDK de OpenAI (UP-04)
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+baseURL: https://generativelanguage.googleapis.com/v1beta/openai
+model:   gemini-2.5-pro
+topics:  5 (esperando 6 sesiones)
+
+node.exe : ÔØî ERROR llamando a Gemini:
+En C:\Users\jsife\AppData\Roaming\npm\npx.ps1: 24 Carácter: 5
++     & "node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ÔØî ERROR llamando a Gemini::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  status: 429
+  message: 429 status code (no body)
