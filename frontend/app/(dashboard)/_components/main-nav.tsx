@@ -3,67 +3,203 @@
 // ============================================================
 // _components/main-nav.tsx — Navegación Desktop
 // ============================================================
-// DIRECTIVA: 'use client' es OBLIGATORIO aquí porque:
-//   - usePathname() es un hook de React → solo funciona en Client Components
-//   - Los hooks acceden a APIs del navegador (la URL actual del browser)
+// DIRECTIVA: 'use client' es obligatoria porque:
 //
-// VISIBILIDAD: Este componente solo se muestra en pantallas ≥768px
-// gracias a la clase "hidden md:flex". En móvil se oculta y se
-// reemplaza por MobileNav (el componente con el menú hamburguesa).
+//   - usePathname() es un hook de Next.js
+//   - Los hooks solo pueden ejecutarse en Client Components
+//   - Necesitamos acceder a la URL actual para determinar
+//     qué opción del menú está activa
 //
-// PATRÓN: Usa un array de rutas para generar los links dinámicamente.
-// Esto facilita agregar nuevas rutas en el futuro sin tocar el JSX.
+// VISIBILIDAD:
+//
+// Este componente solo se muestra en pantallas ≥768px
+// gracias a la clase:
+//
+//   hidden md:flex
+//
+// Mobile:
+//   MobileNav (menú hamburguesa)
+//
+// Desktop:
+//   MainNav (barra horizontal)
+//
+// PATRÓN:
+//
+// Las rutas se generan dinámicamente desde un array,
+// evitando duplicación de JSX y facilitando futuras
+// ampliaciones del menú.
 // ============================================================
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// ─── Definición de rutas de la aplicación ───
-// Cada objeto tiene un href (la ruta URL) y un label (texto visible).
-// Estas rutas deben coincidir con las que el middleware protege en FE-03.
+// ─────────────────────────────────────────────────────────────
+// Rutas de navegación
+// ─────────────────────────────────────────────────────────────
+// as const:
+//   - Convierte el array en readonly
+//   - Conserva los valores literales exactos
+//   - Mejora la inferencia de tipos de TypeScript
+//
+// IMPORTANTE:
+//
+// Estas rutas deben mantenerse sincronizadas con:
+//
+//   - MobileNav
+//   - Middleware de autenticación
+//   - Configuración de navegación compartida
+//
+// En aplicaciones más grandes conviene extraerlas a:
+//
+//   lib/navigation.ts
+//
+// para reutilizarlas desde un único lugar.
+// ─────────────────────────────────────────────────────────────
 const routes = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/plan", label: "Mi Plan" },
   { href: "/session", label: "Sesión Actual" },
-];
+  { href: "/practice", label: "Práctica" },
+] as const;
+
+// ─────────────────────────────────────────────────────────────
+// Determinar si una ruta está activa
+// ─────────────────────────────────────────────────────────────
+//
+// Problema:
+//
+// pathname === href
+//
+// funciona para:
+//
+//   pathname = "/dashboard"
+//
+// pero falla para:
+//
+//   pathname = "/dashboard/settings"
+//
+// porque ya no son exactamente iguales.
+//
+// Solución:
+//
+// pathname.startsWith(`${href}/`)
+//
+// permite considerar rutas hijas como parte de la
+// sección principal.
+//
+// Ejemplos:
+//
+// "/dashboard"            → Dashboard activo
+// "/dashboard/settings"   → Dashboard activo
+// "/practice/123"         → Práctica activa
+//
+// Esto mejora la experiencia de navegación porque
+// el usuario siempre sabe en qué sección se encuentra.
+// ─────────────────────────────────────────────────────────────
+function isActivePath(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function MainNav() {
-  // usePathname() retorna la ruta actual del navegador, por ejemplo "/dashboard".
-  // Lo usamos para determinar cuál link está "activo" y estilizarlo diferente.
+  // ───────────────────────────────────────────────────────────
+  // Ruta actual
+  // ───────────────────────────────────────────────────────────
+  //
+  // usePathname() devuelve la URL activa.
+  //
+  // Ejemplos:
+  //
+  //   /dashboard
+  //   /plan
+  //   /session/abc
+  //   /practice/123/results
+  //
+  // La utilizamos para resaltar visualmente la opción
+  // actualmente seleccionada.
+  // ───────────────────────────────────────────────────────────
   const pathname = usePathname();
 
   return (
-    // ─── Contenedor de navegación ───
-    // hidden     → oculto por defecto (mobile first)
-    // md:flex    → visible como flex en pantallas ≥768px (breakpoint "md" de Tailwind)
-    // items-center → centra verticalmente los links dentro del nav
-    // space-x-6   → 1.5rem (24px) de espacio horizontal entre cada link
-    // text-sm     → tamaño de fuente 0.875rem (14px) — sutil pero legible
-    // font-medium → peso de fuente 500 — ni thin ni bold, equilibrado
-    <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-      {routes.map((route) => (
-        <Link
-          key={route.href}
-          href={route.href}
-          className={`
-            transition-colors       
-            hover:text-emerald-400  
-            ${
-              // ─── Lógica de "link activo" ───
-              // pathname.startsWith() en lugar de pathname === porque:
-              // - /dashboard/settings también debería resaltar "Dashboard"
-              // - /session/abc123/theory también debería resaltar "Sesión Actual"
-              // El link activo se muestra en verde esmeralda (emerald-400),
-              // los inactivos en gris (slate-400).
-              pathname.startsWith(route.href)
-                ? "text-emerald-400" // ← Link activo: verde esmeralda
-                : "text-slate-400" // ← Link inactivo: gris tenue
+    // ─────────────────────────────────────────────────────────
+    // Contenedor principal
+    // ─────────────────────────────────────────────────────────
+    //
+    // hidden
+    //   Oculto por defecto (mobile-first).
+    //
+    // md:flex
+    //   Visible desde 768px.
+    //
+    // items-center
+    //   Centra verticalmente los elementos.
+    //
+    // space-x-6
+    //   Espaciado horizontal uniforme entre links.
+    //
+    // text-sm
+    //   Tamaño de fuente 14px.
+    //
+    // font-medium
+    //   Peso de fuente equilibrado para navegación.
+    // ─────────────────────────────────────────────────────────
+    <nav className="hidden items-center space-x-6 text-sm font-medium md:flex">
+      {routes.map((route) => {
+        // Determina si este enlace representa
+        // la sección actualmente activa.
+        const isActive = isActivePath(pathname, route.href);
+
+        return (
+          <Link
+            key={route.href}
+            href={route.href}
+            // ───────────────────────────────────────
+            // Accesibilidad
+            // ───────────────────────────────────────
+            //
+            // aria-current="page"
+            //
+            // Indica a lectores de pantalla cuál es
+            // la página actualmente seleccionada.
+            //
+            // Beneficios:
+            //
+            // - Mejor experiencia para usuarios
+            //   con tecnologías asistivas.
+            // - Cumplimiento de buenas prácticas WCAG.
+            // ───────────────────────────────────────
+            aria-current={isActive ? "page" : undefined}
+            className={
+              isActive
+                ? // ────────────────────────────────
+                  // Link activo
+                  // ────────────────────────────────
+                  //
+                  // text-emerald-400
+                  //   Color principal de la marca.
+                  //
+                  // hover:text-emerald-300
+                  //   Ligera variación para indicar
+                  //   interactividad sin perder el
+                  //   estado activo.
+                  // ────────────────────────────────
+                  "text-emerald-400 transition-colors hover:text-emerald-300"
+                : // ────────────────────────────────
+                  // Link inactivo
+                  // ────────────────────────────────
+                  //
+                  // text-slate-400
+                  //   Color neutro.
+                  //
+                  // hover:text-emerald-400
+                  //   Feedback visual al pasar el mouse.
+                  // ────────────────────────────────
+                  "text-slate-400 transition-colors hover:text-emerald-400"
             }
-          `}
-        >
-          {route.label}
-        </Link>
-      ))}
+          >
+            {route.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

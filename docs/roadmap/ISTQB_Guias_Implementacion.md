@@ -58,7 +58,7 @@
 | | **PL-11** | UI: Bug Report Lab (escenario + formulario) | ✅ **Completado** | [Guía PL-11](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-11.md) — *Reconciliación de contrato completo: bug-report-contract.ts + 4 componentes + tsc limpio + build OK* |
 | | **PL-12** | UI: API Testing Checklist | ✅ **Completado** | [Guía PL-12](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-12.md) — *4 archivos, localStorage versionado, 5 fixtures, zero HTTP, tsc+build OK* |
 | | **PL-13** | Integración Dashboard (métricas de práctica) | ✅ **Completado** | [Guía PL-13](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-13.md) — *practice_stats en DA-01 + PracticeProgressCard + tsc+build OK* |
-| | **PL-14** | Navegación: agregar "Práctica" al layout | ⏳ **Pendiente** | *Por iniciar* |
+| | **PL-14** | Navegación + protección: agregar "Práctica" y migrar a `proxy.ts` | ✅ **Completado** | [Guía PL-14](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-14.md) — *proxy.ts + MainNav/MobileNav con Práctica + rehidratación UX en bug-lab + tsc+build OK* |
 | **🤖 BLOQUE I: AI Settings & Usage Control** | **AI-01** | Schema: preferencias IA + tracking de uso/tokens | ⏳ **Pendiente** | *Por iniciar* |
 | | **AI-02** | Runtime server-side: resolver proveedor, modo y cuota | ⏳ **Pendiente** | *Por iniciar* |
 | | **AI-03** | UI Settings: Demo / Managed / BYOK session-only | ⏳ **Pendiente** | *Por iniciar* |
@@ -148,7 +148,7 @@ ISTQB Study Agent
 │   ├── [x] PL-11  UI: Bug Report Lab — escenario + formulario (Skill: fe-guide-generator) (Completado — reconciliacion de contrato + 4 componentes + tsc+build OK)
 │   ├── [x] PL-12  UI: API Testing Checklist (Skill: fe-guide-generator) (Completado — localStorage versionado + 4 archivos + zero HTTP + tsc+build OK)
 │   ├── [x] PL-13  Integración Dashboard — métricas de práctica (Skill: fe-guide-generator) (Completado — practice_stats en DA-01 + PracticeProgressCard + tsc+build OK)
-│   └── [ ] PL-14  Navegación: agregar "Práctica" al layout (Skill: fe-guide-generator)
+│   └── [x] PL-14  Navegación + protección con proxy.ts (Skill: fe-guide-generator) (Completado — proxy.ts + MainNav/MobileNav + rehidratacion UX + tsc+build OK)
 │
 ├── 🤖  BLOQUE I — AI SETTINGS & USAGE CONTROL
 │   ├── [ ] AI-01  Schema: preferencias IA + tracking de uso/tokens (Skill: db-guide-generator)
@@ -1460,10 +1460,15 @@ CHECKPOINT ✅:
   - tsc limpio, build OK
 ```
 
-#### PL-14 — Navegación: agregar "Práctica" al layout
+#### PL-14 — Navegación y protección: agregar "Práctica" al layout
 ```
+ESTADO:
+  Guía generada; implementación pendiente.
+
 OBJETIVO:
-  Agregar el enlace de Practice Lab a la navegación principal.
+  Integrar el acceso visible al Practice Lab y migrar el guard global
+  a proxy.ts, protegiendo /plan y /practice sin perder cookies,
+  redirects ni la autorización JSON propia de las APIs.
 
 SKILL: istqb-fe-guide-generator
 OUTPUT: docs/guides/fe/PL-14.md
@@ -1472,16 +1477,21 @@ CUBRE:
   - Agregar ruta { href: '/practice', label: 'Práctica' } en:
       _components/main-nav.tsx (desktop)
       _components/mobile-nav.tsx (mobile, con emoji 🔬)
-  - Actualizar middleware.ts para proteger /practice
+  - Migrar frontend/middleware.ts a frontend/proxy.ts según Next.js 16,
+    preservando auth, redirects, matcher y actualización de sesión
+  - Agregar /practice y reconciliar /plan en las rutas protegidas del proxy
+  - Preservar cookies de refresh/limpieza también en respuestas redirect
   - Verificar que el link activo se resalta correctamente
   - Verificar responsive en mobile
 
-DEPENDENCIAS: PL-06, FE-04
+DEPENDENCIAS: PL-06, PL-13, FE-03, FE-04
 
 CHECKPOINT ✅:
   - "Práctica" aparece en la nav desktop y mobile
   - El link se resalta cuando estás en /practice/*
-  - El middleware protege /practice (redirect a /login sin sesión)
+  - proxy.ts protege /plan y /practice/* (redirect a /login sin sesión)
+  - Los redirects preservan cookies de refresh/limpieza de Supabase
+  - El build no muestra el warning de convención middleware deprecada
   - tsc limpio, build OK
 ```
 
@@ -2014,13 +2024,13 @@ SEMANA 4 (dashboard + practice lab setup)
   Día 16: DA-03, DA-04 (✅ completado), DA-05
   Día 17: PL-01, PL-02, PL-03
   Día 18: PL-04 (✅ completado), PL-05 (✅ completado)
-  Día 19: PL-06, PL-14
+  Día 19: PL-06
 
 SEMANA 5 (practice lab core)
   Día 20: PL-07, PL-08
   Día 21: PL-09 (✅ completado), PL-10 (✅ completado)
   Día 22: PL-11, PL-12
-  Día 23: PL-13
+  Día 23: PL-13, PL-14
 
 SEMANA 6 (AI settings + control de consumo)
   Día 24: AI-01, AI-02

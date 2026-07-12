@@ -17,6 +17,32 @@ import { createClient } from "@/lib/supabase/client";
 import type { BugReportData, BugReportExercise } from "@/types/practice";
 import type { LevelK } from "@/types/database";
 
+async function findUnsubmittedExercise(
+  supabase: ReturnType<typeof createClient>,
+  topic: TopicData,
+): Promise<BugReportExercise | null> {
+  const { data: exercises } = await supabase
+    .from("practice_exercises")
+    .select(
+      "id, user_id, document_id, study_plan_id, topic_code, level_k, exercise_type, attempt_number, scenario_json, solution_json, created_at",
+    )
+    .eq("exercise_type", "bug_report")
+    .eq("topic_code", topic.code)
+    .eq("document_id", topic.documentId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  const raw = exercises?.[0];
+  if (!raw || !isBugReportExercise(raw)) return null;
+
+  const { count } = await supabase
+    .from("practice_submissions")
+    .select("id", { count: "exact", head: true })
+    .eq("exercise_id", raw.id);
+
+  return count === 0 ? raw : null;
+}
+
 if (process.env.NODE_ENV === "development") assertBugReportContractFixtures();
 
 interface TopicEntry {
@@ -93,15 +119,23 @@ function BugLabContent() {
         }));
         return;
       }
+      const topicData: TopicData = {
+        documentId,
+        code: topicCode,
+        name: topic.name || topicCode,
+        levelK: topic.level_k as LevelK,
+      };
+
+      const existing = await findUnsubmittedExercise(
+        supabase,
+        topicData,
+      );
+
       setState((previous) => ({
         ...previous,
         loading: false,
-        topic: {
-          documentId,
-          code: topicCode,
-          name: topic.name || topicCode,
-          levelK: topic.level_k as LevelK,
-        },
+        topic: topicData,
+        exercise: existing,
       }));
     }
     void loadTopic();
