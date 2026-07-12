@@ -57,7 +57,7 @@
 | | **PL-10** | UI: Feedback de práctica + comparar con solución | ✅ **Completado** | [Guía PL-10](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-10.md) — *Flujo K1/K2/K3 validado: generación con fallback, evaluación con reintento JSON, feedback y solución modelo* |
 | | **PL-11** | UI: Bug Report Lab (escenario + formulario) | ✅ **Completado** | [Guía PL-11](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-11.md) — *Reconciliación de contrato completo: bug-report-contract.ts + 4 componentes + tsc limpio + build OK* |
 | | **PL-12** | UI: API Testing Checklist | ✅ **Completado** | [Guía PL-12](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-12.md) — *4 archivos, localStorage versionado, 5 fixtures, zero HTTP, tsc+build OK* |
-| | **PL-13** | Integración Dashboard (métricas de práctica) | ⏳ **Pendiente** | [Guía PL-13](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-13.md) — *Guía generada; implementación pendiente* |
+| | **PL-13** | Integración Dashboard (métricas de práctica) | ✅ **Completado** | [Guía PL-13](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-13.md) — *practice_stats en DA-01 + PracticeProgressCard + tsc+build OK* |
 | | **PL-14** | Navegación: agregar "Práctica" al layout | ⏳ **Pendiente** | *Por iniciar* |
 | **🤖 BLOQUE I: AI Settings & Usage Control** | **AI-01** | Schema: preferencias IA + tracking de uso/tokens | ⏳ **Pendiente** | *Por iniciar* |
 | | **AI-02** | Runtime server-side: resolver proveedor, modo y cuota | ⏳ **Pendiente** | *Por iniciar* |
@@ -147,7 +147,7 @@ ISTQB Study Agent
 │   ├── [x] PL-10  UI: Feedback de práctica + comparar con solución (Skill: fe-guide-generator) (Completado — generación/evaluación autenticadas con cascada LLM)
 │   ├── [x] PL-11  UI: Bug Report Lab — escenario + formulario (Skill: fe-guide-generator) (Completado — reconciliacion de contrato + 4 componentes + tsc+build OK)
 │   ├── [x] PL-12  UI: API Testing Checklist (Skill: fe-guide-generator) (Completado — localStorage versionado + 4 archivos + zero HTTP + tsc+build OK)
-│   ├── [ ] PL-13  Integración Dashboard — métricas de práctica (Skill: fe-guide-generator) (Guía generada; implementación pendiente)
+│   ├── [x] PL-13  Integración Dashboard — métricas de práctica (Skill: fe-guide-generator) (Completado — practice_stats en DA-01 + PracticeProgressCard + tsc+build OK)
 │   └── [ ] PL-14  Navegación: agregar "Práctica" al layout (Skill: fe-guide-generator)
 │
 ├── 🤖  BLOQUE I — AI SETTINGS & USAGE CONTROL
