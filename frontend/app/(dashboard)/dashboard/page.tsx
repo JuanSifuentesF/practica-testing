@@ -35,6 +35,7 @@ import { DashboardSummaryCards } from "@/components/dashboard/dashboard-summary-
 import { ScoreChart } from "@/components/dashboard/score-chart";
 import { TimeComparisonChart } from "@/components/dashboard/time-comparison-chart";
 import { TopicHeatmap } from "@/components/dashboard/topic-heatmap";
+import { PracticeProgressCard } from "@/components/dashboard/practice-progress-card";
 
 // ──────────────────────────────────────────────────────────────
 // Tipos internos para el estado del componente
@@ -255,6 +256,8 @@ export default function DashboardPage() {
 
       {/* ─── Resumen ejecutivo DA-05 ─── */}
       <DashboardSummaryCards metrics={metrics} />
+
+      <PracticeProgressCard stats={metrics.practice_stats} />
 
       {/* ─── Gráfica de scores (DA-02) ─── */}
       <ScoreChart data={metrics.scores_by_session} />
