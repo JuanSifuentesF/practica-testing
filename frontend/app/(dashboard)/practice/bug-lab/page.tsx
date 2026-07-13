@@ -21,26 +21,60 @@ async function findUnsubmittedExercise(
   supabase: ReturnType<typeof createClient>,
   topic: TopicData,
 ): Promise<BugReportExercise | null> {
-  const { data: exercises } = await supabase
+  const { data: raw, error: exerciseError } = await supabase
     .from("practice_exercises")
     .select(
-      "id, user_id, document_id, study_plan_id, topic_code, level_k, exercise_type, attempt_number, scenario_json, solution_json, created_at",
+      "id, user_id, document_id, study_plan_id, topic_code, level_k, exercise_type, attempt_number, scenario_json, created_at",
     )
     .eq("exercise_type", "bug_report")
     .eq("topic_code", topic.code)
     .eq("document_id", topic.documentId)
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(1)
+    .maybeSingle();
 
-  const raw = exercises?.[0];
-  if (!raw || !isBugReportExercise(raw)) return null;
+  if (exerciseError) {
+    throw new Error(
+      `No se pudo buscar el ejercicio pendiente: ${exerciseError.message}`,
+    );
+  }
 
-  const { count } = await supabase
+  if (!raw) return null;
+
+  // La fila de PostgreSQL usa nombres *_json. La UI consume el contrato
+  // público de PracticeExercise y nunca debe recibir solution_json.
+  const exercise: unknown = {
+    id: raw.id,
+    user_id: raw.user_id,
+    document_id: raw.document_id,
+    study_plan_id: raw.study_plan_id,
+    topic_code: raw.topic_code,
+    level_k: raw.level_k,
+    exercise_type: raw.exercise_type,
+    attempt_number: raw.attempt_number,
+    scenario: raw.scenario_json,
+    solution: null,
+    created_at: raw.created_at,
+  };
+
+  if (!isBugReportExercise(exercise)) {
+    throw new Error(
+      "El ejercicio pendiente no cumple el contrato de bug report.",
+    );
+  }
+
+  const { count, error: submissionError } = await supabase
     .from("practice_submissions")
     .select("id", { count: "exact", head: true })
-    .eq("exercise_id", raw.id);
+    .eq("exercise_id", exercise.id);
 
-  return count === 0 ? raw : null;
+  if (submissionError) {
+    throw new Error(
+      `No se pudo comprobar si el ejercicio fue enviado: ${submissionError.message}`,
+    );
+  }
+
+  return count === 0 ? exercise : null;
 }
 
 if (process.env.NODE_ENV === "development") assertBugReportContractFixtures();
@@ -126,10 +160,20 @@ function BugLabContent() {
         levelK: topic.level_k as LevelK,
       };
 
-      const existing = await findUnsubmittedExercise(
-        supabase,
-        topicData,
-      );
+      let existing: BugReportExercise | null;
+      try {
+        existing = await findUnsubmittedExercise(supabase, topicData);
+      } catch (lookupError) {
+        console.error("[bug-lab] Error rehidratando ejercicio:", lookupError);
+        setState((previous) => ({
+          ...previous,
+          loading: false,
+          topic: topicData,
+          error:
+            "No se pudo recuperar el escenario pendiente. Puedes intentarlo nuevamente.",
+        }));
+        return;
+      }
 
       setState((previous) => ({
         ...previous,
