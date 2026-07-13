@@ -53,6 +53,114 @@ export type PracticeExerciseTypeDB =
   | "api_testing"
   | "exploratory";
 
+// Tipos del schema. No expresan qué rol puede escribir cada campo;
+// esa autorización sigue viviendo en GRANT + RLS de PostgreSQL.
+export type AiUsageModeDB = "demo" | "managed" | "byok";
+export type AiProviderDB = "gemini" | "openai";
+export type AiFeatureDB =
+  | "plan"
+  | "theory"
+  | "quiz"
+  | "evaluate"
+  | "practice_generate"
+  | "practice_evaluate";
+export type AiUsageStatusDB = "success" | "blocked_quota" | "error";
+
+export interface UserAiSettingsRowDB {
+  user_id: string;
+  mode: AiUsageModeDB;
+  provider: AiProviderDB;
+  model_name: string | null;
+  daily_request_limit: number;
+  monthly_request_limit: number;
+  daily_token_limit: number;
+  monthly_token_limit: number;
+  updated_at: string;
+  [key: string]: unknown;
+}
+
+export interface UserAiSettingsInsertDB {
+  user_id: string;
+  mode?: AiUsageModeDB;
+  provider?: AiProviderDB;
+  model_name?: string | null;
+  daily_request_limit?: number;
+  monthly_request_limit?: number;
+  daily_token_limit?: number;
+  monthly_token_limit?: number;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
+export interface UserAiSettingsUpdateDB {
+  mode?: AiUsageModeDB;
+  provider?: AiProviderDB;
+  model_name?: string | null;
+  daily_request_limit?: number;
+  monthly_request_limit?: number;
+  daily_token_limit?: number;
+  monthly_token_limit?: number;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
+export interface AiUsageEventRowDB {
+  id: string;
+  user_id: string;
+  feature: AiFeatureDB;
+  mode: AiUsageModeDB;
+  provider: AiProviderDB | null;
+  model_name: string | null;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  request_units: number;
+  status: AiUsageStatusDB;
+  error_code: string | null;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+export interface AiUsageEventInsertDB {
+  id?: string;
+  user_id: string;
+  feature: AiFeatureDB;
+  mode: AiUsageModeDB;
+  provider?: AiProviderDB | null;
+  model_name?: string | null;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  request_units?: number;
+  status: AiUsageStatusDB;
+  error_code?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+export interface AiUsageEventUpdateDB {
+  // Solo service_role usa este shape para convertir QUOTA_RESERVED
+  // en el resultado final. Identidad y timestamps no se modifican.
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  request_units?: number;
+  status?: AiUsageStatusDB;
+  error_code?: string | null;
+  [key: string]: unknown;
+}
+
+export interface ReserveAiQuotaRowDB {
+  // Contrato exacto retornado por la RPC. Mantenerlo sincronizado
+  // evita casts en runtime.ts.
+  reservation_outcome: "reserved" | "blocked" | "duplicate";
+  block_reason: string | null;
+  daily_requests: number;
+  daily_tokens: number;
+  monthly_requests: number;
+  monthly_tokens: number;
+}
+
 // ──────────────────────────────────────────────────────────────
 // TABLA 1: user_profiles
 // Extiende auth.users con datos de perfil del negocio.
@@ -460,12 +568,35 @@ export interface Database {
         Update: PracticeSubmissionUpdate;
         Relationships: [];
       };
+      user_ai_settings: {
+        Row: UserAiSettingsRowDB;
+        Insert: UserAiSettingsInsertDB;
+        Update: UserAiSettingsUpdateDB;
+        Relationships: [];
+      };
+      ai_usage_events: {
+        Row: AiUsageEventRowDB;
+        Insert: AiUsageEventInsertDB;
+        Update: AiUsageEventUpdateDB;
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      reserve_ai_quota: {
+        Args: {
+          p_user_id: string;
+          p_event_id: string;
+          p_feature: AiFeatureDB;
+          p_provider: AiProviderDB;
+          p_model_name: string;
+          p_reserved_prompt_tokens: number;
+          p_reserved_completion_tokens: number;
+        };
+        Returns: ReserveAiQuotaRowDB[];
+      };
     };
     Enums: {
       [_ in never]: never;

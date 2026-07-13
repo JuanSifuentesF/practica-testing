@@ -1,3 +1,5 @@
+import "server-only";
+
 import OpenAI from "openai";
 
 export type LlmProvider = "gemini" | "openai";
@@ -20,15 +22,25 @@ interface CreateModelRuntimesOptions {
 const GEMINI_OPENAI_BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/openai";
 
-const DEFAULT_GEMINI_MODELS = [
-  "gemini-3.5-flash",
-  "gemini-3.1-flash-lite",
-  "gemini-3.1-pro-preview",
-  "gemini-2.5-flash",
-  "gemini-2.5-pro",
-] as const;
+// Allowlist canonica. Una preferencia guardada en DB no es una
+// autorizacion: solo estos identificadores pueden llegar al SDK.
+export const MODEL_ALLOWLIST = {
+  gemini: [
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-3.1-pro-preview",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+  ],
+  openai: ["gpt-4o-mini"],
+} as const satisfies Record<LlmProvider, readonly string[]>;
 
-const DEFAULT_OPENAI_MODELS = ["gpt-4o-mini"] as const;
+export function isAllowedModel(
+  provider: LlmProvider,
+  model: string,
+): boolean {
+  return MODEL_ALLOWLIST[provider].some((candidate) => candidate === model);
+}
 
 function uniqueModelNames(models: Array<string | undefined>): string[] {
   return [
@@ -61,7 +73,7 @@ export function createModelRuntimes({
 
       for (const model of uniqueModelNames([
         ...geminiModels,
-        ...DEFAULT_GEMINI_MODELS,
+        ...MODEL_ALLOWLIST.gemini,
       ])) {
         runtimes.push({ provider: "gemini", model, client, timeoutMs });
       }
@@ -79,7 +91,7 @@ export function createModelRuntimes({
 
       for (const model of uniqueModelNames([
         ...openaiModels,
-        ...DEFAULT_OPENAI_MODELS,
+        ...MODEL_ALLOWLIST.openai,
       ])) {
         runtimes.push({ provider: "openai", model, client, timeoutMs });
       }
@@ -87,6 +99,38 @@ export function createModelRuntimes({
   }
 
   return runtimes;
+}
+
+interface CreateProviderRuntimeOptions {
+  provider: LlmProvider;
+  model: string;
+  apiKey: string;
+  timeoutMs: number;
+  maxRetries?: number;
+}
+
+export function createProviderRuntime({
+  provider,
+  model,
+  apiKey,
+  timeoutMs,
+  maxRetries = 1,
+}: CreateProviderRuntimeOptions): ModelRuntime {
+  if (!isAllowedModel(provider, model)) {
+    throw new Error("AI_MODEL_NOT_ALLOWED");
+  }
+
+  const client = new OpenAI({
+    apiKey,
+    baseURL:
+      provider === "gemini"
+        ? process.env.GEMINI_OPENAI_BASE_URL || GEMINI_OPENAI_BASE_URL
+        : undefined,
+    timeout: timeoutMs + 15_000,
+    maxRetries,
+  });
+
+  return { provider, model, client, timeoutMs };
 }
 
 export function isModelTimeout(error: unknown): boolean {

@@ -60,7 +60,39 @@ export type {
   PracticeSubmissionRow,
   PracticeSubmissionInsert,
   PracticeSubmissionUpdate,
+
+  // AI-02: Tipos de DB de AI Settings
+  AiUsageModeDB,
+  AiProviderDB,
+  AiFeatureDB,
+  AiUsageStatusDB,
+  UserAiSettingsRowDB,
+  UserAiSettingsInsertDB,
+  UserAiSettingsUpdateDB,
+  AiUsageEventRowDB,
+  AiUsageEventInsertDB,
+  AiUsageEventUpdateDB,
+  ReserveAiQuotaRowDB,
 } from "./database";
+
+export type {
+  AiUsageMode,
+  AiProvider,
+  AiFeature,
+  AiUsageStatus,
+  AiQuotaBlockReason,
+  AiUsageSummary,
+  AiRuntimeRequest,
+  AiRuntimeResult,
+  AiRuntimeDemo,
+  AiRuntimeBlocked,
+  AiRuntimeDuplicate,
+  AiRuntimeUnavailable,
+  AiRuntimeReady,
+  ProviderUsage,
+  UserAiSettingsRow,
+  AiUsageEventRow,
+} from "./ai";
 
 // 🆕 SE-01: Re-exportar tipos de sesión enriquecidos
 export type {

@@ -1,5 +1,5 @@
 # ISTQB Study Agent — Árbol de Guías de Implementación
-**Versión:** 2.4
+**Versión:** 2.5
 **Fecha:** Julio 2026  
 **Principio:** Cada guía depende de las anteriores. Nunca saltar una.
 
@@ -8,6 +8,8 @@
 **Nota de reconciliación v2.3:** La rehidratación de Bug Lab pertenece a PL-11, no a PL-14. En esa versión, PL-02/05/09/11 mantenían gates correctivos abiertos hasta verificación runtime/remota. AI-01 incorporó separación entre RLS y privilegios, cuotas administradas, eventos inmutables para cliente y el requisito de reserva atómica antes de habilitar modo managed.
 
 **Nota de cierre v2.4:** Los gates PL-02/05/09/11 quedaron verificados en runtime y remoto el 12/07/2026. Tambien se endurecio `handle_new_user()` en DB-05. AI-01 implementada y validada (12/07/2026): migracion desplegada, 13 CHECK constraints probados con valores validos e invalidos, RLS + privilegios verificados.
+
+**Nota de auditoría v2.5:** AI-02 fue corregida antes de implementación. AI-01 permanece cerrada; AI-02 agrega una migración complementaria con reserva atómica/idempotente, runtime fail-closed, BYOK en memoria, allowlist única y fixture de concurrencia. `managed` continúa deshabilitado hasta aprobar esos gates.
 
 ---
 
@@ -64,7 +66,7 @@
 | | **PL-13** | Integración Dashboard (métricas de práctica) | ✅ **Completado** | [Guía PL-13](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-13.md) — *practice_stats en DA-01 + PracticeProgressCard + tsc+build OK* |
 | | **PL-14** | Navegación + protección: agregar "Práctica" y migrar a `proxy.ts` | ✅ **Implementado y verificado** | [Guía PL-14](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-14.md) — *proxy.ts + MainNav/MobileNav con Práctica + tsc/build OK; la rehidratación pertenece a PL-11* |
 | **🤖 BLOQUE I: AI Settings & Usage Control** | **AI-01** | Schema: preferencias IA + tracking de uso/tokens | ✅ **Implementado y verificado** | [Guía AI-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/AI-01.md) — *Migracion desplegada, 20/20 checkpoints, 13 CHECK constraints, 3 indices, RLS + privilegios* |
-| | **AI-02** | Runtime server-side: resolver proveedor, modo y cuota | ⏳ **Pendiente** | *Por iniciar* |
+| | **AI-02** | Runtime server-side: resolver proveedor, modo y cuota | ✅ **Implementado y verificado** | [Guía AI-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/AI-02.md) — *RPC reserve_ai_quota + runtime.ts + allowlist + tsc+build OK* |
 | | **AI-03** | UI Settings: Demo / Managed / BYOK session-only | ⏳ **Pendiente** | *Por iniciar* |
 | | **AI-04** | UI/API: consumo de tokens, llamadas y límites | ⏳ **Pendiente** | *Por iniciar* |
 | | **AI-05** | Integración del runtime IA con sesiones y Practice Lab | ⏳ **Pendiente** | *Por iniciar* |
@@ -156,7 +158,7 @@ ISTQB Study Agent
 │
 ├── 🤖  BLOQUE I — AI SETTINGS & USAGE CONTROL
 │   ├── [x] AI-01  Schema: preferencias IA + tracking de uso/tokens (Skill: db-guide-generator) (Implementado y verificado — 20/20 checkpoints, 13 CHECK constraints, RLS + privilegios)
-│   ├── [ ] AI-02  Runtime server-side: resolver proveedor, modo y cuota (Skill: fe-guide-generator)
+│   ├── [x] AI-02  Runtime server-side: resolver proveedor, modo y cuota (Skill: fe-guide-generator) (Implementado y verificado — RPC + runtime.ts + allowlist + tsc+build OK)
 │   ├── [ ] AI-03  UI Settings: Demo / Managed / BYOK session-only (Skill: fe-guide-generator)
 │   ├── [ ] AI-04  UI/API: consumo de tokens, llamadas y límites (Skill: fe-guide-generator)
 │   └── [ ] AI-05  Integración del runtime IA con sesiones y Practice Lab (Skill: fe-guide-generator)
@@ -1550,9 +1552,8 @@ CHECKPOINT ✅:
 #### AI-01 — Schema: preferencias IA + tracking de uso/tokens
 ```
 ESTADO:
-  Guía generada; implementación pendiente.
-  Auditada el 12/07/2026 y lista para implementación manual;
-  los gates PL-02/05/09/11 están cerrados.
+  Implementada y validada el 12/07/2026.
+  Migración desplegada, 20/20 checkpoints y gates PL-02/05/09/11 cerrados.
 
 OBJETIVO:
   Crear la base de datos mínima para soportar configuración segura de IA,
@@ -1627,6 +1628,11 @@ CHECKPOINT ✅:
 
 #### AI-02 — Runtime server-side: resolver proveedor, modo y cuota
 ```
+ESTADO:
+  Guía generada; implementación pendiente.
+  Auditoría documental aprobada el 12/07/2026 tras corregir reserva atómica, idempotencia,
+  BYOK session-only, allowlist y contabilidad fail-closed.
+
 OBJETIVO:
   Centralizar en servidor la decisión de qué proveedor IA usar, con qué modo,
   qué límites aplicar y cómo registrar consumo.
@@ -1635,20 +1641,24 @@ SKILL: istqb-fe-guide-generator
 OUTPUT: docs/guides/fe/AI-02.md
 
 CUBRE:
+  - Migración complementaria de AI-02:
+      reserve_ai_quota(...) como RPC atómica con advisory_xact_lock
+      ai_usage_events.id funciona como event_id idempotente
+      EXECUTE revocado a PUBLIC/anon/authenticated y concedido a service_role
   - frontend/types/ai.ts con:
       AiUsageMode = 'demo' | 'managed' | 'byok'
       AiProvider = 'gemini' | 'openai'
       AiUsageEvent usa provider/model nullable cuando mode = 'demo'
       AiFeature, AiRuntimeRequest, AiRuntimeResult, AiUsageSummary
   - frontend/lib/ai/runtime.ts server-only:
-      resolveAiRuntime(user_id, feature, optionalByokKey)
-      reserveAiQuota(user_id, feature, event_id) de forma atómica
+      resolveAiRuntime(request: AiRuntimeRequest)
+      reserveAiQuota(user_id, feature, event_id) mediante RPC atómica
       recordAiUsage(event)
-      createProviderClient(runtime)
+      createProviderRuntime(...) reutilizando model-cascade.ts
       validar model_name contra allowlist server-side por proveedor
   - Modo demo:
       no llama a proveedor externo
-      retorna mock educativo o error controlado según feature
+      retorna una decisión demo tipada; AI-05 construirá el mock por feature
   - Modo managed:
       usa GEMINI_API_KEY / OPENAI_API_KEY solo desde servidor
       reserva cuota por usuario antes de llamar al LLM
@@ -2160,6 +2170,6 @@ REGLAS DE SEGURIDAD:
 
 ---
 
-*Árbol de guías v2.4 — Julio 2026*
+*Árbol de guías v2.5 — Julio 2026*
 *Usar junto con: ISTQB_StudyAgent_ProjectDoc.md*
-*Bloque H agregado en v2.0; gate PR-03A agregado en v2.1; Bloque I agregado en v2.2; reconciliación de contratos y seguridad IA en v2.3; gates runtime/remotos cerrados y AI-01 habilitada para implementación manual en v2.4*
+*Bloque H agregado en v2.0; gate PR-03A agregado en v2.1; Bloque I agregado en v2.2; reconciliación de contratos y seguridad IA en v2.3; gates runtime/remotos cerrados y AI-01 implementada en v2.4; AI-02 auditada con reserva atómica e idempotente en v2.5*
