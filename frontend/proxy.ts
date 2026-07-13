@@ -10,6 +10,7 @@ const PROTECTED_ROUTE_PREFIXES = [
   "/plan",
   "/practice",
   "/session",
+  "/settings",
   "/setup",
 ] as const;
 
@@ -47,30 +48,26 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const supabase = createServerClient<Database>(
-    supabaseUrl,
-    supabaseAnonKey,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          for (const { name, value } of cookiesToSet) {
-            request.cookies.set(name, value);
-          }
+  const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        for (const { name, value } of cookiesToSet) {
+          request.cookies.set(name, value);
+        }
 
-          supabaseResponse = NextResponse.next({
-            request,
-          });
+        supabaseResponse = NextResponse.next({
+          request,
+        });
 
-          for (const { name, value, options } of cookiesToSet) {
-            supabaseResponse.cookies.set(name, value, options);
-          }
-        },
+        for (const { name, value, options } of cookiesToSet) {
+          supabaseResponse.cookies.set(name, value, options);
+        }
       },
     },
-  );
+  });
 
   const {
     data: { user },

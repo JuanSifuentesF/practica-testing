@@ -61,6 +61,7 @@ const routes = [
   { href: "/plan", label: "Mi Plan", emoji: "📋" },
   { href: "/session", label: "Sesión Actual", emoji: "📖" },
   { href: "/practice", label: "Práctica", emoji: "🔬" },
+  { href: "/settings/ai", label: "IA", emoji: "🤖" },
 ] as const;
 
 // ─────────────────────────────────────────────────────────────

@@ -60,6 +60,7 @@ const routes = [
   { href: "/plan", label: "Mi Plan" },
   { href: "/session", label: "Sesión Actual" },
   { href: "/practice", label: "Práctica" },
+  { href: "/settings/ai", label: "IA" },
 ] as const;
 
 // ─────────────────────────────────────────────────────────────

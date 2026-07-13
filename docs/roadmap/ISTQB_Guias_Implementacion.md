@@ -11,9 +11,11 @@
 
 **Nota de auditoría v2.5:** AI-02 fue corregida antes de implementacion. AI-01 permanece cerrada; AI-02 agrega una migracion complementaria con reserva atomica/idempotente, runtime fail-closed, BYOK en memoria, allowlist unica y fixture de concurrencia. `managed` continua deshabilitado hasta aprobar esos gates.
 
+**Nota de cierre v2.7:** AI-03 implementada y validada (12/07/2026). Pantalla /settings/ai con tres modos (Demo/Managed/BYOK), 6 componentes, 2 Route Handlers autenticados, inspectAiRuntimeConfiguration server-only no facturable, fixtures PASS. RLS + GRANTs por columna respetados; PATCH no escribe cuotas; BYOK session-only. tsc + build + fixture OK. Bloque I: 3/5 completado.
+
 **Nota de cierre v2.6:** AI-02 implementada y validada (12/07/2026). 11 archivos creados/modificados: migracion reserve_ai_quota, database.ts extendido, ai.ts (dominio), index.ts (DB types re-exportados), model-cascade.ts (allowlist + createProviderRuntime), runtime.ts (resolveAiRuntime + recordAiUsage), verify-ai02-quota.mjs (fixture). RPC solo service_role. tsc + build OK. Bloque I: 2/5 completado.
 
-**Nota de auditoría v2.7:** AI-03 fue generada y auditada el 12/07/2026; su estado continúa **Guía generada; implementación pendiente**. La guía corrigió el PATCH para respetar GRANTs por columna y la carrera de primera escritura, y sustituyó el falso “test de conexión” por un inspector no facturable que no reserva cuota ni llama al proveedor. No se habilita una validación remota de keys hasta AI-05.
+**Nota de auditoría v2.7:** AI-03 fue generada y auditada el 12/07/2026; posteriormente implementada y validada con tsc + build + fixture PASS AI-03. La guía corrigió el PATCH para respetar GRANTs por columna y la carrera de primera escritura, y sustituyó el falso “test de conexión” por un inspector no facturable que no reserva cuota ni llama al proveedor. No se habilita una validación remota de keys hasta AI-05.
 
 ---
 
@@ -71,7 +73,7 @@
 | | **PL-14** | Navegación + protección: agregar "Práctica" y migrar a `proxy.ts` | ✅ **Implementado y verificado** | [Guía PL-14](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-14.md) — *proxy.ts + MainNav/MobileNav con Práctica + tsc/build OK; la rehidratación pertenece a PL-11* |
 | **🤖 BLOQUE I: AI Settings & Usage Control** | **AI-01** | Schema: preferencias IA + tracking de uso/tokens | ✅ **Implementado y verificado** | [Guía AI-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/AI-01.md) — *Migracion desplegada, 20/20 checkpoints, 13 CHECK constraints, 3 indices, RLS + privilegios* |
 | | **AI-02** | Runtime server-side: resolver proveedor, modo y cuota | ✅ **Implementado y verificado** | [Guía AI-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/AI-02.md) — *RPC reserve_ai_quota + runtime.ts + allowlist + tsc+build OK* |
-| | **AI-03** | UI Settings: Demo / Managed / BYOK session-only | ⏳ **Guía generada; implementación pendiente** | [Guía AI-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/AI-03.md) — *Generada y auditada el 12/07/2026; implementación pendiente, sin llamada LLM ni reserva de cuota en settings* |
+| | **AI-03** | UI Settings: Demo / Managed / BYOK session-only | ✅ **Implementado y verificado** | [Guía AI-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/AI-03.md) — *14/14 checkpoints, tsc+build+fixture OK, inspector no facturable, BYOK session-only* |
 | | **AI-04** | UI/API: consumo de tokens, llamadas y límites | ⏳ **Pendiente** | *Por iniciar* |
 | | **AI-05** | Integración del runtime IA con sesiones y Practice Lab | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
@@ -163,7 +165,7 @@ ISTQB Study Agent
 ├── 🤖  BLOQUE I — AI SETTINGS & USAGE CONTROL
 │   ├── [x] AI-01  Schema: preferencias IA + tracking de uso/tokens (Skill: db-guide-generator) (Implementado y verificado — 20/20 checkpoints, 13 CHECK constraints, RLS + privilegios)
 │   ├── [x] AI-02  Runtime server-side: resolver proveedor, modo y cuota (Skill: fe-guide-generator) (Implementado y verificado — RPC + runtime.ts + allowlist + tsc+build OK)
-│   ├── [ ] AI-03  UI Settings: Demo / Managed / BYOK session-only (Skill: fe-guide-generator) (Guía generada; implementación pendiente — auditada 12/07/2026)
+│   ├── [x] AI-03  UI Settings: Demo / Managed / BYOK session-only (Skill: fe-guide-generator) (Implementado y verificado — 14/14 checkpoints, tsc+build+fixture OK)
 │   ├── [ ] AI-04  UI/API: consumo de tokens, llamadas y límites (Skill: fe-guide-generator)
 │   └── [ ] AI-05  Integración del runtime IA con sesiones y Practice Lab (Skill: fe-guide-generator)
 │
@@ -2200,4 +2202,4 @@ REGLAS DE SEGURIDAD:
 
 *Árbol de guías v2.7 — Julio 2026*
 *Usar junto con: ISTQB_StudyAgent_ProjectDoc.md*
-*Bloque H agregado en v2.0; gate PR-03A agregado en v2.1; Bloque I agregado en v2.2; reconciliación de contratos y seguridad IA en v2.3; gates runtime/remotos cerrados y AI-01 implementada en v2.4; AI-02 auditada con reserva atómica e idempotente en v2.5; AI-02 implementada y verificada en v2.6; AI-03 generada y auditada, aún pendiente de implementación, en v2.7*
+*Bloque H agregado en v2.0; gate PR-03A agregado en v2.1; Bloque I agregado en v2.2; reconciliación de contratos y seguridad IA en v2.3; gates runtime/remotos cerrados y AI-01 implementada en v2.4; AI-02 auditada con reserva atómica e idempotente en v2.5; AI-02 implementada y verificada en v2.6; AI-03 implementada y verificada en v2.7*

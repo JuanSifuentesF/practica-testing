@@ -7,16 +7,20 @@ import {
   MODEL_ALLOWLIST,
   type ModelRuntime,
 } from "@/lib/ai/model-cascade";
+
 import type {
   AiProvider,
   AiQuotaBlockReason,
   AiRuntimeReady,
   AiRuntimeRequest,
   AiRuntimeResult,
+  AiUsageMode,
   AiUsageSummary,
   ProviderUsage,
   UserAiSettingsRow,
 } from "@/types/ai";
+
+import { createDefaultAiSettings } from "./settings-contract";
 
 type ReadyRuntime = AiRuntimeReady & { runtime: ModelRuntime };
 // El cliente OpenAI no forma parte del DTO serializable de types/ai.ts.
@@ -45,24 +49,6 @@ const EMPTY_USAGE: AiUsageSummary = {
   monthly_requests: 0,
   monthly_tokens: 0,
 };
-
-/**
- * Replica los DEFAULT de AI-01 únicamente en memoria.
- * No crea una fila por una lectura y no eleva al usuario a managed.
- */
-function defaultSettings(userId: string): UserAiSettingsRow {
-  return {
-    user_id: userId,
-    mode: "demo",
-    provider: "gemini",
-    model_name: null,
-    daily_request_limit: 20,
-    monthly_request_limit: 300,
-    daily_token_limit: 50_000,
-    monthly_token_limit: 500_000,
-    updated_at: new Date().toISOString(),
-  };
-}
 
 function estimatePromptTokens(text: string): number {
   // Estimación deliberadamente conservadora para reservar antes
@@ -113,6 +99,96 @@ function providerKey(provider: AiProvider): string | undefined {
     : process.env.OPENAI_API_KEY;
 }
 
+export type AiRuntimeInspectionReason =
+  | "BYOK_KEY_REQUIRED"
+  | "PROVIDER_CONFIGURATION_ERROR"
+  | "SETTINGS_READ_FAILED";
+
+export type AiRuntimeInspectionResult =
+  | { status: "demo"; mode: "demo" }
+  | {
+      status: "configured";
+      mode: "managed" | "byok";
+      provider: AiProvider;
+      model: string;
+      modelWasDefaulted: boolean;
+    }
+  | {
+      status: "unavailable";
+      mode: AiUsageMode;
+      reason: AiRuntimeInspectionReason;
+    };
+
+export interface AiRuntimeInspectionRequest {
+  userId: string;
+  byokApiKey?: string;
+}
+
+export async function inspectAiRuntimeConfiguration(
+  request: AiRuntimeInspectionRequest,
+): Promise<AiRuntimeInspectionResult> {
+  const fallbackSettings = createDefaultAiSettings(request.userId);
+
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("user_ai_settings")
+      .select("*")
+      .eq("user_id", request.userId)
+      .maybeSingle();
+
+    const settings = data ?? fallbackSettings;
+    if (error) {
+      return {
+        status: "unavailable",
+        mode: settings.mode,
+        reason: "SETTINGS_READ_FAILED",
+      };
+    }
+
+    if (settings.mode === "demo") {
+      return { status: "demo", mode: "demo" };
+    }
+
+    const provider = settings.provider;
+    const requestedModel = settings.model_name?.trim();
+    const model =
+      requestedModel && isAllowedModel(provider, requestedModel)
+        ? requestedModel
+        : MODEL_ALLOWLIST[provider][0];
+    const modelWasDefaulted = model !== requestedModel;
+    const key =
+      settings.mode === "byok"
+        ? request.byokApiKey?.trim()
+        : providerKey(provider);
+
+    if (!key) {
+      return {
+        status: "unavailable",
+        mode: settings.mode,
+        reason:
+          settings.mode === "byok"
+            ? "BYOK_KEY_REQUIRED"
+            : "PROVIDER_CONFIGURATION_ERROR",
+      };
+    }
+
+    return {
+      status: "configured",
+      mode: settings.mode,
+      provider,
+      model,
+      modelWasDefaulted,
+    };
+  } catch {
+    return {
+      status: "unavailable",
+      mode: fallbackSettings.mode,
+      reason: "SETTINGS_READ_FAILED",
+    };
+  }
+}
+
 /**
  * Adaptador tipado de la RPC. Mantenerlo separado permite probar la
  * reserva sin construir un cliente ni llamar a un proveedor externo.
@@ -147,7 +223,7 @@ export async function resolveAiRuntime(
     .eq("user_id", request.userId)
     .maybeSingle();
 
-  const settings = data ?? defaultSettings(request.userId);
+  const settings = data ?? createDefaultAiSettings(request.userId);
 
   // Fail-closed: una caída de settings/cuota nunca se interpreta como
   // "usuario sin consumo" ni autoriza una llamada managed.
