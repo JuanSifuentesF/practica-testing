@@ -1,0 +1,4 @@
+interface:
+  display_name: "ISTQB FE Guide Generator"
+  short_description: "Genera y audita guías frontend ISTQB"
+  default_prompt: "Usa $istqb-fe-guide-generator para detectar, generar y auditar la siguiente guía frontend válida del proyecto."
