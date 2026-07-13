@@ -9,7 +9,9 @@
 
 **Nota de cierre v2.4:** Los gates PL-02/05/09/11 quedaron verificados en runtime y remoto el 12/07/2026. Tambien se endurecio `handle_new_user()` en DB-05. AI-01 implementada y validada (12/07/2026): migracion desplegada, 13 CHECK constraints probados con valores validos e invalidos, RLS + privilegios verificados.
 
-**Nota de auditoría v2.5:** AI-02 fue corregida antes de implementación. AI-01 permanece cerrada; AI-02 agrega una migración complementaria con reserva atómica/idempotente, runtime fail-closed, BYOK en memoria, allowlist única y fixture de concurrencia. `managed` continúa deshabilitado hasta aprobar esos gates.
+**Nota de auditoría v2.5:** AI-02 fue corregida antes de implementacion. AI-01 permanece cerrada; AI-02 agrega una migracion complementaria con reserva atomica/idempotente, runtime fail-closed, BYOK en memoria, allowlist unica y fixture de concurrencia. `managed` continua deshabilitado hasta aprobar esos gates.
+
+**Nota de cierre v2.6:** AI-02 implementada y validada (12/07/2026). 11 archivos creados/modificados: migracion reserve_ai_quota, database.ts extendido, ai.ts (dominio), index.ts (DB types re-exportados), model-cascade.ts (allowlist + createProviderRuntime), runtime.ts (resolveAiRuntime + recordAiUsage), verify-ai02-quota.mjs (fixture). RPC solo service_role. tsc + build OK. Bloque I: 2/5 completado.
 
 ---
 
