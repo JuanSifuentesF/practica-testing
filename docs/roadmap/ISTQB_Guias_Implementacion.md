@@ -13,6 +13,8 @@
 
 **Nota de cierre v2.6:** AI-02 implementada y validada (12/07/2026). 11 archivos creados/modificados: migracion reserve_ai_quota, database.ts extendido, ai.ts (dominio), index.ts (DB types re-exportados), model-cascade.ts (allowlist + createProviderRuntime), runtime.ts (resolveAiRuntime + recordAiUsage), verify-ai02-quota.mjs (fixture). RPC solo service_role. tsc + build OK. Bloque I: 2/5 completado.
 
+**Nota de auditoría v2.7:** AI-03 fue generada y auditada el 12/07/2026; su estado continúa **Guía generada; implementación pendiente**. La guía corrigió el PATCH para respetar GRANTs por columna y la carrera de primera escritura, y sustituyó el falso “test de conexión” por un inspector no facturable que no reserva cuota ni llama al proveedor. No se habilita una validación remota de keys hasta AI-05.
+
 ---
 
 ## 📊 Estado de Progreso de la Implementación
@@ -69,7 +71,7 @@
 | | **PL-14** | Navegación + protección: agregar "Práctica" y migrar a `proxy.ts` | ✅ **Implementado y verificado** | [Guía PL-14](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-14.md) — *proxy.ts + MainNav/MobileNav con Práctica + tsc/build OK; la rehidratación pertenece a PL-11* |
 | **🤖 BLOQUE I: AI Settings & Usage Control** | **AI-01** | Schema: preferencias IA + tracking de uso/tokens | ✅ **Implementado y verificado** | [Guía AI-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/AI-01.md) — *Migracion desplegada, 20/20 checkpoints, 13 CHECK constraints, 3 indices, RLS + privilegios* |
 | | **AI-02** | Runtime server-side: resolver proveedor, modo y cuota | ✅ **Implementado y verificado** | [Guía AI-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/AI-02.md) — *RPC reserve_ai_quota + runtime.ts + allowlist + tsc+build OK* |
-| | **AI-03** | UI Settings: Demo / Managed / BYOK session-only | ⏳ **Pendiente** | *Por iniciar* |
+| | **AI-03** | UI Settings: Demo / Managed / BYOK session-only | ⏳ **Guía generada; implementación pendiente** | [Guía AI-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/AI-03.md) — *Generada y auditada el 12/07/2026; implementación pendiente, sin llamada LLM ni reserva de cuota en settings* |
 | | **AI-04** | UI/API: consumo de tokens, llamadas y límites | ⏳ **Pendiente** | *Por iniciar* |
 | | **AI-05** | Integración del runtime IA con sesiones y Practice Lab | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
@@ -161,7 +163,7 @@ ISTQB Study Agent
 ├── 🤖  BLOQUE I — AI SETTINGS & USAGE CONTROL
 │   ├── [x] AI-01  Schema: preferencias IA + tracking de uso/tokens (Skill: db-guide-generator) (Implementado y verificado — 20/20 checkpoints, 13 CHECK constraints, RLS + privilegios)
 │   ├── [x] AI-02  Runtime server-side: resolver proveedor, modo y cuota (Skill: fe-guide-generator) (Implementado y verificado — RPC + runtime.ts + allowlist + tsc+build OK)
-│   ├── [ ] AI-03  UI Settings: Demo / Managed / BYOK session-only (Skill: fe-guide-generator)
+│   ├── [ ] AI-03  UI Settings: Demo / Managed / BYOK session-only (Skill: fe-guide-generator) (Guía generada; implementación pendiente — auditada 12/07/2026)
 │   ├── [ ] AI-04  UI/API: consumo de tokens, llamadas y límites (Skill: fe-guide-generator)
 │   └── [ ] AI-05  Integración del runtime IA con sesiones y Practice Lab (Skill: fe-guide-generator)
 │
@@ -1631,9 +1633,9 @@ CHECKPOINT ✅:
 #### AI-02 — Runtime server-side: resolver proveedor, modo y cuota
 ```
 ESTADO:
-  Guía generada; implementación pendiente.
-  Auditoría documental aprobada el 12/07/2026 tras corregir reserva atómica, idempotencia,
-  BYOK session-only, allowlist y contabilidad fail-closed.
+  Implementado y verificado el 12/07/2026.
+  Auditoría documental aprobada y gates runtime/remotos cerrados: reserva atómica,
+  idempotencia, BYOK session-only, allowlist y contabilidad fail-closed.
 
 OBJETIVO:
   Centralizar en servidor la decisión de qué proveedor IA usar, con qué modo,
@@ -1689,6 +1691,12 @@ CHECKPOINT ✅:
 
 #### AI-03 — UI Settings: Demo / Managed / BYOK session-only
 ```
+ESTADO:
+  Guía generada; implementación pendiente.
+  Auditoría independiente del 12/07/2026: el PATCH escribe solo preferencias
+  permitidas por GRANT; el inspector de settings no reserva cuota, no crea SDK
+  ni ejecuta una llamada LLM. El provider real y la contabilidad pertenecen a AI-05.
+
 OBJETIVO:
   Agregar una pantalla de configuración donde el usuario elija cómo quiere
   usar IA sin exponer ni persistir API keys personales.
@@ -1699,23 +1707,37 @@ OUTPUT: docs/guides/fe/AI-03.md
 CUBRE:
   - Ruta protegida frontend/app/(dashboard)/settings/ai/page.tsx
   - Componentes:
+      settings/ai/_components/ai-settings-client.tsx (única fuente de estado)
       settings/ai/_components/ai-mode-selector.tsx
       settings/ai/_components/provider-selector.tsx
       settings/ai/_components/byok-session-key-form.tsx
       settings/ai/_components/test-connection-card.tsx
       settings/ai/_components/security-notice.tsx
+  - Contrato puro frontend/lib/ai/settings-contract.ts:
+      defaults, unions y validación runtime compartidos por server/client
+  - Extensión server-only de frontend/lib/ai/runtime.ts:
+      inspectAiRuntimeConfiguration(...), sin SDK, reserva ni ai_usage_events
   - API Routes:
       GET /api/settings/ai
       PATCH /api/settings/ai
       POST /api/settings/ai/test-connection
+      la última ruta conserva su nombre, pero verifica configuración; no prueba
+      una credencial contra el proveedor ni se etiqueta como conexión exitosa
+  - Persistencia de preferencias:
+      PATCH acepta solo mode/provider y rechaza campos desconocidos
+      UPDATE → INSERT → retry UPDATE absorbe la carrera inicial sin escribir cuotas
+      el cambio de provider limpia model_name legacy; AI-03 no ofrece modelo libre
   - UX de modos:
       Demo: seguro, sin costo, funcionalidad limitada/mock
-      Managed: usa la key del servidor con cuotas
+      Managed: usa la key del servidor y cuotas solo en llamadas reales de AI-05
       BYOK: usuario pega API key temporal para esa sesión/request
   - BYOK session-only:
       la key se mantiene en estado React solo mientras la pantalla/request vive
       no se guarda en Supabase, localStorage, sessionStorage ni cookies
-      el input permite limpiar la key y mostrar/ocultar valor
+      el input permite limpiar y mostrar/ocultar el valor, sin mostrar fragmentos
+      de key fuera del input; cambiar de modo la elimina de la memoria del wrapper
+  - Fixture frontend/scripts/verify-ai03-settings.mjs:
+      comprueba 42501 de payload con cuotas, defaults de DB y carrera de inserción
   - Navegación:
       agregar "Settings" o "IA" al menú si aún no existe, sin romper mobile
 
@@ -1723,10 +1745,14 @@ DEPENDENCIAS: AI-02, FE-04
 
 CHECKPOINT ✅:
   - /settings/ai está protegido por auth
-  - El usuario puede cambiar demo/managed/byok y provider sin guardar keys
-  - Probar conexión funciona en demo y managed
+  - El usuario puede cambiar demo/managed/byok y provider sin guardar keys ni cuotas
+  - PATCH no intenta escribir límites; el fixture verifica GRANTs y la carrera inicial
+  - Verificar configuración funciona en demo y managed sin crear ai_usage_events
+    ni una reserva QUOTA_RESERVED
+  - Una key BYOK no vacía queda preparada, no validada remotamente; AI-05 hará la
+    primera llamada trazable con su feature y contabilidad correctas
   - BYOK muestra aviso claro de no almacenamiento
-  - Recargar la página borra la key BYOK temporal
+  - Recargar, navegar o cambiar de modo borra la key BYOK temporal
 ```
 
 #### AI-04 — UI/API: consumo de tokens, llamadas y límites
@@ -2172,6 +2198,6 @@ REGLAS DE SEGURIDAD:
 
 ---
 
-*Árbol de guías v2.5 — Julio 2026*
+*Árbol de guías v2.7 — Julio 2026*
 *Usar junto con: ISTQB_StudyAgent_ProjectDoc.md*
-*Bloque H agregado en v2.0; gate PR-03A agregado en v2.1; Bloque I agregado en v2.2; reconciliación de contratos y seguridad IA en v2.3; gates runtime/remotos cerrados y AI-01 implementada en v2.4; AI-02 auditada con reserva atómica e idempotente en v2.5*
+*Bloque H agregado en v2.0; gate PR-03A agregado en v2.1; Bloque I agregado en v2.2; reconciliación de contratos y seguridad IA en v2.3; gates runtime/remotos cerrados y AI-01 implementada en v2.4; AI-02 auditada con reserva atómica e idempotente en v2.5; AI-02 implementada y verificada en v2.6; AI-03 generada y auditada, aún pendiente de implementación, en v2.7*
