@@ -54,6 +54,8 @@ import {
   isBugReportReferenceAnswer,
   isBugReportScenario,
 } from "@/lib/practice/bug-report-contract";
+import { parseFirstJsonObject } from "@/lib/ai/json-object";
+import { buildPracticeResponseFormat } from "@/lib/ai/practice-response-format";
 import type {
   LevelK,
   TopicsJson,
@@ -148,49 +150,35 @@ interface LlmPracticeResponse {
  * @returns Objeto parseado o null si el JSON es inválido
  */
 function parsePracticeResponse(rawText: string): LlmPracticeResponse | null {
-  let text = rawText.trim();
-
-  // ─── Intentar extraer de bloque markdown ────────────────
-  const markdownMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-  if (markdownMatch) {
-    text = markdownMatch[1].trim();
-  }
-
-  // ─── Intentar encontrar el JSON delimitado por {} ───────
-  const firstBrace = text.indexOf("{");
-  const lastBrace = text.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    text = text.slice(firstBrace, lastBrace + 1);
-  }
-
-  try {
-    const parsed = JSON.parse(text) as Record<string, unknown>;
-
-    // Verificar que tiene la estructura esperada
-    if (!parsed.scenario || typeof parsed.scenario !== "object") {
-      console.error(
-        "[practice/generate] JSON parseado pero sin campo 'scenario':",
-        Object.keys(parsed),
-      );
-      return null;
-    }
-
-    if (
-      !parsed.reference_solution ||
-      typeof parsed.reference_solution !== "object"
-    ) {
-      console.error(
-        "[practice/generate] JSON parseado pero sin campo 'reference_solution':",
-        Object.keys(parsed),
-      );
-      return null;
-    }
-
-    return parsed as unknown as LlmPracticeResponse;
-  } catch (error) {
-    console.error("[practice/generate] Error al parsear JSON:", error);
+  const parsed = parseFirstJsonObject(rawText);
+  if (!parsed) {
+    console.error(
+      `[practice/generate] No se encontró un objeto JSON válido (${rawText.length} chars).`,
+    );
     return null;
   }
+
+  // Verificar que tiene la estructura esperada
+  if (!parsed.scenario || typeof parsed.scenario !== "object") {
+    console.error(
+      "[practice/generate] JSON parseado pero sin campo 'scenario':",
+      Object.keys(parsed),
+    );
+    return null;
+  }
+
+  if (
+    !parsed.reference_solution ||
+    typeof parsed.reference_solution !== "object"
+  ) {
+    console.error(
+      "[practice/generate] JSON parseado pero sin campo 'reference_solution':",
+      Object.keys(parsed),
+    );
+    return null;
+  }
+
+  return parsed as unknown as LlmPracticeResponse;
 }
 
 /**
@@ -571,11 +559,15 @@ export async function POST(request: Request) {
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt },
             ],
-            // JSON mode es compatible con los proveedores de la cascada.
-            response_format: { type: "json_object" },
-            // La variedad viene de attempt_number; el contrato requiere baja
-            // aleatoriedad para todos los tipos de ejercicio.
-            temperature: 0.3,
+            // Structured Outputs exige el contrato completo del ejercicio.
+            response_format: buildPracticeResponseFormat(
+              validatedExerciseType,
+            ),
+            // Gemini 3.x conserva su temperatura predeterminada y usa un
+            // esfuerzo bajo porque esta generación prioriza latencia.
+            ...(modelRuntime.provider === "gemini"
+              ? { reasoning_effort: "low" as const }
+              : { temperature: 0.3 }),
           },
           { signal: controller.signal },
         );
@@ -688,7 +680,9 @@ export async function POST(request: Request) {
     const { data: insertedExercise, error: insertError } = await supabase
       .from("practice_exercises")
       .insert(insertData)
-      .select("*")
+      .select(
+        "id, user_id, document_id, study_plan_id, topic_code, level_k, exercise_type, attempt_number, scenario_json, created_at",
+      )
       .single();
 
     if (insertError) {

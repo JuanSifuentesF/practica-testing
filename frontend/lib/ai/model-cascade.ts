@@ -21,13 +21,11 @@ const GEMINI_OPENAI_BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/openai";
 
 const DEFAULT_GEMINI_MODELS = [
-  "gemini-3.1-pro-preview",
-  "gemini-3-pro-preview",
   "gemini-3.5-flash",
-  "gemini-3.1-flash-lite-preview",
-  "gemini-flash-latest",
-  "gemini-2.5-pro",
+  "gemini-3.1-flash-lite",
+  "gemini-3.1-pro-preview",
   "gemini-2.5-flash",
+  "gemini-2.5-pro",
 ] as const;
 
 const DEFAULT_OPENAI_MODELS = ["gpt-4o-mini"] as const;

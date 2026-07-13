@@ -34,6 +34,7 @@ import {
   type ModelRuntime,
 } from "@/lib/ai/model-cascade";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   buildPracticeEvaluateSystemPrompt,
   buildPracticeEvaluateUserPrompt,
@@ -450,7 +451,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: exercise, error: exerciseError } = await supabase
+    // solution_json no está disponible para el rol authenticated. Después de
+    // autenticar al usuario, el servidor la lee con service_role y conserva
+    // el filtro explícito de ownership porque el cliente admin omite RLS.
+    const admin = createAdminClient();
+    const { data: exercise, error: exerciseError } = await admin
       .from("practice_exercises")
       .select(
         "id, user_id, document_id, topic_code, level_k, exercise_type, scenario_json, solution_json, created_at",
