@@ -1,9 +1,13 @@
 # ISTQB Study Agent — Árbol de Guías de Implementación
-**Versión:** 2.2  
+**Versión:** 2.4
 **Fecha:** Julio 2026  
 **Principio:** Cada guía depende de las anteriores. Nunca saltar una.
 
 **Nota de alcance v2.2:** El Bloque H (QA Practice Lab) se implementa antes de producción por decisión consciente del proyecto. Antes de QA y producción se agrega el Bloque I (**AI Settings & Usage Control**) para configurar modos de IA, BYOK session-only, tracking de uso/tokens, cuotas y prevención de costos inesperados. La guía **PR-03A** queda como auditoría final de seguridad IA antes del go-live.
+
+**Nota de reconciliación v2.3:** La rehidratación de Bug Lab pertenece a PL-11, no a PL-14. En esa versión, PL-02/05/09/11 mantenían gates correctivos abiertos hasta verificación runtime/remota. AI-01 incorporó separación entre RLS y privilegios, cuotas administradas, eventos inmutables para cliente y el requisito de reserva atómica antes de habilitar modo managed.
+
+**Nota de cierre v2.4:** Los gates PL-02/05/09/11 quedaron verificados en runtime y remoto el 12/07/2026. Tambien se endurecio `handle_new_user()` en DB-05. AI-01 implementada y validada (12/07/2026): migracion desplegada, 13 CHECK constraints probados con valores validos e invalidos, RLS + privilegios verificados.
 
 ---
 
@@ -15,7 +19,7 @@
 | | **DB-02** | Schema: Tablas, Relaciones y CHECK constraints | ✅ **Completado** | [Guía DB-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-02.md) — *Migración aplicada* |
 | | **DB-03** | Storage Bucket Privado para PDFs | ✅ **Completado** | [Guía DB-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-03.md) — *Bucket y políticas creados* |
 | | **DB-04** | Row Level Security (RLS) Policies | ✅ **Completado** | [Guía DB-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-04.md) — *Migración aplicada* |
-| | **DB-05** | Supabase Auth Configuración | ✅ **Completado** | [Guía DB-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-05.md) — *Trigger + Auth configurados* |
+| | **DB-05** | Supabase Auth Configuración | ✅ **Implementado y verificado** | [Guía DB-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/DB-05.md) — *Trigger endurecido, migración remota y alta de perfil verificadas* |
 | **⚙️ BLOQUE B: Backend** | **BE-01** | Scaffold del proyecto FastAPI | ✅ **Completado** | [Guía BE-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-01.md) — *Scaffold funcional* |
 | | **BE-02** | Dockerfile + config DigitalOcean | ✅ **Completado** | [Guía BE-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-02.md) — *Dockerfile + app.yaml funcionales* |
 | | **BE-03** | Endpoint POST /extract-pdf | ✅ **Completado** | [Guía BE-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/be/BE-03.md) — *pdfplumber integrado* |
@@ -46,20 +50,20 @@
 | | **DA-04** | UI: tiempo real vs estimado (BarChart) | ✅ **Completado** | [Guía DA-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-04.md) — *TimeComparisonChart + tsc limpio + build OK* |
 | | **DA-05** | UI: fecha estimada de examen + contadores | ✅ **Completado** | [Guía DA-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-05.md) — *DashboardSummaryCards + tsc limpio + build OK* |
 | **🔬 BLOQUE H: Practice Lab** | **PL-01** | Schema: tablas practice_exercises + practice_submissions | ✅ **Completado** | [Guía PL-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/PL-01.md) — *Migración aplicada y constraints verificados* |
-| | **PL-02** | RLS policies para tablas de práctica | ✅ **Completado** | [Guía PL-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/PL-02.md) — *7 policies RLS, ownership cruzado, defensa en profundidad FK+RLS* |
+| | **PL-02** | RLS policies para tablas de práctica | ✅ **Implementado y verificado** | [Guía PL-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/PL-02.md) — *RLS y privilegio de columna de solution_json aplicados y verificados* |
 | | **PL-03** | Tipos TypeScript de práctica | ✅ **Completado** | [Guía PL-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-03.md) — *Tipos Practice Lab implementados, tsc limpio y build OK* |
-| | **PL-04** | Prompt: generar ejercicio por tópico + nivel K | ✅ **Completado** | [Guía PL-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-04.md) — *Prompt Builder implementado, tsc limpio y build OK* |
-| | **PL-05** | API Route `/api/practice/generate` | ✅ **Completado** | [Guía PL-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-05.md) — *API Route implementada, validada con POST autenticado 200 + persistencia en Supabase* |
+| | **PL-04** | Prompt: generar ejercicio por tópico + nivel K | ✅ **Implementado y verificado** | [Guía PL-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-04.md) — *Prompt semántico sincronizado; schema ejecutable delegado a PL-05* |
+| | **PL-05** | API Route `/api/practice/generate` | ✅ **Implementado y verificado** | [Guía PL-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-05.md) — *Structured Outputs, parser balanceado, cascada y POST autenticado verificados* |
 | | **PL-06** | UI: Hub de prácticas (`/practice`) | ✅ **Completado** | [Guía PL-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-06.md) — *4 componentes, tsc limpio, build OK, 8/8 checkpoints* |
 | | **PL-07** | UI: TestCaseEditor (tabla editable interactiva) | ✅ **Completado** | [Guía PL-07](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-07.md) — *Implementado manualmente: tabla 5 columnas, 8 casos de prueba funcionales* |
 | | **PL-08** | Prompt: evaluar respuesta del usuario | ✅ **Completado** | [Guía PL-08](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-08.md) — *Prompt Builder implementado, validado con 8/8 checkpoints* |
-| | **PL-09** | API Route `/api/practice/evaluate` | ✅ **Completado** | [Guía PL-09](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-09.md) — *API Route implementada, validada con POST autenticado 200 + persistencia en Supabase + reintento automático Gemini* |
+| | **PL-09** | API Route `/api/practice/evaluate` | ✅ **Implementado y verificado** | [Guía PL-09](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-09.md) — *Lectura server-only, ownership, idempotencia y persistencia verificadas* |
 | | **PL-10** | UI: Feedback de práctica + comparar con solución | ✅ **Completado** | [Guía PL-10](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-10.md) — *Flujo K1/K2/K3 validado: generación con fallback, evaluación con reintento JSON, feedback y solución modelo* |
-| | **PL-11** | UI: Bug Report Lab (escenario + formulario) | ✅ **Completado** | [Guía PL-11](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-11.md) — *Reconciliación de contrato completo: bug-report-contract.ts + 4 componentes + tsc limpio + build OK* |
+| | **PL-11** | UI: Bug Report Lab (escenario + formulario) | ✅ **Implementado y verificado** | [Guía PL-11](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-11.md) — *Rehidratación antes del envío y descarte posterior verificados* |
 | | **PL-12** | UI: API Testing Checklist | ✅ **Completado** | [Guía PL-12](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-12.md) — *4 archivos, localStorage versionado, 5 fixtures, zero HTTP, tsc+build OK* |
 | | **PL-13** | Integración Dashboard (métricas de práctica) | ✅ **Completado** | [Guía PL-13](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-13.md) — *practice_stats en DA-01 + PracticeProgressCard + tsc+build OK* |
-| | **PL-14** | Navegación + protección: agregar "Práctica" y migrar a `proxy.ts` | ✅ **Completado** | [Guía PL-14](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-14.md) — *proxy.ts + MainNav/MobileNav con Práctica + rehidratación UX en bug-lab + tsc+build OK* |
-| **🤖 BLOQUE I: AI Settings & Usage Control** | **AI-01** | Schema: preferencias IA + tracking de uso/tokens | ⏳ **Pendiente** | *Por iniciar* |
+| | **PL-14** | Navegación + protección: agregar "Práctica" y migrar a `proxy.ts` | ✅ **Implementado y verificado** | [Guía PL-14](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-14.md) — *proxy.ts + MainNav/MobileNav con Práctica + tsc/build OK; la rehidratación pertenece a PL-11* |
+| **🤖 BLOQUE I: AI Settings & Usage Control** | **AI-01** | Schema: preferencias IA + tracking de uso/tokens | ✅ **Implementado y verificado** | [Guía AI-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/AI-01.md) — *Migracion desplegada, 20/20 checkpoints, 13 CHECK constraints, 3 indices, RLS + privilegios* |
 | | **AI-02** | Runtime server-side: resolver proveedor, modo y cuota | ⏳ **Pendiente** | *Por iniciar* |
 | | **AI-03** | UI Settings: Demo / Managed / BYOK session-only | ⏳ **Pendiente** | *Por iniciar* |
 | | **AI-04** | UI/API: consumo de tokens, llamadas y límites | ⏳ **Pendiente** | *Por iniciar* |
@@ -93,7 +97,7 @@ ISTQB Study Agent
 │   ├── [x] DB-02  Schema: tablas y relaciones (Completado)
 │   ├── [x] DB-03  Storage bucket para PDFs (Completado)
 │   ├── [x] DB-04  Row Level Security (RLS) policies (Completado)
-│   └── [x] DB-05  Supabase Auth configuración (Completado)
+│   └── [x] DB-05  Supabase Auth configuración (Implementado y verificado — trigger endurecido)
 │
 ├── ⚙️  BLOQUE B — BACKEND (FastAPI)
 │   ├── [x] BE-01  Scaffold del proyecto FastAPI (Completado)
@@ -136,22 +140,22 @@ ISTQB Study Agent
 │
 ├── 🔬  BLOQUE H — QA PRACTICE LAB
 │   ├── [x] PL-01  Schema: tablas practice_exercises + practice_submissions (Skill: db-guide-generator) (Completado — constraints verificados)
-│   ├── [x] PL-02  RLS policies para tablas de práctica (Skill: db-guide-generator) (Completado — 7 policies, ownership cruzado)
+│   ├── [x] PL-02  RLS policies para tablas de práctica (Skill: db-guide-generator) (Implementado y verificado — solution_json protegida)
 │   ├── [x] PL-03  Tipos TypeScript de práctica (Skill: fe-guide-generator) (Completado — tipos Practice Lab + tsc limpio + build OK)
-│   ├── [x] PL-04  Prompt: generar ejercicio por tópico + nivel K (Skill: fe-guide-generator) (Completado — Prompt Builder + tsc limpio + build OK)
-│   ├── [x] PL-05  API Route /api/practice/generate (Skill: fe-guide-generator) (Completado — POST autenticado 200 + persistencia verificada)
+│   ├── [x] PL-04  Prompt: generar ejercicio por tópico + nivel K (Skill: fe-guide-generator) (Implementado y verificado — autoridad semántica sincronizada con PL-05)
+│   ├── [x] PL-05  API Route /api/practice/generate (Skill: fe-guide-generator) (Implementado y verificado — POST autenticado y persistencia segura)
 │   ├── [x] PL-06  UI: Hub de prácticas /practice (Skill: fe-guide-generator) (Completado — 8/8 checkpoints, tsc+build OK)
 │   ├── [x] PL-07  UI: TestCaseEditor — tabla editable interactiva (Completado — implementación manual del usuario, 8 casos de prueba)
 │   ├── [x] PL-08  Prompt: evaluar respuesta del usuario (Skill: fe-guide-generator) (Completado — Prompt Builder + validado con 8/8 checkpoints)
-│   ├── [x] PL-09  API Route /api/practice/evaluate (Skill: fe-guide-generator) (Completado — POST autenticado 200 + reintento Gemini + persistencia verificada)
+│   ├── [x] PL-09  API Route /api/practice/evaluate (Skill: fe-guide-generator) (Implementado y verificado — lectura admin y ownership)
 │   ├── [x] PL-10  UI: Feedback de práctica + comparar con solución (Skill: fe-guide-generator) (Completado — generación/evaluación autenticadas con cascada LLM)
-│   ├── [x] PL-11  UI: Bug Report Lab — escenario + formulario (Skill: fe-guide-generator) (Completado — reconciliacion de contrato + 4 componentes + tsc+build OK)
+│   ├── [x] PL-11  UI: Bug Report Lab — escenario + formulario (Skill: fe-guide-generator) (Implementado y verificado — rehidratación comprobada)
 │   ├── [x] PL-12  UI: API Testing Checklist (Skill: fe-guide-generator) (Completado — localStorage versionado + 4 archivos + zero HTTP + tsc+build OK)
 │   ├── [x] PL-13  Integración Dashboard — métricas de práctica (Skill: fe-guide-generator) (Completado — practice_stats en DA-01 + PracticeProgressCard + tsc+build OK)
-│   └── [x] PL-14  Navegación + protección con proxy.ts (Skill: fe-guide-generator) (Completado — proxy.ts + MainNav/MobileNav + rehidratacion UX + tsc+build OK)
+│   └── [x] PL-14  Navegación + protección con proxy.ts (Skill: fe-guide-generator) (Implementado y verificado — proxy.ts + MainNav/MobileNav + tsc/build OK)
 │
 ├── 🤖  BLOQUE I — AI SETTINGS & USAGE CONTROL
-│   ├── [ ] AI-01  Schema: preferencias IA + tracking de uso/tokens (Skill: db-guide-generator)
+│   ├── [x] AI-01  Schema: preferencias IA + tracking de uso/tokens (Skill: db-guide-generator) (Implementado y verificado — 20/20 checkpoints, 13 CHECK constraints, RLS + privilegios)
 │   ├── [ ] AI-02  Runtime server-side: resolver proveedor, modo y cuota (Skill: fe-guide-generator)
 │   ├── [ ] AI-03  UI Settings: Demo / Managed / BYOK session-only (Skill: fe-guide-generator)
 │   ├── [ ] AI-04  UI/API: consumo de tokens, llamadas y límites (Skill: fe-guide-generator)
@@ -1075,8 +1079,14 @@ CHECKPOINT ✅:
 
 #### PL-02 — RLS policies para tablas de práctica
 ```
+ESTADO:
+  Implementado y verificado (12/07/2026).
+  Las 7 policies originales y 20260712230548_protect_practice_solution_json.sql
+  están aplicadas; los privilegios de columna fueron comprobados en remoto.
+
 OBJETIVO:
-  Cada usuario solo puede ver y crear sus propios ejercicios y submissions.
+  Cada usuario solo puede ver y crear sus propios ejercicios y submissions,
+  sin poder leer solution_json antes de evaluar.
 
 SKILL: istqb-db-guide-generator
 OUTPUT: docs/guides/db/PL-02.md
@@ -1091,6 +1101,10 @@ CUBRE:
       practice_exercises.document_id debe pertenecer al mismo auth.uid()
   - Policy/validación de ownership cruzado:
       practice_submissions.exercise_id debe apuntar a un ejercicio del mismo usuario
+  - Privilegios por columna en practice_exercises:
+      authenticated puede leer scenario_json y metadatos públicos
+      authenticated no puede leer solution_json
+      /api/practice/evaluate la lee server-only después de autenticar y filtrar ownership
   - Verificar aislamiento entre usuarios
 
 DEPENDENCIAS: PL-01, DB-04
@@ -1101,6 +1115,7 @@ CHECKPOINT ✅:
   - Usuario A no puede crear submission contra exercise_id de usuario B
   - Sin sesión: no se puede leer ni escribir
   - Las policies son consistentes con el patrón de DB-04
+  - has_column_privilege confirma scenario_json=true y solution_json=false
 ```
 
 #### PL-03 — Tipos TypeScript de práctica
@@ -1132,6 +1147,9 @@ CHECKPOINT ✅:
 
 #### PL-04 — Prompt: generar ejercicio por tópico + nivel K
 ```
+ESTADO:
+  Implementado y verificado.
+
 OBJETIVO:
   Diseñar el prompt que genera ejercicios prácticos personalizados
   según el tópico ISTQB y su nivel K.
@@ -1156,6 +1174,7 @@ CUBRE:
   - Variedad: el prompt debe generar escenarios diferentes en cada
     invocación para el mismo tópico
   - Validación del JSON retornado por la IA
+  - El prompt define semántica; el JSON Schema ejecutable es autoridad de PL-05
 
 DEPENDENCIAS: PL-03, SE-02 (patrón de prompts ya establecido)
 
@@ -1168,6 +1187,11 @@ CHECKPOINT ✅:
 
 #### PL-05 — API Route /api/practice/generate
 ```
+ESTADO:
+  Implementado y verificado (12/07/2026).
+  Structured Outputs, parser balanceado, cascada y POST autenticado actual
+  fueron comprobados con persistencia segura.
+
 OBJETIVO:
   Endpoint que genera un ejercicio práctico para un tópico específico.
 
@@ -1183,9 +1207,11 @@ CUBRE:
   - Llamar a Gemini con el prompt de PL-04
   - Mantener llamadas LLM solo en servidor; nunca exponer GEMINI_API_KEY,
     OPENAI_API_KEY ni claves BYOK al navegador o a logs
-  - Parsear y validar el JSON de respuesta
+  - Exigir Structured Outputs con JSON Schema estricto por exercise_type
+  - Parsear con extractor del primer objeto JSON balanceado y luego validar dominio
+  - Usar la cascada compartida vigente de frontend/lib/ai/model-cascade.ts
   - Guardar en practice_exercises (Supabase)
-  - Retornar el ejercicio generado al frontend
+  - Retornar el ejercicio generado al frontend sin solution_json
   - Manejo de errores: IA no disponible, JSON inválido, tópico no encontrado
 
 DEPENDENCIAS: PL-04, PL-01, FE-02
@@ -1196,7 +1222,8 @@ CHECKPOINT ✅:
   - No permite generar ejercicios para documentos de otro usuario
   - Error claro si el topic_code no existe en el documento
   - Ninguna API key aparece en response, logs ni bundle frontend
-  - Funciona con Gemini (mismo patrón que SE-02)
+  - POST autenticado actual retorna 200 y persiste un bug_report válido
+  - Un objeto JSON válido con texto final se recupera sin persistir basura
 ```
 
 #### PL-06 — UI: Hub de prácticas (/practice) ✅ **Completado**
@@ -1306,7 +1333,10 @@ OBJETIVO:
 SKILL: istqb-fe-guide-generator
 OUTPUT: docs/guides/fe/PL-09.md
 
-ESTADO: ✅ Completado (7 julio 2026) — POST autenticado 200 + reintento Gemini + persistencia verificada
+ESTADO:
+  Implementado y verificado (12/07/2026).
+  solution_json permanece oculta al rol authenticated y la evaluación usa
+  lectura admin server-only después de comprobar ownership.
 
 CUBRE:
   - frontend/app/api/practice/evaluate/route.ts
@@ -1314,6 +1344,8 @@ CUBRE:
   - Recibir: { exercise_id, submission } (contrato PracticeEvaluateRequest)
   - Obtener el ejercicio original y solución de referencia verificando
     que exercise_id pertenece al usuario autenticado
+  - Leer solution_json con createAdminClient() solo después de autenticar
+  - Como service_role omite RLS, filtrar explícitamente por id + user_id
   - Llamar a Gemini con el prompt de PL-08 (temperatura 0.3)
   - Mantener llamadas LLM solo en servidor; nunca exponer GEMINI_API_KEY,
     OPENAI_API_KEY ni claves BYOK al navegador o a logs
@@ -1334,6 +1366,8 @@ CHECKPOINT ✅:
   - Funciona con Gemini (reintento automático si JSON truncado)
   - Doble envío retorna 409
   - Persistencia verificada via REST API con service role key
+  - authenticated no puede seleccionar solution_json directamente
+  - Ejercicio ajeno sigue respondiendo 404 aunque la lectura interna use service_role
 ```
 
 #### PL-10 — UI: Feedback de práctica + comparar con solución
@@ -1367,6 +1401,11 @@ CHECKPOINT ✅:
 
 #### PL-11 — UI: Bug Report Lab (escenario + formulario)
 ```
+ESTADO:
+  Implementado y verificado (12/07/2026).
+  La rehidratación del ejercicio pendiente y su descarte después del envío
+  fueron comprobados en la UI real.
+
 OBJETIVO:
   Sección donde el usuario practica redactar bug reports
   profesionales a partir de escenarios generados.
@@ -1388,6 +1427,10 @@ CUBRE:
   - Reutilizar /api/practice/generate con exercise_type='bug_report'
   - Reutilizar /api/practice/evaluate para evaluar el report
   - Feedback específico para bug reports (completitud, claridad, reproducibilidad)
+  - Al recargar, recuperar el bug_report más reciente del mismo documento/tópico
+    únicamente si todavía no tiene practice_submissions
+  - Mapear scenario_json al contrato público sin seleccionar solution_json
+  - Informar errores de rehidratación; no generar otro escenario silenciosamente
 
 DEPENDENCIAS: PL-06, PL-09
 
@@ -1396,6 +1439,8 @@ CHECKPOINT ✅:
   - El formulario captura todos los campos necesarios
   - La evaluación da feedback sobre calidad del report
   - Se puede intentar de nuevo con un escenario diferente
+  - Recargar conserva el mismo exercise.id sin un POST adicional a generate
+  - Un ejercicio ya enviado no se rehidrata como pendiente
 ```
 
 #### PL-12 — UI: API Testing Checklist
@@ -1463,7 +1508,7 @@ CHECKPOINT ✅:
 #### PL-14 — Navegación y protección: agregar "Práctica" al layout
 ```
 ESTADO:
-  Guía generada; implementación pendiente.
+  Implementado y verificado.
 
 OBJETIVO:
   Integrar el acceso visible al Practice Lab y migrar el guard global
@@ -1483,6 +1528,7 @@ CUBRE:
   - Preservar cookies de refresh/limpieza también en respuestas redirect
   - Verificar que el link activo se resalta correctamente
   - Verificar responsive en mobile
+  - La rehidratación de Bug Lab queda fuera de alcance y se documenta en PL-11
 
 DEPENDENCIAS: PL-06, PL-13, FE-03, FE-04
 
@@ -1503,6 +1549,11 @@ CHECKPOINT ✅:
 
 #### AI-01 — Schema: preferencias IA + tracking de uso/tokens
 ```
+ESTADO:
+  Guía generada; implementación pendiente.
+  Auditada el 12/07/2026 y lista para implementación manual;
+  los gates PL-02/05/09/11 están cerrados.
+
 OBJETIVO:
   Crear la base de datos mínima para soportar configuración segura de IA,
   límites de uso y auditoría de consumo sin almacenar API keys personales.
@@ -1520,38 +1571,57 @@ CUBRE:
       monthly_request_limit INTEGER NOT NULL DEFAULT 300
       daily_token_limit INTEGER NOT NULL DEFAULT 50000
       monthly_token_limit INTEGER NOT NULL DEFAULT 500000
-      updated_at TIMESTAMPTZ DEFAULT NOW()
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + trigger
+      mode/provider/model_name son preferencias editables
+      límites son columnas administradas: authenticated no puede modificarlos
   - Tabla ai_usage_events:
       id UUID PRIMARY KEY DEFAULT gen_random_uuid()
       user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
       feature TEXT NOT NULL
       mode TEXT NOT NULL
-      provider TEXT NOT NULL
-      model_name TEXT NOT NULL
+      provider TEXT NULL en demo; gemini/openai en managed/byok
+      model_name TEXT NULL en demo; modelo real en managed/byok
       prompt_tokens INTEGER DEFAULT 0
       completion_tokens INTEGER DEFAULT 0
       total_tokens INTEGER DEFAULT 0
       request_units INTEGER DEFAULT 1
       status TEXT NOT NULL
       error_code TEXT NULL
-      created_at TIMESTAMPTZ DEFAULT NOW()
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   - CHECK constraints:
       mode IN ('demo', 'managed', 'byok')
-      provider IN ('gemini', 'openai')
+      provider IS NULL en demo; IN ('gemini', 'openai') en managed/byok
       feature IN ('plan', 'theory', 'quiz', 'evaluate', 'practice_generate', 'practice_evaluate')
       status IN ('success', 'blocked_quota', 'error')
       tokens y límites >= 0
-  - Índices por user_id, created_at, feature, provider y status
-  - RLS: cada usuario solo puede ver sus settings y usage_events
+      total_tokens = prompt_tokens + completion_tokens
+      success no lleva error_code; blocked_quota/error sí
+      demo y blocked_quota usan request_units=0 y total_tokens=0;
+      success managed/byok consume >=1 unidad
+      model_name no vacío y longitud acotada
+  - Índices compuestos por (user_id, created_at),
+    (user_id, feature, created_at) y parcial para status no exitoso
+  - RLS optimizado con (select auth.uid()) para ownership de lectura/escritura
+  - Privilegios explícitos:
+      authenticated puede editar solo mode/provider/model_name
+      authenticated no puede elevar cuotas
+      authenticated solo puede leer sus usage_events
+      solo service_role server-only registra usage_events
   - Regla explícita: NO crear columnas para guardar API keys de usuario
+  - Límite explícito: AI-02 debe reservar cuota de forma atómica e idempotente;
+    SELECT + INSERT separados no habilitan modo managed
 
-DEPENDENCIAS: DB-04, PL-14
+DEPENDENCIAS: DB-04, DB-05 endurecido, PL-14 y gates cerrados de PL-02/05/09/11
 
 CHECKPOINT ✅:
-  - supabase db push sin errores
+  - supabase db push --linked --dry-run revisado antes del push
+  - supabase db push --linked sin errores
   - user_ai_settings y ai_usage_events visibles en Table Editor
-  - Insertar mode/provider/status inválido falla por CHECK constraint
+  - Valores inválidos, total inconsistente y error sin error_code fallan por CHECK
   - Usuario A no puede leer usage_events de usuario B
+  - authenticated no puede modificar cuotas ni insertar usage_events
+  - Advisors de security/performance no muestran errores nuevos
+  - Baseline previo no aumenta: 1 warning security y 28 warnings performance
   - No existe ninguna columna tipo api_key, encrypted_key, secret o token personal
 ```
 
@@ -1568,18 +1638,22 @@ CUBRE:
   - frontend/types/ai.ts con:
       AiUsageMode = 'demo' | 'managed' | 'byok'
       AiProvider = 'gemini' | 'openai'
+      AiUsageEvent usa provider/model nullable cuando mode = 'demo'
       AiFeature, AiRuntimeRequest, AiRuntimeResult, AiUsageSummary
   - frontend/lib/ai/runtime.ts server-only:
       resolveAiRuntime(user_id, feature, optionalByokKey)
-      enforceAiQuota(user_id, feature)
+      reserveAiQuota(user_id, feature, event_id) de forma atómica
       recordAiUsage(event)
       createProviderClient(runtime)
+      validar model_name contra allowlist server-side por proveedor
   - Modo demo:
       no llama a proveedor externo
       retorna mock educativo o error controlado según feature
   - Modo managed:
       usa GEMINI_API_KEY / OPENAI_API_KEY solo desde servidor
-      aplica límites por usuario antes de llamar al LLM
+      reserva cuota por usuario antes de llamar al LLM
+      no usa SELECT + INSERT separados: RPC/transacción con lock
+      reutiliza event_id en reintentos para idempotencia
   - Modo byok:
       recibe key temporal solo en la request
       no la persiste en Supabase, localStorage, sessionStorage ni cookies
@@ -1593,7 +1667,10 @@ DEPENDENCIAS: AI-01, SE-02, SE-04, PL-05, PL-09
 CHECKPOINT ✅:
   - El runtime compila con TypeScript strict
   - Modo demo funciona sin variables GEMINI_API_KEY ni OPENAI_API_KEY
-  - Modo managed bloquea al usuario si supera cuota diaria
+  - Dos requests concurrentes no pueden superar la cuota por una race condition
+  - Reintentar el mismo event_id no cobra ni registra dos veces
+  - Modo managed permanece deshabilitado hasta pasar esos dos tests
+  - Un model_name fuera de allowlist nunca llega al SDK del proveedor
   - Modo byok usa la key solo en memoria durante la request
   - Cada llamada exitosa o bloqueada crea ai_usage_events sin secrets
 ```
@@ -1897,6 +1974,9 @@ CUBRE:
       no existen variables NEXT_PUBLIC_*AI*
       no hay secrets en GitHub, Vercel bundle, logs ni documentación versionada
       alertas de gasto activadas en OpenAI/Gemini/DigitalOcean cuando aplique
+      habilitar protección de contraseñas filtradas en Supabase Auth
+      resolver los 28 warnings históricos auth_rls_initplan mediante una
+      migración dedicada que use (select auth.uid()), sin mezclarla con AI-01
 
 DEPENDENCIAS: PR-03, AI-05, PL-09
 
@@ -2080,6 +2160,6 @@ REGLAS DE SEGURIDAD:
 
 ---
 
-*Árbol de guías v2.2 — Julio 2026*
+*Árbol de guías v2.4 — Julio 2026*
 *Usar junto con: ISTQB_StudyAgent_ProjectDoc.md*
-*Bloque H (QA Practice Lab) agregado en v2.0; gate PR-03A de seguridad IA agregado en v2.1; Bloque I AI Settings & Usage Control agregado en v2.2*
+*Bloque H agregado en v2.0; gate PR-03A agregado en v2.1; Bloque I agregado en v2.2; reconciliación de contratos y seguridad IA en v2.3; gates runtime/remotos cerrados y AI-01 habilitada para implementación manual en v2.4*
