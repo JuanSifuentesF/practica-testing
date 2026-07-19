@@ -409,19 +409,25 @@ export async function recordAiUsage(input: RecordAiUsageInput): Promise<void> {
   } as const;
 
   if (input.mode === "managed") {
-    // Managed no inserta un segundo evento: finaliza exactamente la
-    // reserva creada antes de gastar. El filtro QUOTA_RESERVED impide
-    // finalizar dos veces el mismo eventId.
-    const finalized = await admin
-      .from("ai_usage_events")
-      .update(values)
-      .eq("id", input.eventId)
-      .eq("user_id", input.userId)
-      .eq("error_code", "QUOTA_RESERVED")
-      .select("id")
-      .maybeSingle();
+    // La RPC comparte el advisory lock con reserve_ai_quota. Acepta un reintento
+    // idéntico como duplicate, pero nunca deja que otro payload reescriba el log.
+    const finalized = await admin.rpc("finalize_managed_ai_usage", {
+      p_user_id: input.userId,
+      p_event_id: input.eventId,
+      p_prompt_tokens: tokens.prompt_tokens,
+      p_completion_tokens: tokens.completion_tokens,
+      p_status: input.status,
+      p_error_code:
+        input.status === "success" ? null : (normalizedErrorCode ?? null),
+    });
+    const row = finalized.data?.[0];
 
-    if (finalized.error || !finalized.data) {
+    if (
+      finalized.error ||
+      !row ||
+      (row.finalization_outcome !== "finalized" &&
+        row.finalization_outcome !== "duplicate")
+    ) {
       throw new Error("AI_USAGE_FINALIZATION_FAILED");
     }
     return;

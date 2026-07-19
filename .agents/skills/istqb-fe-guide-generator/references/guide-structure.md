@@ -85,6 +85,8 @@ Dividir en `Paso A`, `Paso B`, etc. Cada paso debe contener:
 - entregable explícito del paso;
 - estrategia Tailwind/tokens cuando haya UI.
 
+Separar la explicación pedagógica del código copiable: desarrollar conceptos, decisiones y contexto antes o después del bloque. Dentro del snippet, conservar únicamente comentarios que cumplan la política de higiene de `quality-gates.md`, de modo que copiar el bloque produzca código apto para producción.
+
 No comprimir componentes, ramas, objetos, `map` ni árboles JSX en una sola línea. Usar clases Tailwind completas y estáticas; para variantes, emplear mapas `Record<T, string>` o configurar safelist.
 
 Para navegación, enseñar matching por segmento —ruta exacta o hija real, no prefijo ambiguo— y exponer el estado activo con `aria-current="page"` además del estilo visual.

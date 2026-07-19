@@ -1,5 +1,5 @@
 # ISTQB Study Agent — Árbol de Guías de Implementación
-**Versión:** 2.5
+**Versión:** 2.9
 **Fecha:** Julio 2026  
 **Principio:** Cada guía depende de las anteriores. Nunca saltar una.
 
@@ -16,6 +16,10 @@
 **Nota de cierre v2.6:** AI-02 implementada y validada (12/07/2026). 11 archivos creados/modificados: migracion reserve_ai_quota, database.ts extendido, ai.ts (dominio), index.ts (DB types re-exportados), model-cascade.ts (allowlist + createProviderRuntime), runtime.ts (resolveAiRuntime + recordAiUsage), verify-ai02-quota.mjs (fixture). RPC solo service_role. tsc + build OK. Bloque I: 2/5 completado.
 
 **Nota de auditoría v2.7:** AI-03 fue generada y auditada el 12/07/2026; posteriormente implementada y validada con tsc + build + fixture PASS AI-03. La guía corrigió el PATCH para respetar GRANTs por columna y la carrera de primera escritura, y sustituyó el falso “test de conexión” por un inspector no facturable que no reserva cuota ni llama al proveedor. No se habilita una validación remota de keys hasta AI-05.
+
+**Nota de generación v2.8:** AI-04 fue generada el 13/07/2026 y su estado inicial fue **Guía generada; implementación pendiente**. Su Addendum Correctivo Obligatorio definió tres acciones: crear una migración nueva para que `reserve_ai_quota` cuente solo eventos `managed`, serializar la finalización Managed con el mismo lock e idempotencia, y agregar una RPC de resumen UTC de lectura bajo RLS. En v2.8 la guía no aplicaba aún esos cambios ni conectaba consumidores LLM; el cierre vigente está documentado en v2.9.
+
+**Nota de cierre v2.9:** AI-04 implementada y verificada (19/07/2026). La migración `20260719011944_scope_managed_ai_quota_and_add_usage_summary.sql` está alineada en Local/Remote; `reserve_ai_quota` cuenta solo eventos `managed`, `finalize_managed_ai_usage` serializa la finalización con el mismo lock y `get_ai_usage_summary()` expone lectura UTC bajo RLS. `GET /api/settings/ai/usage`, la UI de consumo en `/settings/ai` y el fixture remoto quedaron implementados. Verificación ejecutada: `tsc`, build Next.js sin warnings observados, `PASS AI-02` y `PASS AI-04`. Bloque I: 4/5 completado; AI-05 sigue en `Por iniciar`.
 
 ---
 
@@ -74,7 +78,7 @@
 | **🤖 BLOQUE I: AI Settings & Usage Control** | **AI-01** | Schema: preferencias IA + tracking de uso/tokens | ✅ **Implementado y verificado** | [Guía AI-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/AI-01.md) — *Migracion desplegada, 20/20 checkpoints, 13 CHECK constraints, 3 indices, RLS + privilegios* |
 | | **AI-02** | Runtime server-side: resolver proveedor, modo y cuota | ✅ **Implementado y verificado** | [Guía AI-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/AI-02.md) — *RPC reserve_ai_quota + runtime.ts + allowlist + tsc+build OK* |
 | | **AI-03** | UI Settings: Demo / Managed / BYOK session-only | ✅ **Implementado y verificado** | [Guía AI-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/AI-03.md) — *14/14 checkpoints, tsc+build+fixture OK, inspector no facturable, BYOK session-only* |
-| | **AI-04** | UI/API: consumo de tokens, llamadas y límites | ⏳ **Pendiente** | *Por iniciar* |
+| | **AI-04** | UI/API: consumo de tokens, llamadas y límites | ✅ **Implementado y verificado** | [Guía AI-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/AI-04.md) — *Migración Local/Remote, cuota Managed separada de BYOK, finalización serializada, RPC UTC, UI/API, tsc+build+fixtures OK* |
 | | **AI-05** | Integración del runtime IA con sesiones y Practice Lab | ⏳ **Pendiente** | *Por iniciar* |
 | **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
 | **🚀 BLOQUE G: Prod** | **PR-01** | GitHub Actions: CI/CD frontend → Vercel | ⏳ **Pendiente** | [Guía PR-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PR-01.md) — *Guía generada, por implementar* |
@@ -166,7 +170,7 @@ ISTQB Study Agent
 │   ├── [x] AI-01  Schema: preferencias IA + tracking de uso/tokens (Skill: db-guide-generator) (Implementado y verificado — 20/20 checkpoints, 13 CHECK constraints, RLS + privilegios)
 │   ├── [x] AI-02  Runtime server-side: resolver proveedor, modo y cuota (Skill: fe-guide-generator) (Implementado y verificado — RPC + runtime.ts + allowlist + tsc+build OK)
 │   ├── [x] AI-03  UI Settings: Demo / Managed / BYOK session-only (Skill: fe-guide-generator) (Implementado y verificado — 14/14 checkpoints, tsc+build+fixture OK)
-│   ├── [ ] AI-04  UI/API: consumo de tokens, llamadas y límites (Skill: fe-guide-generator)
+│   ├── [x] AI-04  UI/API: consumo de tokens, llamadas y límites (Skill: istqb-fe-guide-generator) (Implementado y verificado — BYOK separado de cuota Managed + finalización serializada + UI/API de consumo)
 │   └── [ ] AI-05  Integración del runtime IA con sesiones y Practice Lab (Skill: fe-guide-generator)
 │
 ├── 🧪  BLOQUE QA — TESTING E2E
@@ -1694,8 +1698,8 @@ CHECKPOINT ✅:
 #### AI-03 — UI Settings: Demo / Managed / BYOK session-only
 ```
 ESTADO:
-  Guía generada; implementación pendiente.
-  Auditoría independiente del 12/07/2026: el PATCH escribe solo preferencias
+  Implementado y verificado (12/07/2026).
+  Auditoría independiente: el PATCH escribe solo preferencias
   permitidas por GRANT; el inspector de settings no reserva cuota, no crea SDK
   ni ejecuta una llamada LLM. El provider real y la contabilidad pertenecen a AI-05.
 
@@ -1759,43 +1763,63 @@ CHECKPOINT ✅:
 
 #### AI-04 — UI/API: consumo de tokens, llamadas y límites
 ```
+ESTADO:
+  Implementado y verificado (19/07/2026).
+  AI-05 sigue en Por iniciar; no se generó ni se conectó durante AI-04.
+
 OBJETIVO:
-  Mostrar al usuario un informe claro de consumo de IA: llamadas realizadas,
-  tokens aproximados, límites diarios/mensuales y bloqueos por cuota.
+  Mostrar al usuario un informe claro de actividad de IA y, de forma separada,
+  la cuota de plataforma Managed: solicitudes/tokens diarios y mensuales,
+  bloqueos, reservas pendientes y últimos eventos propios.
 
 SKILL: istqb-fe-guide-generator
 OUTPUT: docs/guides/fe/AI-04.md
 
 CUBRE:
-  - API Route GET /api/settings/ai/usage
-  - Query segura sobre ai_usage_events filtrada por auth.uid()
-  - Resumen:
-      requests_today, requests_month
-      tokens_today, tokens_month
-      daily_request_limit, monthly_request_limit
-      daily_token_limit, monthly_token_limit
-      last_events[]
+  - Addendum Correctivo Obligatorio:
+      crear una migración nueva; no editar AI-01/AI-02 ya aplicadas
+      reserve_ai_quota agrega e.mode = 'managed' a la agregación de cuota
+      finalize_managed_ai_usage comparte advisory lock + FOR UPDATE,
+      finaliza idempotentemente por event_id y reemplaza UPDATE directo
+      get_ai_usage_summary() security invoker, auth.uid(), ventanas UTC,
+      GRANT EXECUTE a authenticated/service_role y revoke a public/anon
+  - Tipos DB para las RPC; runtime.ts finaliza Managed vía RPC;
+      contrato runtime validado y DTO sanitizado
+  - GET /api/settings/ai/usage autenticado, RLS, columnas explícitas,
+      máximo 20 eventos y Cache-Control private/no-store
   - Componentes:
+      settings/ai/_components/ai-usage-client.tsx
       settings/ai/_components/usage-summary-cards.tsx
-      settings/ai/_components/token-usage-meter.tsx
+      settings/ai/_components/usage-meter.tsx
       settings/ai/_components/usage-events-table.tsx
-      settings/ai/_components/quota-warning-banner.tsx
   - Estados visuales:
       sin uso aún
       cerca del límite
       límite alcanzado
+      reserva Managed pendiente de finalización
       error al cargar métricas
-  - Dashboard opcional:
-      mini-card de IA en /dashboard o enlace hacia /settings/ai
+  - Fixture frontend/scripts/verify-ai04-usage.mjs:
+      BYOK no consume cuota Managed, resumen UTC, RLS y EXECUTE
+  - Sin tarjeta dashboard: DA-01 está cerrado; la lectura vive en /settings/ai
 
-DEPENDENCIAS: AI-01, AI-03, DA-01
+DEPENDENCIAS: AI-01, AI-02, AI-03, DA-01
 
 CHECKPOINT ✅:
-  - /api/settings/ai/usage solo retorna eventos del usuario autenticado
-  - El usuario ve tokens/requests diarios y mensuales
+  - reserve_ai_quota cuenta exclusivamente eventos Managed mediante migración nueva
+  - Migración 20260719011944 alineada en Local y Remote
+  - finalize_managed_ai_usage serializa con la reserva, acepta solo duplicados
+      idénticos y recordAiUsage no deja UPDATE directo para QUOTA_RESERVED
+  - /api/settings/ai/usage solo retorna datos del usuario autenticado
+  - Actividad total y cuota Managed se muestran como conceptos diferentes
+  - El usuario ve tokens/requests diarios y mensuales en UTC
   - La UI muestra advertencia al superar 80% del límite
-  - Límite alcanzado se comunica sin revelar detalles internos del proveedor
-  - tsc limpio, build OK
+  - Límite 0/alcanzado y reserva pendiente se comunican sin detalles internos
+  - Falla DB/RPC/contrato no se convierte en cuota cero o éxito vacío
+  - Fixture prueba separación BYOK/Managed, RLS y GRANT EXECUTE
+  - tsc limpio, build OK sin warnings observados
+  - PASS AI-02: concurrencia e idempotencia
+  - PASS AI-04: cuota Managed, finalización, resumen UTC y RLS
+  - AI-05 no se implementa ni se conecta a endpoints durante AI-04
 ```
 
 #### AI-05 — Integración del runtime IA con sesiones y Practice Lab
@@ -2200,6 +2224,6 @@ REGLAS DE SEGURIDAD:
 
 ---
 
-*Árbol de guías v2.7 — Julio 2026*
+*Árbol de guías v2.9 — Julio 2026*
 *Usar junto con: ISTQB_StudyAgent_ProjectDoc.md*
-*Bloque H agregado en v2.0; gate PR-03A agregado en v2.1; Bloque I agregado en v2.2; reconciliación de contratos y seguridad IA en v2.3; gates runtime/remotos cerrados y AI-01 implementada en v2.4; AI-02 auditada con reserva atómica e idempotente en v2.5; AI-02 implementada y verificada en v2.6; AI-03 implementada y verificada en v2.7*
+*Bloque H agregado en v2.0; gate PR-03A agregado en v2.1; Bloque I agregado en v2.2; reconciliación de contratos y seguridad IA en v2.3; gates runtime/remotos cerrados y AI-01 implementada en v2.4; AI-02 auditada con reserva atómica e idempotente en v2.5; AI-02 implementada y verificada en v2.6; AI-03 implementada y verificada en v2.7; AI-04 generada con Addendum Correctivo Obligatorio de cuota BYOK/finalización serializada en v2.8; AI-04 implementada y verificada en v2.9*

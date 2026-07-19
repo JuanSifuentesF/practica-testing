@@ -6,9 +6,10 @@
 2. Runtime y Next.js
 3. Contratos y datos
 4. Código pedagógico
-5. Seguridad y alcance
-6. Verificación
-7. Gate final
+5. Higiene de comentarios en snippets
+6. Seguridad y alcance
+7. Verificación
+8. Gate final
 
 ## Exactitud del repositorio
 
@@ -46,10 +47,20 @@
 - Usar TypeScript strict, imports/exportaciones reales, alias `@/` vigente y defensas para null/undefined/colecciones vacías.
 - No referenciar helpers inexistentes ni usar casts como validadores.
 - Formatear como código de producción: nada de JSX minificado ni control flow colapsado.
-- Emplear variables intermedias para expresiones no triviales y comentarios solo donde expliquen una decisión.
+- Emplear variables intermedias para expresiones no triviales y aplicar la política de higiene de comentarios de la siguiente sección.
 - Evitar clases Tailwind construidas dinámicamente salvo safelist; usar mapas de clases completas.
 - Diferenciar claramente RSC, Client Components y responsabilidades de presentación/datos.
 - Para navegación, combinar el estado visual activo con `aria-current="page"` y verificar rutas hijas.
+
+## Higiene de comentarios en snippets
+
+- Tratar cada snippet como código de producción copiable. Colocar fuera del bloque la explicación didáctica que no deba persistir en el archivo implementado.
+- Comentar dentro del código solo para explicar un porqué no evidente: una invariante, decisión de contrato, riesgo de seguridad, comportamiento de error, workaround o restricción del runtime.
+- Preferir nombres, tipos, funciones extraídas y estructura legible antes que comentarios que narren qué hace la línea siguiente.
+- No incluir comentarios de cabecera que repitan ruta, tipo o responsabilidades; separadores decorativos; comentarios que etiqueten secciones JSX obvias; etiquetas de navegación como `Props`, `Helpers` o `Render`; ni listas que dupliquen la prosa de la guía.
+- Reservar JSDoc para APIs públicas o contratos con restricciones que la firma no exprese. No repetir nombres, tipos o nullabilidad ya visibles.
+- No dejar código comentado ni `TODO` sin milestone, condición de cierre y verificación explícitos.
+- En la revisión adversarial, eliminar todo comentario cuya ausencia no haga perder una decisión, invariante, riesgo o restricción relevante; comprobar además que los comentarios conservados coincidan con el código final.
 
 ## Seguridad y alcance
 
@@ -83,6 +94,7 @@ Antes de persistir, aprobar todos estos puntos:
 - **Contrato:** productor, validador, persistencia/API y consumidor comparten shape, discriminantes, nullabilidad y errores.
 - **Runtime:** decisiones justificadas por Next.js instalado y sus docs locales.
 - **Pedagogía:** la guía explica por qué, incluye analogía y pasos ejecutables sin inferencia.
+- **Comentarios:** la pedagogía extensa queda fuera de los snippets y el código conserva solo decisiones, invariantes, riesgos o restricciones no evidentes.
 - **Accesibilidad:** estados interactivos relevantes tienen semántica además de color o iconos.
 - **Alcance:** solo archivos del milestone; no-touch explícito.
 - **Seguridad:** cero secretos o patrones inseguros.

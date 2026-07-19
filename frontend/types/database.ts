@@ -161,6 +161,30 @@ export interface ReserveAiQuotaRowDB {
   monthly_tokens: number;
 }
 
+export interface FinalizeManagedAiUsageRowDB {
+  finalization_outcome: "finalized" | "duplicate";
+  accounted_prompt_tokens: number;
+  accounted_completion_tokens: number;
+  accounted_total_tokens: number;
+}
+
+export interface GetAiUsageSummaryRowDB {
+  observed_at: string;
+  day_start: string;
+  month_start: string;
+  activity_daily_requests: number;
+  activity_daily_tokens: number;
+  activity_monthly_requests: number;
+  activity_monthly_tokens: number;
+  quota_daily_requests: number;
+  quota_daily_tokens: number;
+  quota_monthly_requests: number;
+  quota_monthly_tokens: number;
+  blocked_daily_events: number;
+  blocked_monthly_events: number;
+  pending_finalizations: number;
+}
+
 // ──────────────────────────────────────────────────────────────
 // TABLA 1: user_profiles
 // Extiende auth.users con datos de perfil del negocio.
@@ -596,6 +620,22 @@ export interface Database {
           p_reserved_completion_tokens: number;
         };
         Returns: ReserveAiQuotaRowDB[];
+      };
+      finalize_managed_ai_usage: {
+        Args: {
+          p_user_id: string;
+          p_event_id: string;
+          p_prompt_tokens: number;
+          p_completion_tokens: number;
+          p_status: "success" | "error";
+          p_error_code: string | null;
+        };
+        Returns: FinalizeManagedAiUsageRowDB[];
+      };
+
+      get_ai_usage_summary: {
+        Args: Record<PropertyKey, never>;
+        Returns: GetAiUsageSummaryRowDB[];
       };
     };
     Enums: {

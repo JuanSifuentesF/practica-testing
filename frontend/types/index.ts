@@ -73,6 +73,8 @@ export type {
   AiUsageEventInsertDB,
   AiUsageEventUpdateDB,
   ReserveAiQuotaRowDB,
+  FinalizeManagedAiUsageRowDB,
+  GetAiUsageSummaryRowDB,
 } from "./database";
 
 export type {

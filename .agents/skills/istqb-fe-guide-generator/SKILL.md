@@ -93,7 +93,7 @@ Evitar interfaces, exports, validadores o rutas paralelas duplicadas. Un cast no
 
 ### 6. Revisión adversarial antes de terminar
 
-Releer la guía una vez como un patch único y buscar activamente rutas fantasma, anchors inexistentes, nombres duplicados, snippets minificados, contratos divergentes, secretos, comandos no ejecutables y estados de roadmap falsos. Corregir todos los hallazgos documentales antes de entregar.
+Releer la guía una vez como un patch único y buscar activamente rutas fantasma, anchors inexistentes, nombres duplicados, snippets minificados, comentarios narrativos, decorativos, redundantes u obsoletos, contratos divergentes, secretos, comandos no ejecutables y estados de roadmap falsos. Corregir todos los hallazgos documentales antes de entregar.
 
 ## Flujo de auditoría
 
