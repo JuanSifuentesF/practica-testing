@@ -22,19 +22,36 @@
 //   genera un timestamp diferente al del cliente, causando un
 //   "hydration mismatch" error de React.
 //
-//   Solución: inicializar el timer en useEffect (solo corre en cliente)
-//   y usar un estado "isReady" para evitar el mismatch.
+//   Solución: mantener un snapshot estable durante la hidratación y
+//   arrancar el intervalo únicamente desde un efecto del cliente.
 // ============================================================
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Clock, Pause, Play, AlertTriangle } from "lucide-react";
 
 interface SessionTimerProps {
   durationMinutes?: number;
   onTimeUp?: () => void;
   autoStart?: boolean;
+}
+
+function subscribeToHydration() {
+  return () => {};
+}
+
+function getClientHydrationSnapshot() {
+  return true;
+}
+
+function getServerHydrationSnapshot() {
+  return false;
 }
 
 export function SessionTimer({
@@ -45,28 +62,20 @@ export function SessionTimer({
   // ─── Estado ───────────────────────────────────────────────
   // secondsLeft: tiempo restante en segundos
   // isRunning: si el timer está corriendo
-  // isReady: si el componente ya se hidratió (evita mismatch)
   // hasFinished: si el timer llegó a 0
   const [secondsLeft, setSecondsLeft] = useState(durationMinutes * 60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isReady, setIsReady] = useState(false);
+  const [isRunning, setIsRunning] = useState(autoStart);
   const [hasFinished, setHasFinished] = useState(false);
+  const isReady = useSyncExternalStore(
+    subscribeToHydration,
+    getClientHydrationSnapshot,
+    getServerHydrationSnapshot,
+  );
 
-  // useRef para el callback de onTimeUp — evita recrear el interval
-  // cada vez que onTimeUp cambia (patrón "latest ref")
-  const onTimeUpRef = useRef(onTimeUp);
-  onTimeUpRef.current = onTimeUp;
-
-  // ─── Efecto: inicialización post-hidratación ──────────────
-  // Este efecto solo corre en el CLIENTE, después de la hidratación.
-  // Evita el error de hydration mismatch al no usar Date.now()
-  // durante el render del servidor.
-  useEffect(() => {
-    setIsReady(true);
-    if (autoStart) {
-      setIsRunning(true);
-    }
-  }, [autoStart]);
+  // Effect Event mantiene el callback más reciente sin reiniciar el intervalo.
+  const notifyTimeUp = useEffectEvent(() => {
+    onTimeUp?.();
+  });
 
   // ─── Efecto: countdown ────────────────────────────────────
   // setInterval que decrementa secondsLeft cada segundo.
@@ -83,7 +92,7 @@ export function SessionTimer({
           setHasFinished(true);
           // Llamar al callback en el siguiente tick para evitar
           // actualizar estado dentro de un setState
-          setTimeout(() => onTimeUpRef.current?.(), 0);
+          setTimeout(() => notifyTimeUp(), 0);
           return 0;
         }
         return prev - 1;

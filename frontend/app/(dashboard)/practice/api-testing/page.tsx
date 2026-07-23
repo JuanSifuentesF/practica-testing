@@ -27,33 +27,41 @@ export default function ApiTestingPage() {
   const [storageNotice, setStorageNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = readApiChecklistProgress();
-    if (stored.kind === "valid") setProgress(stored.progress);
-    if (stored.kind === "invalid")
-      setStorageNotice(
-        "El progreso local era incompatible y se reinicio de forma segura.",
-      );
-    setHydrated(true);
+    const timeoutId = window.setTimeout(() => {
+      const stored = readApiChecklistProgress();
+      if (stored.kind === "valid") setProgress(stored.progress);
+      if (stored.kind === "invalid")
+        setStorageNotice(
+          "El progreso local era incompatible y se reinicio de forma segura.",
+        );
+      if (stored.kind === "unavailable")
+        setStorageNotice(
+          "El almacenamiento local esta bloqueado; puedes usar la checklist sin persistencia.",
+        );
+      setHydrated(true);
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    if (!saveApiChecklistProgress(progress))
-      setStorageNotice("No fue posible guardar el progreso en este navegador.");
-  }, [hydrated, progress]);
-
   function updateItem(id: string, patch: Partial<ChecklistProgressItem>) {
-    setProgress((current) => ({
-      ...current,
-      [id]: { ...current[id], ...patch },
-    }));
+    const nextProgress = {
+      ...progress,
+      [id]: { ...progress[id], ...patch },
+    };
+    setProgress(nextProgress);
+    if (!saveApiChecklistProgress(nextProgress))
+      setStorageNotice("No fue posible guardar el progreso en este navegador.");
   }
 
   function resetProgress() {
-    clearApiChecklistProgress();
-    setProgress(createInitialApiChecklistProgress());
+    const cleared = clearApiChecklistProgress();
+    const initialProgress = createInitialApiChecklistProgress();
+    const saved = saveApiChecklistProgress(initialProgress);
+    setProgress(initialProgress);
     setStorageNotice(
-      "Checklist restablecida. El nuevo progreso se guardara localmente.",
+      cleared && saved
+        ? "Checklist restablecida. El nuevo progreso se guardara localmente."
+        : "Checklist restablecida en pantalla, pero el almacenamiento local esta bloqueado.",
     );
   }
 

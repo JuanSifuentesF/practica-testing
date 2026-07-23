@@ -185,6 +185,59 @@ export interface GetAiUsageSummaryRowDB {
   pending_finalizations: number;
 }
 
+/** JSON seguro retornado por las RPC de snapshots de quiz. */
+export interface QuizAttemptPublicDB {
+  attempt_id: string;
+  questions: Record<string, unknown>[];
+  total_questions: number;
+  generated_at: string;
+  model_provider: string;
+  model_name: string;
+  created?: boolean;
+  [key: string]: unknown;
+}
+
+/** Snapshot completo; solo puede retornarse al Route Handler con service_role. */
+export interface QuizAttemptPrivateDB {
+  attempt_id: string;
+  state: "open" | "completed";
+  method_used: MethodUsed;
+  attempt_number: number;
+  canonical_submission: Record<string, unknown>[] | null;
+  response: Record<string, unknown> | null;
+  questions: Record<string, unknown>[];
+  [key: string]: unknown;
+}
+
+export interface FinalizeQuizAttemptDB {
+  outcome: "finalized" | "duplicate";
+  evaluation: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface ApplySessionAdaptationDB {
+  action: ActionTaken;
+  reinforcement_session_ids: string[];
+  new_estimated_end_date: string | null;
+  already_processed: boolean;
+  message: string;
+  [key: string]: unknown;
+}
+
+export interface FinalizeQuizAndAdaptDB extends FinalizeQuizAttemptDB {
+  adaptation: ApplySessionAdaptationDB;
+}
+
+export interface QuizAiOperationClaimDB {
+  outcome: "acquired" | "in_progress" | "completed" | "conflict";
+  claim_token: string | null;
+}
+
+export interface TheoryAiOperationClaimDB {
+  outcome: "acquired" | "in_progress" | "conflict";
+  claim_token: string | null;
+}
+
 // ──────────────────────────────────────────────────────────────
 // TABLA 1: user_profiles
 // Extiende auth.users con datos de perfil del negocio.
@@ -219,7 +272,9 @@ export interface UserProfileUpdate {
 export interface TopicEntry {
   text: string;
   level_k: LevelK;
-  name?: string;
+  name: string;
+  chapter: number;
+  section: string;
 }
 
 /** topics_json es un diccionario { "FL-1.1.1": TopicEntry, ... } */
@@ -382,6 +437,8 @@ export interface AnswerRow {
   topic_code: string;
   level_k: LevelK | null;
   explanation: string | null;
+  quiz_attempt_id: string | null;
+  question_id: number | null;
   created_at: string;
   [key: string]: unknown;
 }
@@ -398,6 +455,8 @@ export interface AnswerInsert {
   topic_code: string;
   level_k?: LevelK | null;
   explanation?: string | null;
+  quiz_attempt_id?: string | null;
+  question_id?: number | null;
   created_at?: string;
   [key: string]: unknown;
 }
@@ -636,6 +695,122 @@ export interface Database {
       get_ai_usage_summary: {
         Args: Record<PropertyKey, never>;
         Returns: GetAiUsageSummaryRowDB[];
+      };
+      get_quiz_attempt_public: {
+        Args: {
+          p_user_id: string;
+          p_session_id: string;
+        };
+        Returns: QuizAttemptPublicDB | null;
+      };
+      store_quiz_attempt: {
+        Args: {
+          p_user_id: string;
+          p_session_id: string;
+          p_questions: Record<string, unknown>[];
+          p_model_provider: string;
+          p_model_name: string;
+          p_generated_at: string;
+        };
+        Returns: QuizAttemptPublicDB;
+      };
+      store_quiz_attempt_claimed: {
+        Args: {
+          p_user_id: string;
+          p_session_id: string;
+          p_questions: Record<string, unknown>[];
+          p_model_provider: string;
+          p_model_name: string;
+          p_generated_at: string;
+          p_request_fingerprint: string;
+          p_claim_token: string;
+        };
+        Returns: QuizAttemptPublicDB;
+      };
+      get_quiz_attempt_private: {
+        Args: {
+          p_user_id: string;
+          p_session_id: string;
+          p_attempt_id: string;
+        };
+        Returns: QuizAttemptPrivateDB | null;
+      };
+      finalize_quiz_attempt: {
+        Args: {
+          p_user_id: string;
+          p_session_id: string;
+          p_attempt_id: string;
+          p_answers: Record<string, unknown>[];
+          p_qualitative: Record<string, unknown>;
+        };
+        Returns: FinalizeQuizAttemptDB;
+      };
+      apply_session_adaptation_v2: {
+        Args: {
+          p_user_id: string;
+          p_session_id: string;
+        };
+        Returns: ApplySessionAdaptationDB;
+      };
+      finalize_quiz_and_adapt: {
+        Args: {
+          p_user_id: string;
+          p_session_id: string;
+          p_attempt_id: string;
+          p_answers: Record<string, unknown>[];
+          p_qualitative: Record<string, unknown>;
+        };
+        Returns: FinalizeQuizAndAdaptDB;
+      };
+      finalize_quiz_and_adapt_claimed: {
+        Args: {
+          p_user_id: string;
+          p_session_id: string;
+          p_attempt_id: string;
+          p_answers: Record<string, unknown>[];
+          p_qualitative: Record<string, unknown>;
+          p_request_fingerprint: string;
+          p_claim_token: string;
+        };
+        Returns: FinalizeQuizAndAdaptDB;
+      };
+      claim_quiz_ai_operation: {
+        Args: {
+          p_user_id: string;
+          p_session_id: string;
+          p_operation: "generate" | "evaluate";
+          p_request_fingerprint: string;
+          p_lease_seconds: number;
+        };
+        Returns: QuizAiOperationClaimDB;
+      };
+      release_quiz_ai_operation: {
+        Args: {
+          p_user_id: string;
+          p_session_id: string;
+          p_operation: "generate" | "evaluate";
+          p_request_fingerprint: string;
+          p_claim_token: string;
+        };
+        Returns: boolean;
+      };
+      claim_theory_ai_operation: {
+        Args: {
+          p_user_id: string;
+          p_session_id: string;
+          p_request_fingerprint: string;
+          p_lease_seconds: number;
+        };
+        Returns: TheoryAiOperationClaimDB;
+      };
+      release_theory_ai_operation: {
+        Args: {
+          p_user_id: string;
+          p_session_id: string;
+          p_request_fingerprint: string;
+          p_claim_token: string;
+        };
+        Returns: boolean;
       };
     };
     Enums: {

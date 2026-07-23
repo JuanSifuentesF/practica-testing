@@ -28,7 +28,7 @@
 //   manualmente.
 // ============================================================
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { DashboardMetrics } from "@/types/dashboard";
 import { DashboardSummaryCards } from "@/components/dashboard/dashboard-summary-cards";
@@ -52,6 +52,45 @@ interface DashboardState {
   error: string | null;
 }
 
+async function loadDashboardState(): Promise<DashboardState> {
+  try {
+    // fetch relativo — las cookies se envían automáticamente.
+    // No necesitamos headers de Authorization porque Supabase
+    // SSR usa cookies httpOnly, no tokens en headers.
+    const response = await fetch("/api/dashboard/metrics");
+
+    // Si el servidor responde con error HTTP, parseamos el body
+    // para obtener el mensaje de error.
+    if (!response.ok) {
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Error desconocido" }));
+      throw new Error(
+        errorData.error ?? `Error ${response.status}: ${response.statusText}`,
+      );
+    }
+
+    // Puede ser { metrics: DashboardMetrics } o
+    // { metrics: null, message: "..." }.
+    const data = await response.json();
+
+    return {
+      metrics: data.metrics ?? null,
+      message: data.message ?? null,
+      isLoading: false,
+      error: null,
+    };
+  } catch (err) {
+    return {
+      metrics: null,
+      message: null,
+      isLoading: false,
+      error:
+        err instanceof Error ? err.message : "Error al cargar las métricas",
+    };
+  }
+}
+
 // ──────────────────────────────────────────────────────────────
 // Componente principal
 // ──────────────────────────────────────────────────────────────
@@ -67,61 +106,30 @@ export default function DashboardPage() {
     error: null,
   });
 
-  // ─── Función de fetch ────────────────────────────────────
-  // useCallback memoiza la función para evitar re-creaciones
-  // innecesarias. Esto es importante si en el futuro agregamos
-  // un botón de "refrescar" que llame a fetchMetrics().
-  const fetchMetrics = useCallback(async () => {
+  // ─── Reintento iniciado por el usuario ───────────────────
+  function fetchMetrics() {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
-
-    try {
-      // fetch relativo — las cookies se envían automáticamente.
-      // No necesitamos headers de Authorization porque Supabase
-      // SSR usa cookies httpOnly, no tokens en headers.
-      const response = await fetch("/api/dashboard/metrics");
-
-      // Si el servidor responde con error HTTP, parseamos el body
-      // para obtener el mensaje de error.
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ error: "Error desconocido" }));
-        throw new Error(
-          errorData.error ?? `Error ${response.status}: ${response.statusText}`,
-        );
-      }
-
-      // Parsear la respuesta JSON.
-      // Puede ser { metrics: DashboardMetrics } o { metrics: null, message: "..." }
-      const data = await response.json();
-
-      setState({
-        metrics: data.metrics ?? null,
-        message: data.message ?? null,
-        isLoading: false,
-        error: null,
-      });
-    } catch (err) {
-      // Manejar errores de red, parsing, o del servidor.
-      const errorMessage =
-        err instanceof Error ? err.message : "Error al cargar las métricas";
-
-      setState({
-        metrics: null,
-        message: null,
-        isLoading: false,
-        error: errorMessage,
-      });
-    }
-  }, []);
+    void loadDashboardState().then((nextState) => {
+      setState(nextState);
+    });
+  }
 
   // ─── Fetch al montar el componente ───────────────────────
-  // useEffect con [] se ejecuta UNA sola vez al montar.
-  // El fetch es asíncrono pero useEffect no puede ser async,
-  // por eso llamamos a fetchMetrics() sin await.
+  // El estado inicial ya representa la carga. La respuesta de la
+  // fuente externa actualiza React desde su callback asíncrono.
   useEffect(() => {
-    fetchMetrics();
-  }, [fetchMetrics]);
+    let ignore = false;
+
+    void loadDashboardState().then((nextState) => {
+      if (!ignore) {
+        setState(nextState);
+      }
+    });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // ═══════════════════════════════════════════════════════════
   // RENDER: Estado de carga

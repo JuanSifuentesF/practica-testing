@@ -30,10 +30,10 @@ export const AI_SETTINGS_DEFAULTS = {
   mode: "demo",
   provider: "gemini",
   model_name: null,
-  daily_request_limit: 20,
-  monthly_request_limit: 300,
-  daily_token_limit: 50_000,
-  monthly_token_limit: 500_000,
+  daily_request_limit: 2_000_000_000,
+  monthly_request_limit: 2_000_000_000,
+  daily_token_limit: 2_000_000_000,
+  monthly_token_limit: 2_000_000_000,
 } satisfies AiSettingsDefaults;
 
 export interface AiSettingsPreferencesUpdate {

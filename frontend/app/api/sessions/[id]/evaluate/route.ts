@@ -1,227 +1,402 @@
-// ─────────────────────────────────────────────────────────────────
-// app/api/sessions/[id]/evaluate/route.ts
-// Route Handler: evalúa las respuestas del quiz de una sesión.
-//
-// Método: POST
-// Auth: Requiere sesión válida (cookie JWT de Supabase)
-// Params: id — UUID de la sesión
-// Body: { answers: UserAnswer[] }
-//
-// Response (200): EvaluateResponse
-// Response (401): { error: "No autenticado" }
-// Response (400): { error: "Descripción del problema" }
-// Response (404): { error: "Sesión no encontrada" }
-// Response (409): { error: "Sesión ya evaluada" }
-// Response (500): { error: "Error interno del servidor" }
-//
-// FLUJO:
-//   1. Autenticar usuario
-//   2. Validar UUID y estado de la sesión (no completada)
-//   3. Validar body (array de respuestas completo)
-//   4. Calcular score determinísticamente
-//   5. Llamar al LLM para análisis cualitativo (best-effort)
-//   6. Insertar respuestas en tabla answers
-//   7. Actualizar sesión: score, status, completed_at, action_taken
-//   8. Retornar EvaluateResponse
-//
-// IDEMPOTENCIA:
-//   Si la sesión ya tiene status = 'completed', se rechaza con 409.
-//   Esto previene doble evaluación accidental.
-// ─────────────────────────────────────────────────────────────────
-
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { executeAiJson } from "@/lib/ai/execute-json";
+import { parseFirstJsonObject } from "@/lib/ai/json-object";
 import {
-  createModelRuntimes,
-  getModelErrorStatus,
-  isModelTimeout,
-} from "@/lib/ai/model-cascade";
+  claimQuizAiOperation,
+  createQuizAiFingerprint,
+  releaseQuizAiOperation,
+} from "@/lib/ai/quiz-operation";
+import { readAdaptResponse } from "@/lib/sessions/adaptation-contract";
+import { readEvaluation } from "@/lib/sessions/evaluation-contract";
 import {
   buildEvaluateSystemPrompt,
   buildEvaluateUserPrompt,
+  type EvaluationAnswerContext,
 } from "@/lib/prompts/evaluate";
-import type { AnswerOption, LevelK, ActionTaken, MethodUsed } from "@/types";
 import type {
-  UserAnswer,
-  EvaluateResponse,
-  FailedTopic,
+  ActionTaken,
+  AnswerOption,
+  LevelK,
+  MethodUsed,
+  OptionsJson,
+} from "@/types";
+import type {
   ErrorPattern,
+  EvaluateResponse,
+  EvaluateWithAdaptationResponse,
+  UserAnswer,
 } from "@/types/evaluate";
 
-// ─── Forzar Node.js runtime ─────────────────────────────────────
 export const runtime = "nodejs";
 
-// ─── Constantes ──────────────────────────────────────────────────
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const EVALUATE_TIMEOUT_MS = 45_000; // 45 segundos (menos que quiz)
-
 const VALID_OPTIONS: AnswerOption[] = ["a", "b", "c", "d"];
 const VALID_LEVELS: LevelK[] = ["K1", "K2", "K3"];
+const EVALUATE_TIMEOUT_MS = 45_000;
+const MAX_EVALUATE_COMPLETION_TOKENS = 4_000;
+const ADVANCE_THRESHOLD = 70;
+const REINFORCE_THRESHOLD = 50;
 
-// ─── Umbrales del sistema adaptativo ─────────────────────────────
-// Estos valores definen las acciones del sistema.
-// Se centralizan aquí para que SE-07 pueda importarlos si es necesario.
-const ADVANCE_THRESHOLD = 70; // score >= 70% → advance
-const REINFORCE_THRESHOLD = 50; // score 50-69% → reinforce
-// score < 50% → restructure
+interface PrivateQuizQuestion {
+  question_id: number;
+  question: string;
+  options: OptionsJson;
+  correct: AnswerOption;
+  explanation: string;
+  topic_code: string;
+  topic_name: string;
+  level_k: LevelK;
+}
 
-// ──────────────────────────────────────────────────────────────
-// Helpers
-// ──────────────────────────────────────────────────────────────
+interface PrivateQuizAttempt {
+  attempt_id: string;
+  state: "open" | "completed";
+  method_used: MethodUsed;
+  attempt_number: number;
+  questions: PrivateQuizQuestion[];
+}
 
-/**
- * Determina la acción del sistema adaptativo basándose en el score.
- */
+interface QualitativeEvaluation {
+  error_patterns: ErrorPattern[];
+  feedback_message: string;
+  next_method: MethodUsed;
+  reinforcement_minutes: number;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasOnlyKeys(
+  value: Record<string, unknown>,
+  expectedKeys: readonly string[],
+): boolean {
+  const keys = Object.keys(value);
+  return (
+    keys.length === expectedKeys.length &&
+    keys.every((key) => expectedKeys.includes(key))
+  );
+}
+
+function isAnswerOption(value: unknown): value is AnswerOption {
+  return (
+    typeof value === "string" &&
+    VALID_OPTIONS.includes(value as AnswerOption)
+  );
+}
+
+function isLevelK(value: unknown): value is LevelK {
+  return typeof value === "string" && VALID_LEVELS.includes(value as LevelK);
+}
+
+function isMethodUsed(value: unknown): value is MethodUsed {
+  return value === "theory" || value === "examples" || value === "analogies";
+}
+
+function isFrequency(value: unknown): value is ErrorPattern["frequency"] {
+  return value === "alta" || value === "media" || value === "baja";
+}
+
+function readErrorPattern(value: unknown): ErrorPattern | null {
+  if (
+    !isRecord(value) ||
+    !hasOnlyKeys(value, ["pattern", "frequency", "suggestion"]) ||
+    typeof value.pattern !== "string" ||
+    value.pattern.trim().length === 0 ||
+    value.pattern.length > 500 ||
+    !isFrequency(value.frequency) ||
+    typeof value.suggestion !== "string" ||
+    value.suggestion.trim().length === 0 ||
+    value.suggestion.length > 1_000
+  ) {
+    return null;
+  }
+
+  return {
+    pattern: value.pattern,
+    frequency: value.frequency,
+    suggestion: value.suggestion,
+  };
+}
+
 function determineAction(score: number): ActionTaken {
   if (score >= ADVANCE_THRESHOLD) return "advance";
   if (score >= REINFORCE_THRESHOLD) return "reinforce";
   return "restructure";
 }
 
-/**
- * Calcula los tópicos fallidos agrupados por topic_code.
- */
-function calculateFailedTopics(
-  answers: UserAnswer[],
-  topicNames: Map<string, string>,
-): FailedTopic[] {
-  // Agrupar por topic_code
-  const topicStats = new Map<string, { failed: number; total: number }>();
-
-  for (const answer of answers) {
-    const stats = topicStats.get(answer.topic_code) || {
-      failed: 0,
-      total: 0,
-    };
-    stats.total++;
-    if (answer.user_answer !== answer.correct) {
-      stats.failed++;
-    }
-    topicStats.set(answer.topic_code, stats);
-  }
-
-  // Solo retornar tópicos con al menos 1 fallo
-  const failedTopics: FailedTopic[] = [];
-  for (const [code, stats] of topicStats) {
-    if (stats.failed > 0) {
-      failedTopics.push({
-        topic_code: code,
-        topic_name: topicNames.get(code) || code,
-        questions_failed: stats.failed,
-        questions_total: stats.total,
-      });
-    }
-  }
-
-  return failedTopics;
-}
-
-/**
- * Parsea la respuesta del LLM de evaluación.
- * Maneja JSON envuelto en bloques de código markdown.
- */
-function parseEvaluateResponse(rawContent: string): {
-  error_patterns: ErrorPattern[];
-  feedback_message: string;
-  next_method: MethodUsed;
-  reinforcement_minutes: number;
+function readEvaluateBody(value: unknown): {
+  attemptId: string;
+  answers: UserAnswer[];
 } | null {
-  try {
-    // Intentar parsear directamente
-    let content = rawContent.trim();
+  if (
+    !isRecord(value) ||
+    !hasOnlyKeys(value, ["attempt_id", "answers"]) ||
+    typeof value.attempt_id !== "string" ||
+    !UUID_REGEX.test(value.attempt_id) ||
+    !Array.isArray(value.answers) ||
+    value.answers.length < 10 ||
+    value.answers.length > 12
+  ) {
+    return null;
+  }
 
-    // Remover bloques de código markdown si el LLM los incluyó
-    if (content.startsWith("```")) {
-      const lines = content.split("\n");
-      // Remover primera línea (```json) y última (```)
-      const startIndex = lines[0].includes("json") ? 1 : 1;
-      const endIndex =
-        lines[lines.length - 1] === "```" ? lines.length - 1 : lines.length;
-      content = lines.slice(startIndex, endIndex).join("\n");
-    }
+  const answers: UserAnswer[] = [];
+  const questionIds = new Set<number>();
 
-    const parsed = JSON.parse(content);
-
-    // Validar campos obligatorios
+  for (const item of value.answers) {
     if (
-      !parsed.feedback_message ||
-      typeof parsed.feedback_message !== "string"
+      !isRecord(item) ||
+      !hasOnlyKeys(item, ["question_id", "user_answer"]) ||
+      typeof item.question_id !== "number" ||
+      !Number.isInteger(item.question_id) ||
+      item.question_id < 0 ||
+      questionIds.has(item.question_id) ||
+      !isAnswerOption(item.user_answer)
     ) {
-      console.error("[evaluate] feedback_message faltante o inválido");
       return null;
     }
 
-    // Validar error_patterns
-    const errorPatterns: ErrorPattern[] = [];
-    if (Array.isArray(parsed.error_patterns)) {
-      for (const ep of parsed.error_patterns) {
-        if (ep.pattern && ep.frequency && ep.suggestion) {
-          errorPatterns.push({
-            pattern: String(ep.pattern),
-            frequency: ["alta", "media", "baja"].includes(ep.frequency)
-              ? ep.frequency
-              : "media",
-            suggestion: String(ep.suggestion),
-          });
-        }
-      }
-    }
-
-    // Validar next_method
-    const validMethods: MethodUsed[] = ["theory", "examples", "analogies"];
-    const nextMethod = validMethods.includes(parsed.next_method)
-      ? parsed.next_method
-      : "theory";
-
-    // Validar reinforcement_minutes
-    const reinforcementMinutes =
-      typeof parsed.reinforcement_minutes === "number" &&
-      parsed.reinforcement_minutes >= 0
-        ? Math.round(parsed.reinforcement_minutes)
-        : 0;
-
-    return {
-      error_patterns: errorPatterns,
-      feedback_message: parsed.feedback_message,
-      next_method: nextMethod,
-      reinforcement_minutes: reinforcementMinutes,
-    };
-  } catch {
-    console.warn("[evaluate] Respuesta del LLM con JSON inválido.");
-    return null;
+    questionIds.add(item.question_id);
+    answers.push({
+      question_id: item.question_id,
+      user_answer: item.user_answer,
+    });
   }
+
+  return { attemptId: value.attempt_id, answers };
 }
 
-// ──────────────────────────────────────────────────────────────
-// POST /api/sessions/[id]/evaluate
-// ──────────────────────────────────────────────────────────────
+function readPrivateQuestion(value: unknown): PrivateQuizQuestion | null {
+  if (
+    !isRecord(value) ||
+    typeof value.question_id !== "number" ||
+    !Number.isInteger(value.question_id) ||
+    value.question_id < 0 ||
+    typeof value.question !== "string" ||
+    !isRecord(value.options) ||
+    typeof value.options.a !== "string" ||
+    typeof value.options.b !== "string" ||
+    typeof value.options.c !== "string" ||
+    typeof value.options.d !== "string" ||
+    !isAnswerOption(value.correct) ||
+    typeof value.explanation !== "string" ||
+    typeof value.topic_code !== "string" ||
+    typeof value.topic_name !== "string" ||
+    !isLevelK(value.level_k)
+  ) {
+    return null;
+  }
+
+  return {
+    question_id: value.question_id,
+    question: value.question,
+    options: {
+      a: value.options.a,
+      b: value.options.b,
+      c: value.options.c,
+      d: value.options.d,
+    },
+    correct: value.correct,
+    explanation: value.explanation,
+    topic_code: value.topic_code,
+    topic_name: value.topic_name,
+    level_k: value.level_k,
+  };
+}
+
+function readPrivateAttempt(value: unknown): PrivateQuizAttempt | null {
+  if (
+    !isRecord(value) ||
+    typeof value.attempt_id !== "string" ||
+    !UUID_REGEX.test(value.attempt_id) ||
+    (value.state !== "open" && value.state !== "completed") ||
+    !isMethodUsed(value.method_used) ||
+    typeof value.attempt_number !== "number" ||
+    !Number.isInteger(value.attempt_number) ||
+    value.attempt_number < 1 ||
+    !Array.isArray(value.questions) ||
+    value.questions.length < 10 ||
+    value.questions.length > 12
+  ) {
+    return null;
+  }
+
+  const questions: PrivateQuizQuestion[] = [];
+  const ids = new Set<number>();
+  for (const item of value.questions) {
+    const question = readPrivateQuestion(item);
+    if (!question || ids.has(question.question_id)) return null;
+    ids.add(question.question_id);
+    questions.push(question);
+  }
+
+  return {
+    attempt_id: value.attempt_id,
+    state: value.state,
+    method_used: value.method_used,
+    attempt_number: value.attempt_number,
+    questions,
+  };
+}
+
+function buildAnswerContext(
+  questions: PrivateQuizQuestion[],
+  answers: UserAnswer[],
+): EvaluationAnswerContext[] | null {
+  const selections = new Map(
+    answers.map((answer) => [answer.question_id, answer.user_answer]),
+  );
+
+  if (
+    selections.size !== questions.length ||
+    questions.some((question) => !selections.has(question.question_id))
+  ) {
+    return null;
+  }
+
+  return questions.map((question) => ({
+    ...question,
+    user_answer: selections.get(question.question_id)!,
+  }));
+}
+
+function parseEvaluateResponse(rawText: string): QualitativeEvaluation | null {
+  const value = parseFirstJsonObject(rawText);
+  if (
+    !value ||
+    typeof value.feedback_message !== "string" ||
+    value.feedback_message.trim().length === 0 ||
+    value.feedback_message.length > 2_000 ||
+    !isMethodUsed(value.next_method) ||
+    typeof value.reinforcement_minutes !== "number" ||
+    !Number.isInteger(value.reinforcement_minutes) ||
+    value.reinforcement_minutes < 0 ||
+    value.reinforcement_minutes > 120 ||
+    !Array.isArray(value.error_patterns) ||
+    value.error_patterns.length > 5
+  ) {
+    return null;
+  }
+
+  const errorPatterns: ErrorPattern[] = [];
+  for (const item of value.error_patterns) {
+    const pattern = readErrorPattern(item);
+    if (!pattern) return null;
+    errorPatterns.push(pattern);
+  }
+
+  return {
+    error_patterns: errorPatterns,
+    feedback_message: value.feedback_message,
+    next_method: value.next_method,
+    reinforcement_minutes: value.reinforcement_minutes,
+  };
+}
+
+function createDemoEvaluationRaw(
+  score: number,
+  action: ActionTaken,
+  currentMethod: MethodUsed,
+): string {
+  const nextMethod: MethodUsed =
+    action === "advance"
+      ? currentMethod
+      : currentMethod === "theory"
+        ? "examples"
+        : currentMethod === "examples"
+          ? "analogies"
+          : "theory";
+
+  return JSON.stringify({
+    error_patterns: [],
+    feedback_message:
+      `[MODO DEMO] Retroalimentación simulada. Resultado determinístico: ${score}%.`,
+    next_method: nextMethod,
+    reinforcement_minutes:
+      action === "advance" ? 0 : action === "reinforce" ? 15 : 30,
+  });
+}
+
+function readFinalizeResult(value: unknown): EvaluateResponse | null {
+  if (
+    !isRecord(value) ||
+    (value.outcome !== "finalized" && value.outcome !== "duplicate") ||
+    !isRecord(value.evaluation)
+  ) {
+    return null;
+  }
+
+  return readEvaluation(value.evaluation);
+}
+
+function databaseErrorResponse(message: string) {
+  if (message.includes("QUIZ_ATTEMPT_NOT_FOUND")) {
+    return NextResponse.json(
+      { error: "Quiz no encontrado para esta sesión." },
+      { status: 404 },
+    );
+  }
+  if (message.includes("QUIZ_REPLAY_CONFLICT")) {
+    return NextResponse.json(
+      {
+        error: "Esta sesión ya fue evaluada con otras respuestas.",
+        code: "QUIZ_REPLAY_CONFLICT",
+      },
+      { status: 409 },
+    );
+  }
+  if (message.includes("QUIZ_SESSION_COMPLETED")) {
+    return NextResponse.json(
+      { error: "Esta sesión ya fue evaluada.", code: "QUIZ_SESSION_COMPLETED" },
+      { status: 409 },
+    );
+  }
+  if (message.includes("QUIZ_SESSION_NOT_ACTIVE")) {
+    return NextResponse.json(
+      {
+        error: "La sesión no está activa para evaluación.",
+        code: "QUIZ_SESSION_NOT_ACTIVE",
+      },
+      { status: 409 },
+    );
+  }
+  if (
+    message.includes("QUIZ_SUBMISSION_INVALID") ||
+    message.includes("QUIZ_IDENTITY_REQUIRED") ||
+    message.includes("QUIZ_QUALITATIVE_INVALID")
+  ) {
+    return NextResponse.json(
+      { error: "Las respuestas enviadas no coinciden con el quiz." },
+      { status: 400 },
+    );
+  }
+
+  return NextResponse.json(
+    { error: "Error al guardar la evaluación." },
+    { status: 500 },
+  );
+}
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const startTime = Date.now();
-
   try {
-    // ═════════════════════════════════════════════════════════
-    // 1. AUTENTICACIÓN
-    // ═════════════════════════════════════════════════════════
     const supabase = await createClient();
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser();
 
-    if (!user) {
+    if (authError || !user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    // ═════════════════════════════════════════════════════════
-    // 2. VALIDAR UUID
-    // ═════════════════════════════════════════════════════════
     const { id: sessionId } = await params;
-
     if (!sessionId || !UUID_REGEX.test(sessionId)) {
       return NextResponse.json(
         { error: "ID de sesión inválido. Debe ser un UUID válido." },
@@ -229,74 +404,9 @@ export async function POST(
       );
     }
 
-    // ═════════════════════════════════════════════════════════
-    // 3. CARGAR Y VALIDAR SESIÓN
-    // ═════════════════════════════════════════════════════════
-    const { data: session, error: sessionError } = await supabase
-      .from("sessions")
-      .select("*")
-      .eq("id", sessionId)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: "Sesión no encontrada o no pertenece al usuario." },
-        { status: 404 },
-      );
-    }
-
-    // Validar que la sesión NO esté ya completada (idempotencia)
-    if (session.status === "completed") {
-      return NextResponse.json(
-        {
-          error: "Esta sesión ya fue evaluada. No se puede evaluar dos veces.",
-        },
-        { status: 409 },
-      );
-    }
-
-    // Cargar el plan en una query separada. Esto evita depender de
-    // inferencia de relaciones en los tipos generados de Supabase.
-    const { data: plan } = await supabase
-      .from("study_plans")
-      .select("id, document_id")
-      .eq("id", session.study_plan_id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!plan) {
-      return NextResponse.json(
-        { error: "No se encontró el plan asociado a esta sesión." },
-        { status: 404 },
-      );
-    }
-
-    // Defensa adicional contra duplicados: si por un fallo parcial
-    // quedaron respuestas guardadas pero la sesión no quedó completed,
-    // no insertamos otra tanda de answers.
-    const { count: existingAnswersCount } = await supabase
-      .from("answers")
-      .select("id", { count: "exact", head: true })
-      .eq("session_id", sessionId)
-      .eq("user_id", user.id);
-
-    if ((existingAnswersCount || 0) > 0) {
-      return NextResponse.json(
-        {
-          error:
-            "Esta sesión ya tiene respuestas guardadas. No se puede evaluar dos veces.",
-        },
-        { status: 409 },
-      );
-    }
-
-    // ═════════════════════════════════════════════════════════
-    // 4. VALIDAR BODY
-    // ═════════════════════════════════════════════════════════
-    let body: { answers?: unknown };
+    let rawBody: unknown;
     try {
-      body = await request.json();
+      rawBody = await request.json();
     } catch {
       return NextResponse.json(
         { error: "Body inválido. Se esperaba JSON." },
@@ -304,345 +414,224 @@ export async function POST(
       );
     }
 
-    if (!body.answers || !Array.isArray(body.answers)) {
-      return NextResponse.json(
-        { error: "Campo 'answers' requerido como array." },
-        { status: 400 },
-      );
-    }
-
-    const userAnswers = body.answers as UserAnswer[];
-
-    // Validar cantidad esperada. SE-04 genera 10-12 preguntas;
-    // aceptar menos permitiría envíos parciales por bypass de UI.
-    if (userAnswers.length < 10 || userAnswers.length > 12) {
-      return NextResponse.json(
-        { error: "El quiz debe enviar entre 10 y 12 respuestas completas." },
-        { status: 400 },
-      );
-    }
-
-    const seenQuestionIds = new Set<number>();
-
-    // Validar cada respuesta individualmente
-    for (let i = 0; i < userAnswers.length; i++) {
-      const a = userAnswers[i];
-
-      if (typeof a.question_id !== "number" || a.question_id < 0) {
-        return NextResponse.json(
-          { error: `Respuesta ${i}: question_id debe ser un número válido.` },
-          { status: 400 },
-        );
-      }
-
-      if (seenQuestionIds.has(a.question_id)) {
-        return NextResponse.json(
-          {
-            error: `Respuesta ${i}: question_id duplicado (${a.question_id}).`,
-          },
-          { status: 400 },
-        );
-      }
-      seenQuestionIds.add(a.question_id);
-
-      if (!a.question_text || typeof a.question_text !== "string") {
-        return NextResponse.json(
-          { error: `Respuesta ${i}: question_text es requerido.` },
-          { status: 400 },
-        );
-      }
-
-      if (!a.options || typeof a.options !== "object") {
-        return NextResponse.json(
-          { error: `Respuesta ${i}: options es requerido.` },
-          { status: 400 },
-        );
-      }
-
-      for (const option of VALID_OPTIONS) {
-        if (!a.options[option] || typeof a.options[option] !== "string") {
-          return NextResponse.json(
-            {
-              error: `Respuesta ${i}: opción "${option}" falta o es inválida.`,
-            },
-            { status: 400 },
-          );
-        }
-      }
-
-      if (!VALID_OPTIONS.includes(a.user_answer)) {
-        return NextResponse.json(
-          {
-            error: `Respuesta ${i}: user_answer debe ser "a", "b", "c" o "d". Recibido: "${a.user_answer}"`,
-          },
-          { status: 400 },
-        );
-      }
-
-      if (!VALID_OPTIONS.includes(a.correct)) {
-        return NextResponse.json(
-          {
-            error: `Respuesta ${i}: correct debe ser "a", "b", "c" o "d". Recibido: "${a.correct}"`,
-          },
-          { status: 400 },
-        );
-      }
-
-      if (!VALID_LEVELS.includes(a.level_k)) {
-        return NextResponse.json(
-          {
-            error: `Respuesta ${i}: level_k debe ser K1, K2 o K3. Recibido: "${a.level_k}"`,
-          },
-          { status: 400 },
-        );
-      }
-
-      if (!a.topic_code || typeof a.topic_code !== "string") {
-        return NextResponse.json(
-          { error: `Respuesta ${i}: topic_code es requerido.` },
-          { status: 400 },
-        );
-      }
-    }
-
-    // ═════════════════════════════════════════════════════════
-    // 5. CALCULAR SCORE (DETERMINÍSTICO)
-    // ═════════════════════════════════════════════════════════
-    // El score es una simple proporción. NO depende del LLM.
-    let correctCount = 0;
-    for (const answer of userAnswers) {
-      if (answer.user_answer === answer.correct) {
-        correctCount++;
-      }
-    }
-
-    const totalQuestions = userAnswers.length;
-    // Math.round para evitar decimales (70.5 → 71, no 70.500...)
-    const score = Math.round((correctCount / totalQuestions) * 100);
-    const action = determineAction(score);
-
-    console.log(
-      `[evaluate] Sesión ${sessionId}: ${correctCount}/${totalQuestions} = ${score}% → ${action}`,
-    );
-
-    // ═════════════════════════════════════════════════════════
-    // 6. OBTENER NOMBRES DE TÓPICOS (para failed_topics)
-    // ═════════════════════════════════════════════════════════
-    // Necesitamos los nombres legibles de los tópicos para el response.
-    // Los obtenemos de documents.topics_json.
-    const topicNames = new Map<string, string>();
-
-    const { data: doc } = await supabase
-      .from("documents")
-      .select("topics_json")
-      .eq("id", plan.document_id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (doc?.topics_json) {
-      const topicsJson = doc.topics_json as Record<
-        string,
-        { name?: string; text?: string; level_k?: string }
-      >;
-      for (const [code, entry] of Object.entries(topicsJson)) {
-        topicNames.set(code, entry.name || code);
-      }
-    }
-
-    const failedTopics = calculateFailedTopics(userAnswers, topicNames);
-
-    // ═════════════════════════════════════════════════════════
-    // 7. ANÁLISIS CUALITATIVO CON LLM (BEST-EFFORT)
-    // ═════════════════════════════════════════════════════════
-    // Si el LLM falla o no hay key configurada, usamos fallbacks.
-    let errorPatterns: ErrorPattern[] = [];
-    let feedbackMessage = "";
-    let nextMethod: MethodUsed = session.method_used as MethodUsed;
-    let reinforcementMinutes = 0;
-
-    const candidates = createModelRuntimes({
-      timeoutMs: EVALUATE_TIMEOUT_MS,
-      geminiModels: [process.env.GEMINI_SESSION_EVALUATE_MODEL],
-      openaiModels: [process.env.OPENAI_SESSION_EVALUATE_MODEL],
-      providers: ["gemini", "openai"],
-      maxRetries: 0,
-    });
-
-    if (candidates.length > 0) {
-      const systemPrompt = buildEvaluateSystemPrompt();
-      const userPrompt = buildEvaluateUserPrompt(
-        userAnswers,
-        score,
-        correctCount,
-        totalQuestions,
-        session.method_used as MethodUsed,
-        session.attempt_number || 1,
-      );
-
-      for (const candidate of candidates) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(
-          () => controller.abort(),
-          EVALUATE_TIMEOUT_MS,
-        );
-
-        try {
-          console.log(
-            `[evaluate] Llamando a ${candidate.provider}/${candidate.model} para análisis cualitativo...`,
-          );
-
-          const completion = await candidate.client.chat.completions.create(
-            {
-              model: candidate.model,
-              messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userPrompt },
-              ],
-              response_format: { type: "json_object" },
-              temperature: 0.4, // Baja — queremos análisis consistente, no creativo
-              max_tokens: 4000, // Suficiente para error_patterns + feedback en español (estaba en 2000 que trunca JSON)
-            },
-            { signal: controller.signal },
-          );
-
-          const rawContent = completion.choices?.[0]?.message?.content;
-          const parsed = rawContent ? parseEvaluateResponse(rawContent) : null;
-
-          if (!parsed) {
-            console.warn(
-              `[evaluate] ${candidate.provider}/${candidate.model} devolvió una respuesta inválida; probando el siguiente candidato.`,
-            );
-            continue;
-          }
-
-          errorPatterns = parsed.error_patterns;
-          feedbackMessage = parsed.feedback_message;
-          nextMethod = parsed.next_method;
-          reinforcementMinutes = parsed.reinforcement_minutes;
-          console.log(
-            `[evaluate] LLM retornó: ${errorPatterns.length} patrones, método=${nextMethod}, refuerzo=${reinforcementMinutes}min`,
-          );
-          break;
-        } catch (llmError) {
-          const failure =
-            controller.signal.aborted || isModelTimeout(llmError)
-              ? "timeout"
-              : `error de proveedor (status=${getModelErrorStatus(llmError)})`;
-          console.warn(
-            `[evaluate] ${candidate.provider}/${candidate.model}: ${failure}; probando el siguiente candidato.`,
-          );
-        } finally {
-          clearTimeout(timeoutId);
-        }
-      }
-    } else {
-      console.log(
-        "[evaluate] Sin LLM configurado. Usando evaluación determinística pura.",
-      );
-    }
-
-    // ─── Fallback si el LLM no generó feedback ──────────────
-    if (!feedbackMessage) {
-      if (score >= ADVANCE_THRESHOLD) {
-        feedbackMessage = `Obtuviste ${score}% (${correctCount} de ${totalQuestions} correctas). Has demostrado un buen dominio de los conceptos evaluados. Continúa con el siguiente tópico de tu plan de estudio.`;
-      } else if (score >= REINFORCE_THRESHOLD) {
-        feedbackMessage = `Obtuviste ${score}% (${correctCount} de ${totalQuestions} correctas). Estás cerca del umbral de aprobación. Una sesión de refuerzo corta te ayudará a consolidar los conceptos que necesitan más trabajo.`;
-      } else {
-        feedbackMessage = `Obtuviste ${score}% (${correctCount} de ${totalQuestions} correctas). Algunos conceptos necesitan más trabajo. Te recomendamos revisar los tópicos con un enfoque diferente para fortalecer tu comprensión.`;
-      }
-    }
-
-    // Fallback reinforcement_minutes basado en score
-    if (reinforcementMinutes === 0 && score < ADVANCE_THRESHOLD) {
-      reinforcementMinutes = score >= REINFORCE_THRESHOLD ? 15 : 30;
-    }
-
-    // ═════════════════════════════════════════════════════════
-    // 8. PERSISTIR EN SUPABASE
-    // ═════════════════════════════════════════════════════════
-
-    // ─── 8a. Insertar respuestas en tabla answers ───────────
-    // Construimos el array de inserts siguiendo el tipo AnswerInsert
-    // de database.ts. Cada pregunta → una fila en answers.
-    const answerInserts = userAnswers.map((a) => ({
-      session_id: sessionId,
-      user_id: user.id,
-      question_text: a.question_text,
-      options_json: a.options,
-      correct_answer: a.correct,
-      user_answer: a.user_answer,
-      is_correct: a.user_answer === a.correct,
-      topic_code: a.topic_code,
-      level_k: a.level_k || null,
-      explanation: a.explanation || null,
-    }));
-
-    const { error: insertError } = await supabase
-      .from("answers")
-      .insert(answerInserts);
-
-    if (insertError) {
-      console.error("[evaluate] Error insertando answers:", insertError);
+    const body = readEvaluateBody(rawBody);
+    if (!body) {
       return NextResponse.json(
         {
-          error: "Error al guardar las respuestas. Intenta de nuevo.",
+          error:
+            "El body debe contener solo attempt_id y entre 10 y 12 selecciones completas.",
         },
+        { status: 400 },
+      );
+    }
+
+    const adminClient = createAdminClient();
+    const { data: privateData, error: privateError } = await adminClient.rpc(
+      "get_quiz_attempt_private",
+      {
+        p_user_id: user.id,
+        p_session_id: sessionId,
+        p_attempt_id: body.attemptId,
+      },
+    );
+
+    if (privateError) {
+      console.error("[evaluate] Error leyendo snapshot privado:", privateError);
+      return NextResponse.json(
+        { error: "Error al recuperar el quiz." },
         { status: 500 },
       );
     }
 
-    console.log(
-      `[evaluate] ${answerInserts.length} respuestas insertadas en answers`,
-    );
-
-    // ─── 8b. Actualizar sesión ──────────────────────────────
-    const { error: updateError } = await supabase
-      .from("sessions")
-      .update({
-        score_percent: score,
-        action_taken: action,
-        status: "completed" as const,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", sessionId)
-      .eq("user_id", user.id);
-
-    if (updateError) {
-      console.error("[evaluate] Error actualizando sesión:", updateError);
-      // Las respuestas YA se guardaron. El error de update es menos
-      // grave — el usuario puede reintentar o un admin puede corregir.
-      // Logueamos pero no fallamos por completo.
-      console.warn(
-        "[evaluate] ADVERTENCIA: Respuestas guardadas pero sesión no actualizada.",
-      );
-    } else {
-      console.log(
-        `[evaluate] Sesión ${sessionId} actualizada: status=completed, score=${score}%, action=${action}`,
+    if (!privateData) {
+      return NextResponse.json(
+        { error: "Quiz no encontrado para esta sesión." },
+        { status: 404 },
       );
     }
 
-    // ═════════════════════════════════════════════════════════
-    // 9. CONSTRUIR Y RETORNAR RESPONSE
-    // ═════════════════════════════════════════════════════════
-    const response: EvaluateResponse = {
-      score,
-      correct_count: correctCount,
-      total_questions: totalQuestions,
-      action,
-      failed_topics: failedTopics,
-      error_patterns: errorPatterns,
-      feedback_message: feedbackMessage,
-      next_method: nextMethod,
-      reinforcement_minutes: reinforcementMinutes,
-      evaluated_at: new Date().toISOString(),
+    const attempt = readPrivateAttempt(privateData);
+    if (!attempt || attempt.attempt_id !== body.attemptId) {
+      console.error("[evaluate] Snapshot privado con contrato inválido.");
+      return NextResponse.json(
+        { error: "El quiz almacenado tiene un formato inválido." },
+        { status: 500 },
+      );
+    }
+
+    const answerContext = buildAnswerContext(attempt.questions, body.answers);
+    if (!answerContext) {
+      return NextResponse.json(
+        { error: "Las respuestas enviadas no coinciden con el quiz." },
+        { status: 400 },
+      );
+    }
+
+    const correctCount = answerContext.filter(
+      (answer) => answer.user_answer === answer.correct,
+    ).length;
+    const totalQuestions = answerContext.length;
+    const score = Math.round((correctCount / totalQuestions) * 100);
+    const action = determineAction(score);
+
+    let errorPatterns: ErrorPattern[] = [];
+    let claimedOperation: {
+      userId: string;
+      sessionId: string;
+      operation: "evaluate";
+      fingerprint: string;
+      claimToken: string;
+    } | null = null;
+
+    const releaseClaim = async () => {
+      if (!claimedOperation) return;
+      try {
+        await releaseQuizAiOperation(adminClient, claimedOperation);
+      } catch (error) {
+        console.error("[evaluate] No se pudo liberar la reserva de IA:", error);
+      }
     };
 
-    const elapsed = Date.now() - startTime;
-    console.log(`[evaluate] Completado en ${elapsed}ms`);
+    // A replay already has a persisted qualitative result. Skipping the LLM
+    // keeps retries idempotent in both data and quota consumption.
+    if (attempt.state === "open" && score < 100) {
+      const canonicalAnswers = [...body.answers].sort(
+        (left, right) => left.question_id - right.question_id,
+      );
+      const fingerprint = createQuizAiFingerprint(
+        JSON.stringify({ attemptId: body.attemptId, answers: canonicalAnswers }),
+      );
+      const operationClaim = await claimQuizAiOperation(adminClient, {
+        userId: user.id,
+        sessionId,
+        operation: "evaluate",
+        fingerprint,
+      });
 
+      if (
+        operationClaim.outcome === "in_progress" ||
+        operationClaim.outcome === "conflict"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              operationClaim.outcome === "conflict"
+                ? "Esta sesión ya se está evaluando con otras respuestas."
+                : "La evaluación está en progreso. Intenta de nuevo en unos segundos.",
+            code:
+              operationClaim.outcome === "conflict"
+                ? "QUIZ_EVALUATION_CONFLICT"
+                : "QUIZ_EVALUATION_IN_PROGRESS",
+          },
+          { status: 409, headers: { "Retry-After": "2" } },
+        );
+      }
+
+      if (operationClaim.outcome === "acquired") {
+        claimedOperation = {
+          userId: user.id,
+          sessionId,
+          operation: "evaluate",
+          fingerprint,
+          claimToken: operationClaim.claimToken,
+        };
+      }
+
+      const currentMethod = attempt.method_used;
+      if (claimedOperation) {
+        const ai = await executeAiJson<QualitativeEvaluation>({
+          request,
+          userId: user.id,
+          feature: "evaluate",
+          systemPrompt: buildEvaluateSystemPrompt(),
+          userPrompts: [
+            buildEvaluateUserPrompt(
+              answerContext,
+              score,
+              correctCount,
+              totalQuestions,
+              currentMethod,
+              attempt.attempt_number,
+            ),
+          ],
+          maxCompletionTokensPerAttempt: MAX_EVALUATE_COMPLETION_TOKENS,
+          timeoutMs: EVALUATE_TIMEOUT_MS,
+          parse: parseEvaluateResponse,
+          createDemoRaw: () =>
+            createDemoEvaluationRaw(score, action, currentMethod),
+          tuning: () => ({
+            response_format: { type: "json_object" },
+            temperature: 0.4,
+          }),
+        }).catch(async (error: unknown) => {
+          await releaseClaim();
+          throw error;
+        });
+
+        if (!ai.ok) {
+          await releaseClaim();
+          return NextResponse.json(ai.body, { status: ai.status });
+        }
+
+        // El LLM identifica patrones, pero no gobierna el mensaje, acción,
+        // método ni minutos. Un 100% nunca puede conservar patrones de error.
+        errorPatterns = score === 100 ? [] : ai.value.error_patterns;
+      }
+    }
+
+    const finalization = claimedOperation
+      ? await adminClient.rpc("finalize_quiz_and_adapt_claimed", {
+          p_user_id: user.id,
+          p_session_id: sessionId,
+          p_attempt_id: body.attemptId,
+          p_answers: body.answers.map((answer) => ({ ...answer })),
+          p_qualitative: {
+            error_patterns: errorPatterns,
+          },
+          p_request_fingerprint: claimedOperation.fingerprint,
+          p_claim_token: claimedOperation.claimToken,
+        })
+      : await adminClient.rpc("finalize_quiz_and_adapt", {
+        p_user_id: user.id,
+        p_session_id: sessionId,
+        p_attempt_id: body.attemptId,
+        p_answers: body.answers.map((answer) => ({ ...answer })),
+        p_qualitative: {
+          error_patterns: errorPatterns,
+        },
+        });
+    const { data: finalized, error: finalizeError } = finalization;
+
+    if (finalizeError) {
+      await releaseClaim();
+      console.error("[evaluate] Error finalizando intento:", finalizeError);
+      return databaseErrorResponse(finalizeError.message);
+    }
+
+    const evaluation = readFinalizeResult(finalized);
+    const adaptation = isRecord(finalized)
+      ? readAdaptResponse(finalized.adaptation)
+      : null;
+    if (
+      !evaluation ||
+      !adaptation ||
+      adaptation.action !== evaluation.action
+    ) {
+      await releaseClaim();
+      console.error("[evaluate] RPC retornó un contrato inválido.");
+      return NextResponse.json(
+        { error: "La evaluación guardada tiene un formato inválido." },
+        { status: 500 },
+      );
+    }
+
+    const response: EvaluateWithAdaptationResponse = {
+      ...evaluation,
+      adaptation,
+    };
     return NextResponse.json(response, { status: 200 });
-  } catch (error) {
-    console.error("[evaluate] Error inesperado:", error);
+  } catch {
+    console.error("[evaluate] Error inesperado.");
     return NextResponse.json(
       { error: "Error interno del servidor." },
       { status: 500 },

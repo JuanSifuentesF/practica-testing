@@ -39,6 +39,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
+import type { TooltipContentProps } from "recharts";
 import type { SessionScore } from "@/types/dashboard";
 
 // ──────────────────────────────────────────────────────────────
@@ -152,16 +153,15 @@ function formatDate(isoString: string): string {
 /**
  * Tooltip que aparece al hacer hover sobre un punto de la gráfica.
  *
- * Recharts 3.x inyecta `active` y `payload` al clonar el elemento
- * pasado a `content`. Usamos `any` porque los genéricos del Tooltip
- * (ValueType/NameType) no se propagan a tipos personalizados en JSX.
+ * Recharts 3.x inyecta `active` y `payload` al invocar el renderer
+ * pasado a `content`. TooltipContentProps describe ese contrato.
  *
  * DISEÑO:
  *   - Fondo oscuro semi-transparente con backdrop-blur (glassmorphism)
  *   - Información jerárquica: score grande → detalles abajo
  *   - Colores consistentes con el tema de la app
  */
-function CustomTooltip({ active, payload }: any) {
+function CustomTooltip({ active, payload }: TooltipContentProps) {
   // Si el tooltip no está activo o no hay datos, no renderizar nada.
   // Esto es el patrón estándar de Recharts para tooltips personalizados.
   if (!active || !payload || payload.length === 0) {

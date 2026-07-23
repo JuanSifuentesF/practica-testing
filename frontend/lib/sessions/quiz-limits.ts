@@ -1,0 +1,3 @@
+export const MIN_QUIZ_QUESTIONS = 10;
+export const MAX_QUIZ_QUESTIONS = 12;
+export const MAX_QUIZ_TOPICS_PER_SESSION = MAX_QUIZ_QUESTIONS;

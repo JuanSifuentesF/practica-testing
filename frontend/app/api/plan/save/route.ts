@@ -26,6 +26,11 @@
 // ─────────────────────────────────────────────────────────────────
 
 import { NextResponse } from "next/server";
+import {
+  parseGeneratedPlan,
+  type GeneratedPlan,
+  type PlanSession,
+} from "@/app/api/plan/generate/route";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type {
@@ -34,8 +39,6 @@ import type {
   StudyPlanInsert,
   SessionInsert,
   TopicProgressInsert,
-  SessionType,
-  MethodUsed,
 } from "@/types";
 
 // ─── Forzar Node.js runtime ──────────────────────────────────────
@@ -46,40 +49,10 @@ export const runtime = "nodejs";
 // TIPOS INTERNOS
 // ─────────────────────────────────────────────────────────────────
 
-// ─── Tipo de sesión en el plan generado por la IA (UP-04) ────────
-// Coincide con el tipo PlanSession de /api/plan/generate/route.ts.
-interface PlanSession {
-  day_number: number;
-  session_type: "morning" | "night";
-  topic_codes: string[];
-  method: "theory" | "examples" | "analogies";
-  estimated_duration_minutes: number;
-  difficulty: "easy" | "medium" | "hard";
-  title: string;
-}
-
-// ─── Tipo del plan generado completo ─────────────────────────────
-interface GeneratedPlan {
-  sessions: PlanSession[];
-  total_sessions: number;
-  total_days: number;
-  topics_per_level: {
-    K1: number;
-    K2: number;
-    K3: number;
-  };
-  plan_summary: string;
-  coverage: {
-    total_topics: number;
-    covered_topic_codes: string[];
-    omitted_topic_codes: string[];
-  };
-}
-
 // ─── Tipo del body esperado ──────────────────────────────────────
 interface SavePlanBody {
   document_id: string;
-  plan: GeneratedPlan;
+  plan: Record<string, unknown>;
   config: {
     objective_days: number;
     morning_time: string;
@@ -90,6 +63,7 @@ interface SavePlanBody {
 // ─── Constantes de validación ────────────────────────────────────
 const MIN_DAYS = 1;
 const MAX_DAYS = 30;
+const PLAN_TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 
 // ─── Type guard para validar objetos ─────────────────────────────
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -107,20 +81,7 @@ function parseBody(value: unknown): SavePlanBody | null {
   // ── Validar document_id ─────────────────────────────────────
   if (typeof document_id !== "string" || document_id.length === 0) return null;
 
-  // ── Validar plan ────────────────────────────────────────────
   if (!isRecord(plan)) return null;
-  const planObj = plan as unknown as GeneratedPlan;
-
-  if (!Array.isArray(planObj.sessions) || planObj.sessions.length === 0) {
-    return null;
-  }
-
-  // Verificar que cada sesión tiene los campos mínimos
-  for (const session of planObj.sessions) {
-    if (typeof session.day_number !== "number") return null;
-    if (!["morning", "night"].includes(session.session_type)) return null;
-    if (!Array.isArray(session.topic_codes)) return null;
-  }
 
   // ── Validar config ──────────────────────────────────────────
   if (!isRecord(config)) return null;
@@ -129,27 +90,31 @@ function parseBody(value: unknown): SavePlanBody | null {
 
   if (
     typeof objective_days !== "number" ||
+    !Number.isInteger(objective_days) ||
     objective_days < MIN_DAYS ||
     objective_days > MAX_DAYS
   ) {
     return null;
   }
 
-  if (typeof morning_time !== "string" || !/^\d{2}:\d{2}$/.test(morning_time)) {
+  if (
+    typeof morning_time !== "string" ||
+    !PLAN_TIME_PATTERN.test(morning_time)
+  ) {
     return null;
   }
 
-  if (typeof night_time !== "string" || !/^\d{2}:\d{2}$/.test(night_time)) {
+  if (typeof night_time !== "string" || !PLAN_TIME_PATTERN.test(night_time)) {
     return null;
   }
 
   return {
     document_id,
-    plan: planObj,
+    plan,
     config: {
-      objective_days: objective_days as number,
-      morning_time: morning_time as string,
-      night_time: night_time as string,
+      objective_days,
+      morning_time,
+      night_time,
     },
   };
 }
@@ -175,129 +140,6 @@ function calculatePlanDates(objectiveDays: number) {
     start_date: startDate,
     estimated_end_date: endDate.toISOString().split("T")[0],
   };
-}
-
-/**
- * Revalida el plan generado contra los tópicos reales del documento.
- *
- * Aunque /api/plan/generate ya validó el plan en UP-04, /api/plan/save
- * recibe datos desde el navegador. Por seguridad, aquí repetimos las
- * reglas críticas antes de persistir en Supabase.
- */
-function validatePlanAgainstTopics(
-  plan: GeneratedPlan,
-  topicsJson: TopicsJson,
-  expectedDays: number,
-): string[] {
-  const errors: string[] = [];
-  const originalCodes = new Set(Object.keys(topicsJson));
-  const expectedSessions = expectedDays * 2;
-
-  if (!Array.isArray(plan.sessions)) {
-    return ["El plan no contiene sessions válido."];
-  }
-
-  if (plan.sessions.length !== expectedSessions) {
-    errors.push(
-      `El plan contiene ${plan.sessions.length} sesiones, pero se esperaban ${expectedSessions}.`,
-    );
-  }
-
-  if (plan.total_sessions !== expectedSessions) {
-    errors.push(
-      `total_sessions debe ser ${expectedSessions}, pero llegó ${plan.total_sessions}.`,
-    );
-  }
-
-  if (plan.total_days !== expectedDays) {
-    errors.push(
-      `total_days debe ser ${expectedDays}, pero llegó ${plan.total_days}.`,
-    );
-  }
-
-  if (!plan.coverage || typeof plan.coverage !== "object") {
-    errors.push("El plan no contiene coverage válido.");
-    return errors;
-  }
-
-  if (plan.coverage.total_topics !== originalCodes.size) {
-    errors.push(
-      `coverage.total_topics debe ser ${originalCodes.size}, pero llegó ${plan.coverage.total_topics}.`,
-    );
-  }
-
-  const allTopicCodes: string[] = [];
-
-  for (let index = 0; index < plan.sessions.length; index++) {
-    const session = plan.sessions[index];
-
-    if (typeof session.day_number !== "number" || session.day_number < 1) {
-      errors.push(`Sesión ${index + 1}: day_number inválido.`);
-    }
-
-    if (!["morning", "night"].includes(session.session_type)) {
-      errors.push(`Sesión ${index + 1}: session_type inválido.`);
-    }
-
-    if (
-      !Array.isArray(session.topic_codes) ||
-      session.topic_codes.length === 0
-    ) {
-      errors.push(`Sesión ${index + 1}: topic_codes vacío o inválido.`);
-      continue;
-    }
-
-    for (const code of session.topic_codes) {
-      allTopicCodes.push(code);
-      if (!originalCodes.has(code)) {
-        errors.push(`Sesión ${index + 1}: topic_code inexistente: ${code}.`);
-      }
-    }
-  }
-
-  const codeSet = new Set<string>();
-  const duplicates = new Set<string>();
-
-  for (const code of allTopicCodes) {
-    if (codeSet.has(code)) duplicates.add(code);
-    codeSet.add(code);
-  }
-
-  if (duplicates.size > 0) {
-    errors.push(`Tópicos duplicados: ${Array.from(duplicates).join(", ")}.`);
-  }
-
-  const omittedCodes = new Set(plan.coverage.omitted_topic_codes || []);
-  const coveredCodes = new Set(plan.coverage.covered_topic_codes || []);
-
-  const missingTopics = Array.from(originalCodes).filter(
-    (code) => !codeSet.has(code) && !omittedCodes.has(code),
-  );
-
-  if (missingTopics.length > 0) {
-    errors.push(`Tópicos omitidos sin declarar: ${missingTopics.join(", ")}.`);
-  }
-
-  const usedButNotCovered = Array.from(codeSet).filter(
-    (code) => !coveredCodes.has(code),
-  );
-
-  if (usedButNotCovered.length > 0) {
-    errors.push(
-      `Tópicos usados pero ausentes en coverage.covered_topic_codes: ${usedButNotCovered.join(", ")}.`,
-    );
-  }
-
-  const maxDayInPlan = Math.max(
-    ...plan.sessions.map((session) => session.day_number),
-  );
-  if (maxDayInPlan > expectedDays) {
-    errors.push(
-      `El plan tiene sesiones hasta el día ${maxDayInPlan}, pero el objetivo es ${expectedDays}.`,
-    );
-  }
-
-  return errors;
 }
 
 /**
@@ -360,7 +202,7 @@ function buildSessionInserts(
     study_plan_id: planId,
     user_id: userId,
     topic_codes: session.topic_codes,
-    session_type: session.session_type as SessionType,
+    session_type: session.session_type,
     day_number: session.day_number,
     scheduled_at: calculateScheduledAt(
       startDate,
@@ -369,8 +211,8 @@ function buildSessionInserts(
       morningTime,
       nightTime,
     ),
-    duration_minutes: session.estimated_duration_minutes || 90,
-    method_used: (session.method || "theory") as MethodUsed,
+    duration_minutes: session.estimated_duration_minutes,
+    method_used: session.method,
     status: "pending" as const,
     attempt_number: 1,
   }));
@@ -465,14 +307,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { document_id, plan, config } = body;
-
-    console.log(
-      `[Plan/Save] Guardando plan para documento ${document_id}: ` +
-        `${plan.sessions.length} sesiones, ` +
-        `${plan.coverage.total_topics} tópicos, ` +
-        `${config.objective_days} días`,
-    );
+    const { document_id, plan: rawPlan, config } = body;
 
     // ═══════════════════════════════════════════════════════════
     // FASE 3: OWNERSHIP CHECK
@@ -519,24 +354,28 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── Revalidar el plan contra los tópicos reales ───────────
-    const validationErrors = validatePlanAgainstTopics(
-      plan,
+    const plan = parseGeneratedPlan(
+      JSON.stringify(rawPlan),
       topicsJson,
       config.objective_days,
     );
 
-    if (validationErrors.length > 0) {
-      console.error("[Plan/Save] Plan inválido:", validationErrors);
+    if (!plan) {
+      console.error("[Plan/Save] El plan no superó el contrato de generación.");
       return NextResponse.json(
         {
-          error:
-            "El plan recibido no cumple con los requisitos: " +
-            validationErrors.join("; "),
+          error: "El plan recibido no cumple con el contrato de generación.",
         },
         { status: 400 },
       );
     }
+
+    console.log(
+      `[Plan/Save] Guardando plan para documento ${document_id}: ` +
+        `${plan.sessions.length} sesiones, ` +
+        `${plan.coverage.total_topics} tópicos, ` +
+        `${config.objective_days} días`,
+    );
 
     // ── Calcular fechas en servidor ───────────────────────────
     const { start_date, estimated_end_date } = calculatePlanDates(

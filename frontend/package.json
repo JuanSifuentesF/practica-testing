@@ -6,7 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "test:plan": "vitest run tests/plan-contract.test.ts",
+    "test:ai05": "vitest run tests/plan-contract.test.ts",
+    "test:extract": "vitest run tests/fastapi-contract.test.ts tests/extract-route.test.ts tests/api-checklist-storage.test.ts",
+    "test:quiz": "vitest run tests/quiz-authority.test.ts",
+    "verify:pdf-e2e": "node --env-file=.env.local scripts/verify-pdf-e2e.mjs",
+    "verify:quiz-e2e": "node --env-file=.env.local scripts/verify-quiz-e2e.mjs",
+    "preflight:ownership": "node --env-file=.env.local scripts/verify-core-ownership.mjs --preflight",
+    "test:ownership": "node --env-file=.env.local scripts/verify-core-ownership.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
@@ -34,6 +43,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

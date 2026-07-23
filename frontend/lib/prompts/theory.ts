@@ -21,13 +21,14 @@ import type { MethodUsed } from "@/types";
 // ──────────────────────────────────────────────────────────────
 
 /** Número máximo de caracteres del texto del syllabus por tópico */
-const MAX_SYLLABUS_TEXT_CHARS = 1500;
+const MAX_SYLLABUS_TEXT_CHARS = 6000;
 
 /** Descripciones del método para inyectar en el prompt */
 const METHOD_DESCRIPTIONS: Record<MethodUsed, string> = {
   theory: `MÉTODO: TEORÍA FORMAL
-- Usa definiciones precisas del ISTQB Glossary v4.0
-- Referencia estándares relevantes (IEEE 829, ISO 25010, ISO 29119)
+- Usa el fragmento proporcionado del syllabus CTFL v4.0 como fuente primaria
+- No inventes definiciones, reglas, cifras ni referencias normativas
+- Menciona un estándar solo cuando aparezca en el fragmento proporcionado
 - Explica principios fundamentales con rigor académico
 - Usa lenguaje técnico apropiado, explicando cada término la primera vez
 - Los key_concepts deben tener definiciones formales y completas

@@ -18,8 +18,7 @@
 //   - totalQuestions: number — Total de preguntas en el quiz
 //
 // REGLA CRÍTICA:
-//   NUNCA mostrar `question.correct` ni `question.explanation`
-//   en este componente. Esos datos solo se usan en SE-08.
+//   El contrato público ni siquiera contiene `correct` o `explanation`.
 // ============================================================
 
 "use client";

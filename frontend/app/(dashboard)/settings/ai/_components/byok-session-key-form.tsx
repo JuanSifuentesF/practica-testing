@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MAX_BYOK_API_KEY_LENGTH } from "@/lib/ai/http-contract";
 
 interface ByokSessionKeyFormProps {
   apiKey: string;
@@ -32,10 +33,10 @@ export function ByokSessionKeyForm({
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="rounded-md border border-amber-800/50 bg-amber-950/30 p-3 text-xs text-amber-100/80">
-          La key permanece solamente en memoria React. Al recargar, navegar
-          fuera o cambiar a otro modo, se elimina. No mostramos sus primeros ni
-          últimos caracteres fuera del input y no la escribimos en logs, cookies
-          ni almacenamiento persistente.
+          La key vive solo en memoria React durante esta sesión autenticada. Se
+          pierde al recargar, cerrar sesión, salir del dashboard, cambiar de
+          modo o cambiar de proveedor. No se guarda en base de datos, storage,
+          cookies ni logs.
         </p>
         <div className="space-y-2">
           <Label htmlFor="byok-key" className="text-slate-300">
@@ -49,6 +50,7 @@ export function ByokSessionKeyForm({
               onChange={(event) => onApiKeyChange(event.target.value)}
               autoComplete="off"
               spellCheck={false}
+              maxLength={MAX_BYOK_API_KEY_LENGTH}
               placeholder="Pega tu key aquí"
               className="border-slate-700 bg-slate-950 text-slate-100"
             />

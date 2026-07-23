@@ -52,6 +52,7 @@ import { SolutionCompare } from "./_components/solution-compare";
 import { TheoryBrief } from "./_components/theory-brief";
 import { ExercisePrompt } from "./_components/exercise-prompt";
 import { TestCaseEditor } from "./_components/test-case-editor";
+import { useAiSession } from "@/components/ai/ai-session-provider";
 
 // ──────────────────────────────────────────────────────────────
 // Tipos internos
@@ -108,6 +109,7 @@ function extractMinRows(constraints: string[]): number {
 export default function PracticeTopicPage() {
   const params = useParams<{ topicCode: string }>();
   const searchParams = useSearchParams();
+  const { aiFetch } = useAiSession();
 
   // ─── Extraer parámetros de la URL ─────────────────────
   const topicCode = decodeURIComponent(params.topicCode ?? "");
@@ -212,7 +214,7 @@ export default function PracticeTopicPage() {
     }));
 
     try {
-      const response = await fetch("/api/practice/generate", {
+      const response = await aiFetch("/api/practice/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -286,7 +288,7 @@ export default function PracticeTopicPage() {
     };
 
     try {
-      const response = await fetch("/api/practice/evaluate", {
+      const response = await aiFetch("/api/practice/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),

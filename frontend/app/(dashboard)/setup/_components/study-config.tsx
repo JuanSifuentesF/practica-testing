@@ -6,7 +6,6 @@
 //   - Input numérico: días objetivo (default: 7, rango: 1-30)
 //   - Select: hora de estudio mañana (default: 06:00)
 //   - Select: hora de estudio noche (default: 22:00)
-//   - Select: modelo de IA para generar el plan
 //
 // TIPO: Client Component — usa useState para inputs controlados
 //
@@ -21,8 +20,6 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
-export type StudyModel = "gemini-2.5-flash" | "gpt-5";
-
 // ─── Tipo de la configuración del plan ───
 // Exportamos esta interfaz para que SetupPage la use también.
 export interface StudyConfigData {
@@ -32,8 +29,6 @@ export interface StudyConfigData {
   morningTime: string;
   /** Hora de inicio de la sesión nocturna (formato "HH:MM") */
   nightTime: string;
-  /** Modelo de IA permitido para generar el plan */
-  modelProvider: StudyModel;
 }
 
 // ─── Valores por defecto ───
@@ -42,7 +37,6 @@ export const DEFAULT_CONFIG: StudyConfigData = {
   objectiveDays: 7,
   morningTime: "06:00",
   nightTime: "22:00",
-  modelProvider: "gemini-2.5-flash",
 };
 
 // ─── Opciones de horarios ───
@@ -67,23 +61,6 @@ const NIGHT_HOURS = [
   { value: "21:00", label: "9:00 PM" },
   { value: "22:00", label: "10:00 PM" },
   { value: "23:00", label: "11:00 PM" },
-];
-
-const MODEL_OPTIONS: Array<{
-  value: StudyModel;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: "gemini-2.5-flash",
-    label: "Gemini 2.5 Flash",
-    description: "Rápido y económico para pruebas frecuentes",
-  },
-  {
-    value: "gpt-5",
-    label: "GPT-5",
-    description: "OpenAI, más caro y dependiente de cuota disponible",
-  },
 ];
 
 // ─── Props del componente ───
@@ -132,21 +109,6 @@ export function StudyConfig({
     });
   };
 
-  const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    const selectedModel = MODEL_OPTIONS.find((model) => model.value === value);
-    if (!selectedModel) return;
-
-    onConfigChange({
-      ...config,
-      modelProvider: selectedModel.value,
-    });
-  };
-
-  const selectedModel = MODEL_OPTIONS.find(
-    (model) => model.value === config.modelProvider,
-  );
-
   return (
     // ─── Contenedor del formulario ───
     // Usamos una Card visual pero sin el componente Card de shadcn
@@ -165,9 +127,9 @@ export function StudyConfig({
 
       {/* ─── Grid de inputs ───
           En mobile: una columna (los inputs se apilan)
-          En desktop: cuatro columnas (una por cada input)
+          En desktop: tres columnas (una por cada input)
           gap-6: espacio de 24px entre inputs */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {/* ─── Input 1: Días objetivo ─── */}
         <div className="flex flex-col gap-2">
           <Label
@@ -263,39 +225,6 @@ export function StudyConfig({
             Hora preferida para la sesión nocturna
           </p>
         </div>
-
-        {/* ─── Input 4: Modelo IA ─── */}
-        <div className="flex flex-col gap-2">
-          <Label
-            htmlFor="model-provider"
-            className="text-sm font-medium text-slate-300"
-          >
-            🤖 Modelo IA
-          </Label>
-          <select
-            id="model-provider"
-            value={config.modelProvider}
-            onChange={handleModelChange}
-            disabled={disabled}
-            className="
-              flex h-9 w-full rounded-md border border-slate-700
-              bg-slate-800/50 px-3 py-1
-              text-sm text-slate-200
-              transition-colors
-              focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20
-              disabled:cursor-not-allowed disabled:opacity-50
-            "
-          >
-            {MODEL_OPTIONS.map((model) => (
-              <option key={model.value} value={model.value}>
-                {model.label}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-slate-500">
-            {selectedModel?.description || "Modelo permitido por el backend"}
-          </p>
-        </div>
       </div>
 
       {/* ─── Resumen del plan ───
@@ -310,10 +239,8 @@ export function StudyConfig({
             {config.objectiveDays * 2} sesiones
           </span>{" "}
           de ~90 minutos cada una ({config.morningTime.replace(":00", "")}h y{" "}
-          {config.nightTime.replace(":00", "")}h). Modelo: {" "}
-          <span className="text-sky-300 font-semibold">
-            {selectedModel?.label || config.modelProvider}
-          </span>
+          {config.nightTime.replace(":00", "")}h). La configuración de IA se
+          toma desde Settings.
         </p>
       </div>
     </div>

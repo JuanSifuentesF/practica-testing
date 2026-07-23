@@ -23,6 +23,7 @@ import type {
   ActionTaken,
   OptionsJson,
 } from "./database";
+import type { AdaptResponse } from "./adapt";
 
 // ──────────────────────────────────────────────────────────────
 // Request: Lo que el frontend envía al POST /evaluate
@@ -31,27 +32,14 @@ import type {
 /**
  * Una respuesta individual del usuario.
  *
- * Contiene tanto los datos de la pregunta (para persistir en `answers`)
- * como la respuesta del usuario. Esto evita que el servidor tenga que
- * re-generar o buscar el quiz — el cliente envía todo lo necesario.
+ * Solo contiene una selección. La pregunta, solución y explicación se
+ * recuperan del snapshot privado persistido por el servidor.
  */
 export interface UserAnswer {
   /** Índice de la pregunta en el quiz (0-based) */
   question_id: number;
   /** Respuesta seleccionada por el usuario: "a", "b", "c", o "d" */
   user_answer: AnswerOption;
-  /** Texto completo del enunciado de la pregunta */
-  question_text: string;
-  /** Las 4 opciones de respuesta */
-  options: OptionsJson;
-  /** La respuesta correcta según el LLM que generó el quiz */
-  correct: AnswerOption;
-  /** Explicación de por qué la correcta es correcta */
-  explanation: string;
-  /** Código del tópico ISTQB (ej. "FL-1.1.1") */
-  topic_code: string;
-  /** Nivel K de la pregunta */
-  level_k: LevelK;
 }
 
 /**
@@ -61,8 +49,23 @@ export interface UserAnswer {
  * No se permite envío parcial — esto se valida en el servidor.
  */
 export interface EvaluateRequest {
+  /** Snapshot privado que el servidor debe evaluar */
+  attempt_id: string;
   /** Array completo de respuestas del usuario (una por pregunta) */
   answers: UserAnswer[];
+}
+
+/** Detalle autoritativo liberado solo después de finalizar el intento. */
+export interface QuestionResult {
+  question_id: number;
+  question: string;
+  options: OptionsJson;
+  user_answer: AnswerOption;
+  correct: AnswerOption;
+  is_correct: boolean;
+  explanation: string;
+  topic_code: string;
+  level_k: LevelK;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -120,7 +123,15 @@ export interface EvaluateResponse {
   /** Minutos de refuerzo recomendados (0 si advance) */
   reinforcement_minutes: number;
 
+  /** Preguntas corregidas contra el snapshot privado del servidor */
+  question_results: QuestionResult[];
+
   // ─── Metadatos ────────────────────────────────────────────
   /** Timestamp ISO de la evaluación */
   evaluated_at: string;
+}
+
+/** Respuesta HTTP: evaluación y adaptación confirmadas en una transacción. */
+export interface EvaluateWithAdaptationResponse extends EvaluateResponse {
+  adaptation: AdaptResponse;
 }

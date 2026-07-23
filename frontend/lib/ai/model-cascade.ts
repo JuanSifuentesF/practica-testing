@@ -11,94 +11,33 @@ export interface ModelRuntime {
   timeoutMs: number;
 }
 
-interface CreateModelRuntimesOptions {
-  timeoutMs: number;
-  geminiModels?: Array<string | undefined>;
-  openaiModels?: Array<string | undefined>;
-  providers?: LlmProvider[];
-  maxRetries?: number;
-}
-
 const GEMINI_OPENAI_BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/openai";
 
-// Allowlist canonica. Una preferencia guardada en DB no es una
-// autorizacion: solo estos identificadores pueden llegar al SDK.
 export const MODEL_ALLOWLIST = {
   gemini: [
     "gemini-3.5-flash",
-    "gemini-3.1-flash-lite",
     "gemini-3.1-pro-preview",
-    "gemini-2.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-3-pro-preview",
+    "gemini-3-flash-preview",
     "gemini-2.5-pro",
+    "gemini-2.5-flash",
   ],
   openai: ["gpt-4o-mini"],
 } as const satisfies Record<LlmProvider, readonly string[]>;
 
-export function isAllowedModel(
-  provider: LlmProvider,
-  model: string,
-): boolean {
+export function isAllowedModel(provider: LlmProvider, model: string): boolean {
   return MODEL_ALLOWLIST[provider].some((candidate) => candidate === model);
 }
 
-function uniqueModelNames(models: Array<string | undefined>): string[] {
-  return [
-    ...new Set(
-      models
-        .map((model) => model?.trim())
-        .filter((model): model is string => Boolean(model)),
-    ),
-  ];
-}
-
-export function createModelRuntimes({
-  timeoutMs,
-  geminiModels = [],
-  openaiModels = [],
-  providers = ["gemini", "openai"],
-  maxRetries = 1,
-}: CreateModelRuntimesOptions): ModelRuntime[] {
-  const runtimes: ModelRuntime[] = [];
-
-  if (providers.includes("gemini")) {
-    const geminiKey = process.env.GEMINI_API_KEY;
-    if (geminiKey) {
-      const client = new OpenAI({
-        apiKey: geminiKey,
-        baseURL: process.env.GEMINI_OPENAI_BASE_URL || GEMINI_OPENAI_BASE_URL,
-        timeout: timeoutMs + 15_000,
-        maxRetries,
-      });
-
-      for (const model of uniqueModelNames([
-        ...geminiModels,
-        ...MODEL_ALLOWLIST.gemini,
-      ])) {
-        runtimes.push({ provider: "gemini", model, client, timeoutMs });
-      }
-    }
-  }
-
-  if (providers.includes("openai")) {
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (openaiKey) {
-      const client = new OpenAI({
-        apiKey: openaiKey,
-        timeout: timeoutMs + 15_000,
-        maxRetries,
-      });
-
-      for (const model of uniqueModelNames([
-        ...openaiModels,
-        ...MODEL_ALLOWLIST.openai,
-      ])) {
-        runtimes.push({ provider: "openai", model, client, timeoutMs });
-      }
-    }
-  }
-
-  return runtimes;
+export function getModelCandidates(
+  provider: LlmProvider,
+  firstModel: string,
+): string[] {
+  const models = MODEL_ALLOWLIST[provider];
+  const startIndex = models.findIndex((candidate) => candidate === firstModel);
+  return startIndex === -1 ? [] : models.slice(startIndex);
 }
 
 interface CreateProviderRuntimeOptions {
@@ -114,7 +53,7 @@ export function createProviderRuntime({
   model,
   apiKey,
   timeoutMs,
-  maxRetries = 1,
+  maxRetries = 0,
 }: CreateProviderRuntimeOptions): ModelRuntime {
   if (!isAllowedModel(provider, model)) {
     throw new Error("AI_MODEL_NOT_ALLOWED");
@@ -140,6 +79,27 @@ export function isModelTimeout(error: unknown): boolean {
   );
 }
 
-export function getModelErrorStatus(error: unknown): number | "unknown" {
-  return error instanceof OpenAI.APIError ? error.status : "unknown";
+export function isModelAvailabilityError(error: unknown): boolean {
+  if (isModelTimeout(error)) return true;
+  if (error instanceof OpenAI.APIConnectionError) return true;
+
+  if (
+    error instanceof Error &&
+    (error.name === "APIConnectionError" ||
+      error.name === "APIConnectionTimeoutError")
+  ) {
+    return true;
+  }
+
+  if (error instanceof OpenAI.APIError) {
+    return (
+      error.status === 404 ||
+      error.status === 408 ||
+      error.status === 409 ||
+      error.status === 429 ||
+      (typeof error.status === "number" && error.status >= 500)
+    );
+  }
+
+  return false;
 }

@@ -15,8 +15,6 @@
 // PROPS:
 //   - evaluation: EvaluateResponse — datos de la evaluación
 //   - adaptation: AdaptResponse | null — resultado de la adaptación
-//   - questions: QuizQuestion[] — preguntas del quiz (para mostrar explanations)
-//   - userAnswers: Record<number, AnswerOption> — respuestas del usuario
 //   - session: SessionWithContext — datos de la sesión para contexto
 //
 // DISEÑO:
@@ -53,7 +51,6 @@ import type {
   ErrorPattern,
 } from "@/types/evaluate";
 import type { AdaptResponse } from "@/types/adapt";
-import type { QuizQuestion } from "@/types/quiz";
 import type { SessionWithContext } from "@/types/sessions";
 import type { AnswerOption } from "@/types/database";
 
@@ -61,8 +58,6 @@ import type { AnswerOption } from "@/types/database";
 interface FeedbackPanelProps {
   evaluation: EvaluateResponse;
   adaptation: AdaptResponse | null;
-  questions: QuizQuestion[];
-  userAnswers: Record<number, AnswerOption>;
   session: SessionWithContext;
 }
 
@@ -80,7 +75,7 @@ interface ActionConfig {
 // Centralizado para evitar condicionales dispersos por todo el JSX.
 const ACTION_CONFIGS: Record<string, ActionConfig> = {
   advance: {
-    label: "Avanzas al siguiente tópico",
+    label: "Resultado aprobado",
     emoji: "✅",
     badgeClass: "border-emerald-600 bg-emerald-950/60 text-emerald-300",
     ringClass: "ring-emerald-500/30",
@@ -88,7 +83,7 @@ const ACTION_CONFIGS: Record<string, ActionConfig> = {
     description: "Has demostrado dominio sobre los conceptos evaluados.",
   },
   reinforce: {
-    label: "Sesión de refuerzo agendada",
+    label: "Refuerzo recomendado",
     emoji: "⚠️",
     badgeClass: "border-amber-600 bg-amber-950/60 text-amber-300",
     ringClass: "ring-amber-500/30",
@@ -97,7 +92,7 @@ const ACTION_CONFIGS: Record<string, ActionConfig> = {
       "Estás cerca del umbral. Una sesión corta de refuerzo te ayudará.",
   },
   restructure: {
-    label: "Plan reestructurado",
+    label: "Reestructuración requerida",
     emoji: "🔄",
     badgeClass: "border-orange-600 bg-orange-950/60 text-orange-300",
     ringClass: "ring-orange-500/30",
@@ -131,8 +126,6 @@ function formatDateEsMx(
 export function FeedbackPanel({
   evaluation,
   adaptation,
-  questions,
-  userAnswers,
   session,
 }: FeedbackPanelProps) {
   const router = useRouter();
@@ -141,11 +134,7 @@ export function FeedbackPanel({
   const config = ACTION_CONFIGS[evaluation.action] || ACTION_CONFIGS.advance;
 
   // Preparar datos de preguntas individuales con resultados
-  const questionResults = questions.map((q) => {
-    const userAnswer = userAnswers[q.question_id] ?? null;
-    const isCorrect = userAnswer === q.correct;
-    return { ...q, userAnswer, isCorrect };
-  });
+  const questionResults = evaluation.question_results;
 
   // Calcular la fecha estimada (preferir la nueva si hubo restructure)
   const estimatedEndDate =
@@ -266,14 +255,14 @@ export function FeedbackPanel({
             <div
               key={qr.question_id}
               className={`rounded-lg border px-4 py-3 ${
-                qr.isCorrect
+                qr.is_correct
                   ? "border-emerald-800/40 bg-emerald-950/10"
                   : "border-red-800/40 bg-red-950/10"
               }`}
             >
               {/* ── Header de la pregunta ──────────────────── */}
               <div className="flex items-start gap-2.5">
-                {qr.isCorrect ? (
+                {qr.is_correct ? (
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
                 ) : (
                   <XCircle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
@@ -292,14 +281,13 @@ export function FeedbackPanel({
               </div>
 
               {/* ── Respuestas: usuario vs. correcta ───────── */}
-              {!qr.isCorrect && (
+              {!qr.is_correct && (
                 <div className="mt-2.5 ml-6 flex flex-col gap-1.5">
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-red-400">Tu respuesta:</span>
                     <span className="font-medium text-red-300">
-                      {qr.userAnswer
-                        ? `${OPTION_LABELS[qr.userAnswer]}) ${qr.options[qr.userAnswer]}`
-                        : "Sin respuesta"}
+                      {OPTION_LABELS[qr.user_answer]}){" "}
+                      {qr.options[qr.user_answer]}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
@@ -323,7 +311,7 @@ export function FeedbackPanel({
               )}
 
               {/* ── Preguntas correctas: solo confirmar ─────── */}
-              {qr.isCorrect && (
+              {qr.is_correct && (
                 <div className="mt-1.5 ml-6 text-xs text-emerald-400/70">
                   {OPTION_LABELS[qr.correct]}) {qr.options[qr.correct]}
                 </div>

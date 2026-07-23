@@ -34,7 +34,8 @@ export interface AiUsageSummary {
 export interface AiRuntimeRequest {
   // userId proviene exclusivamente de supabase.auth.getUser().
   userId: string;
-  // eventId se genera una vez y se conserva durante reintentos.
+  // eventId se conserva en reintentos JSON del mismo modelo. Un fallback
+  // facturable a otro modelo crea otro evento para mantener la auditoría.
   eventId: string;
   feature: AiFeature;
   promptText: string;

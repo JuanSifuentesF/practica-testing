@@ -11,28 +11,7 @@
 // automáticamente a /adapt con los datos necesarios.
 // ============================================================
 
-import type { ActionTaken, MethodUsed } from "./database";
-
-// ──────────────────────────────────────────────────────────────
-// Request: Lo que el frontend envía al POST /adapt
-// ──────────────────────────────────────────────────────────────
-
-/**
- * Body del POST /api/sessions/[id]/adapt.
- *
- * Contiene solo la información que NO está persistida en sessions.
- *
- * SEGURIDAD:
- *   - action viene de sessions.action_taken
- *   - score viene de sessions.score_percent
- *   - topic_codes viene de sessions.topic_codes
- *
- * El cliente no puede decidir si avanza ni qué score obtuvo.
- */
-export interface AdaptRequest {
-  /** Método recomendado por el LLM — usado en sesiones de refuerzo */
-  next_method: MethodUsed;
-}
+import type { ActionTaken } from "./database";
 
 // ──────────────────────────────────────────────────────────────
 // Response: Lo que el servidor retorna después de adaptar

@@ -5,10 +5,7 @@
 // Método: POST
 // Auth: Requiere sesión válida (cookie JWT de Supabase)
 // Params: id — UUID de la sesión
-// Body (opcional):
-//   {
-//     force?: boolean  // true = regenerar aunque ya exista en cache
-//   }
+// Body: opcional; un intento existente nunca se reemplaza.
 //
 // Response (200): { quiz: QuizContent, cached: boolean }
 // Response (401): { error: "No autenticado" }
@@ -17,23 +14,28 @@
 // Response (500): { error: "Error interno del servidor" }
 // Response (502): { error: "Error en la generación del quiz" }
 //
-// IDEMPOTENCIA:
-//   El quiz se almacena en un Map en memoria durante el lifetime
-//   del servidor Next.js. No existe columna quiz_content en DB.
-//   El cache se pierde al reiniciar, hacer HMR o redeployar.
-//
-// NOTA: A diferencia de theory_content, el quiz NO se persiste
-// en la tabla sessions. Las preguntas son efímeras; solo las
-// RESPUESTAS del usuario se guardarán en la tabla answers (SE-06).
+// IDEMPOTENCIA Y AUTORIDAD:
+//   El snapshot completo se persiste en el schema privado de PostgreSQL.
+//   El navegador recibe solo pregunta/opciones; nunca correct/explanation.
 // ─────────────────────────────────────────────────────────────────
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { readAdaptResponse } from "@/lib/sessions/adaptation-contract";
+import { readEvaluation } from "@/lib/sessions/evaluation-contract";
 import {
-  createModelRuntimes,
-  getModelErrorStatus,
-  isModelTimeout,
-} from "@/lib/ai/model-cascade";
+  MAX_QUIZ_QUESTIONS,
+  MAX_QUIZ_TOPICS_PER_SESSION,
+  MIN_QUIZ_QUESTIONS,
+} from "@/lib/sessions/quiz-limits";
+import { executeAiJson } from "@/lib/ai/execute-json";
+import { parseFirstJsonObject } from "@/lib/ai/json-object";
+import {
+  claimQuizAiOperation,
+  createQuizAiFingerprint,
+  releaseQuizAiOperation,
+} from "@/lib/ai/quiz-operation";
 import { buildQuizSystemPrompt, buildQuizUserPrompt } from "@/lib/prompts/quiz";
 import type {
   SessionRow,
@@ -43,6 +45,7 @@ import type {
 } from "@/types";
 import type { SessionTopic } from "@/types/sessions";
 import type { QuizQuestion, QuizContent } from "@/types/quiz";
+import type { EvaluateResponse } from "@/types/evaluate";
 
 // ─── Forzar Node.js runtime ─────────────────────────────────────
 // Edge runtime no soporta el SDK de OpenAI ni las cookies de
@@ -56,58 +59,163 @@ const UUID_REGEX =
 // El quiz genera menos tokens que la teoría (~3K vs ~5K)
 // pero el prompt es más largo por las instrucciones detalladas
 const QUIZ_TIMEOUT_MS = 60_000; // 60 segundos
+const MAX_QUIZ_COMPLETION_TOKENS = 5_000;
 
 // Opciones válidas de respuesta
 const VALID_OPTIONS: AnswerOption[] = ["a", "b", "c", "d"];
 
-// ─── Cache en memoria ────────────────────────────────────────────
-// Map de session_id → QuizContent para evitar regenerar el quiz
-// si el usuario recarga la página durante el quiz.
-// Este cache vive mientras el servidor Next.js esté corriendo.
-// Se pierde al reiniciar — esto es aceptable porque el quiz
-// no se evalúa hasta que el usuario lo envía (SE-06).
-const quizCache = new Map<string, QuizContent>();
+interface QuizSnapshotQuestion extends QuizQuestion {
+  correct: AnswerOption;
+  explanation: string;
+}
 
 // ──────────────────────────────────────────────────────────────
 // Parser defensivo del response del LLM
 // ──────────────────────────────────────────────────────────────
 
-/**
- * Extrae y parsea el JSON del response del LLM.
- *
- * Maneja los mismos casos edge que el parser de SE-02:
- *   - Texto introductorio antes del JSON
- *   - Bloques de código markdown (```json ... ```)
- *   - Texto final después del JSON
- */
-function parseQuizResponse(rawText: string): QuizQuestion[] | null {
-  let text = rawText.trim();
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
-  // ─── Intentar extraer de bloque markdown ────────────────
-  const markdownMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-  if (markdownMatch) {
-    text = markdownMatch[1].trim();
+function isAnswerOption(value: unknown): value is AnswerOption {
+  return value === "a" || value === "b" || value === "c" || value === "d";
+}
+
+function isLevelK(value: unknown): value is "K1" | "K2" | "K3" {
+  return value === "K1" || value === "K2" || value === "K3";
+}
+
+function readCanonicalTopicCodes(value: unknown): string[] | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+
+  const codes = new Set<string>();
+  for (const item of value) {
+    if (typeof item !== "string") return null;
+    const code = item.trim();
+    if (code.length === 0 || code.length > 100) return null;
+    codes.add(code);
   }
 
-  // ─── Intentar encontrar el JSON delimitado por {} ───────
-  const firstBrace = text.indexOf("{");
-  const lastBrace = text.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    text = text.slice(firstBrace, lastBrace + 1);
-  }
+  return [...codes].sort();
+}
 
-  try {
-    const parsed = JSON.parse(text);
-
-    // Verificar que tiene la estructura esperada
-    if (!parsed.questions || !Array.isArray(parsed.questions)) {
-      return null;
-    }
-
-    return parsed.questions as QuizQuestion[];
-  } catch {
+function readQuizQuestion(
+  value: unknown,
+  questionId: number,
+): QuizSnapshotQuestion | null {
+  if (
+    !isRecord(value) ||
+    typeof value.question !== "string" ||
+    value.question.trim().length < 10 ||
+    typeof value.explanation !== "string" ||
+    value.explanation.trim().length < 20 ||
+    typeof value.topic_code !== "string" ||
+    !isLevelK(value.level_k) ||
+    !isAnswerOption(value.correct) ||
+    !isRecord(value.options)
+  ) {
     return null;
   }
+
+  const options = value.options;
+  if (
+    typeof options.a !== "string" ||
+    options.a.trim().length < 3 ||
+    typeof options.b !== "string" ||
+    options.b.trim().length < 3 ||
+    typeof options.c !== "string" ||
+    options.c.trim().length < 3 ||
+    typeof options.d !== "string" ||
+    options.d.trim().length < 3
+  ) {
+    return null;
+  }
+
+  return {
+    question_id: questionId,
+    question: value.question,
+    options: {
+      a: options.a,
+      b: options.b,
+      c: options.c,
+      d: options.d,
+    },
+    correct: value.correct,
+    explanation: value.explanation,
+    topic_code: value.topic_code,
+    level_k: value.level_k,
+  };
+}
+
+function parseQuizResponse(
+  rawText: string,
+  expectedTopics: SessionTopic[],
+): QuizSnapshotQuestion[] | null {
+  const value = parseFirstJsonObject(rawText);
+  if (!value || !Array.isArray(value.questions)) return null;
+
+  const questions: QuizSnapshotQuestion[] = [];
+  for (let index = 0; index < value.questions.length; index += 1) {
+    const question = readQuizQuestion(value.questions[index], index);
+    if (!question) return null;
+    questions.push(question);
+  }
+
+  return validateQuizQuestions(questions, expectedTopics).length === 0
+    ? questions
+    : null;
+}
+
+function createDemoQuizRaw(topics: SessionTopic[]): string {
+  const correctOptions: AnswerOption[] = ["a", "b", "c", "d"];
+  const optionOrder: AnswerOption[] = ["a", "b", "c", "d"];
+  const questionCount = Math.max(
+    MIN_QUIZ_QUESTIONS,
+    Math.min(MAX_QUIZ_QUESTIONS, topics.length),
+  );
+  const questions: QuizSnapshotQuestion[] = Array.from(
+    { length: questionCount },
+    (_, index) => {
+    const topic = topics[index % topics.length];
+    const correct = correctOptions[index % correctOptions.length];
+    const correctText =
+      "Definir un resultado esperado antes de ejecutar la prueba.";
+    const distractors = [
+      "Cambiar el criterio después de observar el resultado.",
+      "Omitir la precondición para acelerar la prueba.",
+      "Aceptar cualquier salida sin compararla.",
+    ];
+    let distractorIndex = 0;
+    const optionValues = optionOrder.reduce<Record<AnswerOption, string>>(
+      (result, option) => {
+        if (option === correct) {
+          result[option] = correctText;
+        } else {
+          result[option] = distractors[distractorIndex];
+          distractorIndex += 1;
+        }
+        return result;
+      },
+      { a: "", b: "", c: "", d: "" },
+    );
+
+    return {
+      question_id: index,
+      question:
+        "[MODO DEMO] ¿Qué acción produce evidencia verificable para el tópico " +
+        topic.code +
+        "?",
+      options: optionValues,
+      correct,
+      explanation:
+        "[MODO DEMO] Definir el resultado esperado permite comparar la salida observada con un oráculo explícito.",
+      topic_code: topic.code,
+      level_k: topic.level_k,
+    };
+    },
+  );
+
+  return JSON.stringify({ questions });
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -129,11 +237,14 @@ function parseQuizResponse(rawText: string): QuizQuestion[] | null {
  * @returns Array de errores (vacío si todo está bien)
  */
 function validateQuizQuestions(
-  questions: QuizQuestion[],
-  expectedTopicCodes: string[],
+  questions: QuizSnapshotQuestion[],
+  expectedTopics: SessionTopic[],
 ): string[] {
   const errors: string[] = [];
-  const expectedCodesSet = new Set(expectedTopicCodes);
+  const expectedLevelByCode = new Map(
+    expectedTopics.map((topic) => [topic.code, topic.level_k]),
+  );
+  const coveredTopicCodes = new Set<string>();
   const correctDistribution: Record<string, number> = {
     a: 0,
     b: 0,
@@ -146,10 +257,13 @@ function validateQuizQuestions(
     return errors;
   }
 
-  if (questions.length < 10 || questions.length > 12) {
+  if (
+    questions.length < MIN_QUIZ_QUESTIONS ||
+    questions.length > MAX_QUIZ_QUESTIONS
+  ) {
     errors.push(
       `La cantidad de preguntas (${questions.length}) no es válida. ` +
-        `Debe estar entre 10 y 12.`,
+        `Debe estar entre ${MIN_QUIZ_QUESTIONS} y ${MAX_QUIZ_QUESTIONS}.`,
     );
   }
 
@@ -199,10 +313,12 @@ function validateQuizQuestions(
     }
 
     // Verificar topic_code
-    if (!q.topic_code || !expectedCodesSet.has(q.topic_code)) {
+    if (!q.topic_code || !expectedLevelByCode.has(q.topic_code)) {
       errors.push(
         `${prefix}: topic_code="${q.topic_code}" no es uno de los tópicos de la sesión.`,
       );
+    } else {
+      coveredTopicCodes.add(q.topic_code);
     }
 
     // Verificar level_k
@@ -210,6 +326,16 @@ function validateQuizQuestions(
       errors.push(
         `${prefix}: level_k="${q.level_k}" no es válido. Debe ser K1, K2, o K3.`,
       );
+    } else if (q.level_k !== expectedLevelByCode.get(q.topic_code)) {
+      errors.push(
+        `${prefix}: level_k="${q.level_k}" contradice el nivel autoritativo del tópico.`,
+      );
+    }
+  }
+
+  for (const topic of expectedTopics) {
+    if (!coveredTopicCodes.has(topic.code)) {
+      errors.push(`El tópico "${topic.code}" no tiene preguntas en el quiz.`);
     }
   }
 
@@ -227,6 +353,81 @@ function validateQuizQuestions(
   }
 
   return errors;
+}
+
+function readPublicQuizContent(value: unknown): {
+  quiz: QuizContent;
+  created: boolean | null;
+  evaluation: EvaluateResponse | null;
+} | null {
+  if (
+    !isRecord(value) ||
+    typeof value.attempt_id !== "string" ||
+    !UUID_REGEX.test(value.attempt_id) ||
+    !Array.isArray(value.questions) ||
+    typeof value.total_questions !== "number" ||
+    !Number.isInteger(value.total_questions) ||
+    value.total_questions !== value.questions.length ||
+    typeof value.generated_at !== "string" ||
+    typeof value.model_provider !== "string" ||
+    typeof value.model_name !== "string" ||
+    (value.state !== "open" && value.state !== "completed") ||
+    (value.state === "open" && value.evaluation !== null)
+  ) {
+    return null;
+  }
+
+  const questions: QuizQuestion[] = [];
+  for (const item of value.questions) {
+    if (
+      !isRecord(item) ||
+      typeof item.question_id !== "number" ||
+      !Number.isInteger(item.question_id) ||
+      item.question_id < 0 ||
+      typeof item.question !== "string" ||
+      !isRecord(item.options) ||
+      typeof item.options.a !== "string" ||
+      typeof item.options.b !== "string" ||
+      typeof item.options.c !== "string" ||
+      typeof item.options.d !== "string" ||
+      typeof item.topic_code !== "string" ||
+      !isLevelK(item.level_k) ||
+      "correct" in item ||
+      "explanation" in item
+    ) {
+      return null;
+    }
+
+    questions.push({
+      question_id: item.question_id,
+      question: item.question,
+      options: {
+        a: item.options.a,
+        b: item.options.b,
+        c: item.options.c,
+        d: item.options.d,
+      },
+      topic_code: item.topic_code,
+      level_k: item.level_k,
+    });
+  }
+
+  const evaluation =
+    value.state === "completed" ? readEvaluation(value.evaluation) : null;
+  if (value.state === "completed" && !evaluation) return null;
+
+  return {
+    quiz: {
+      attempt_id: value.attempt_id,
+      questions,
+      total_questions: value.total_questions,
+      generated_at: value.generated_at,
+      model_provider: value.model_provider,
+      model_name: value.model_name,
+    },
+    created: typeof value.created === "boolean" ? value.created : null,
+    evaluation,
+  };
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -248,17 +449,6 @@ export async function POST(
         { error: "session_id debe ser un UUID válido" },
         { status: 400 },
       );
-    }
-
-    // Leer body (opcional — solo para el flag 'force')
-    let force = false;
-    try {
-      const body = await request.json();
-      if (body && typeof body.force === "boolean") {
-        force = body.force;
-      }
-    } catch {
-      // Body vacío o no-JSON es aceptable — force queda en false
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -301,17 +491,89 @@ export async function POST(
     }
 
     // ═══════════════════════════════════════════════════════════
-    // PASO 4: Verificar caché en memoria (idempotencia)
+    // PASO 4: Recuperar snapshot durable (idempotencia)
     // ═══════════════════════════════════════════════════════════
-    if (!force) {
-      const cached = quizCache.get(sessionId);
-      if (cached) {
-        console.log(`[quiz] Retornando quiz cacheado para sesión ${sessionId}`);
-        return NextResponse.json({
-          quiz: cached,
-          cached: true,
-        });
+    const adminClient = createAdminClient();
+    const { data: storedAttempt, error: storedAttemptError } =
+      await adminClient.rpc("get_quiz_attempt_public", {
+        p_user_id: user.id,
+        p_session_id: sessionId,
+      });
+
+    if (storedAttemptError) {
+      console.error("[quiz] Error leyendo snapshot privado:", storedAttemptError);
+      return NextResponse.json(
+        { error: "Error al recuperar el quiz." },
+        { status: 500 },
+      );
+    }
+
+    if (storedAttempt) {
+      const parsedAttempt = readPublicQuizContent(storedAttempt);
+      if (!parsedAttempt) {
+        console.error("[quiz] Snapshot público inválido.");
+        return NextResponse.json(
+          { error: "El quiz almacenado tiene un formato inválido." },
+          { status: 500 },
+        );
       }
+
+      let adaptation = null;
+      if (parsedAttempt.evaluation) {
+        const { data: adaptationData, error: adaptationError } =
+          await adminClient.rpc("apply_session_adaptation_v2", {
+            p_user_id: user.id,
+            p_session_id: sessionId,
+          });
+        adaptation = readAdaptResponse(adaptationData);
+        if (
+          adaptationError ||
+          !adaptation ||
+          adaptation.action !== parsedAttempt.evaluation.action
+        ) {
+          console.error(
+            "[quiz] No se pudo rehidratar la adaptación:",
+            adaptationError,
+          );
+          return NextResponse.json(
+            { error: "No se pudo recuperar la adaptación del plan." },
+            { status: 500 },
+          );
+        }
+      }
+
+      return NextResponse.json({
+        quiz: parsedAttempt.quiz,
+        cached: true,
+        evaluation: parsedAttempt.evaluation,
+        adaptation,
+      });
+    }
+
+    if (session.status !== "active") {
+      return NextResponse.json(
+        { error: "La sesión debe completar la fase teórica antes del quiz." },
+        { status: 409 },
+      );
+    }
+
+    const sessionTopicCodes = readCanonicalTopicCodes(session.topic_codes);
+    if (!sessionTopicCodes) {
+      return NextResponse.json(
+        { error: "La sesión no tiene tópicos válidos para generar el quiz." },
+        { status: 400 },
+      );
+    }
+    if (sessionTopicCodes.length > MAX_QUIZ_TOPICS_PER_SESSION) {
+      return NextResponse.json(
+        {
+          error:
+            `La sesión contiene ${sessionTopicCodes.length} tópicos, pero el máximo evaluable es ` +
+            `${MAX_QUIZ_TOPICS_PER_SESSION}. Regenera el plan con más días.`,
+          code: "QUIZ_SESSION_TOO_DENSE",
+        },
+        { status: 409 },
+      );
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -349,6 +611,26 @@ export async function POST(
       .maybeSingle();
 
     const topicsJson: TopicsJson = doc?.topics_json || {};
+    const invalidTopicCodes = sessionTopicCodes.filter((code) => {
+      const topic = topicsJson[code];
+      return (
+        !topic ||
+        typeof topic.name !== "string" ||
+        topic.name.trim().length === 0 ||
+        typeof topic.text !== "string" ||
+        !isLevelK(topic.level_k)
+      );
+    });
+    if (invalidTopicCodes.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "La sesión contiene tópicos que no existen en el documento autoritativo.",
+          code: "QUIZ_SESSION_TOPICS_INVALID",
+        },
+        { status: 409 },
+      );
+    }
 
     // Obtener progreso de los tópicos (para saber historial de errores)
     const { data: progressRows } = await supabase
@@ -356,7 +638,7 @@ export async function POST(
       .select("topic_code, status, attempts, best_score, level_k")
       .eq("study_plan_id", plan.id)
       .eq("user_id", user.id)
-      .in("topic_code", session.topic_codes || []);
+      .in("topic_code", sessionTopicCodes);
 
     const progressMap = new Map();
     if (progressRows) {
@@ -366,15 +648,15 @@ export async function POST(
     }
 
     // Construir array de SessionTopic para el prompt builder
-    const sessionTopics: SessionTopic[] = (session.topic_codes || []).map(
+    const sessionTopics: SessionTopic[] = sessionTopicCodes.map(
       (code: string) => {
         const topicData = topicsJson[code];
         const progress = progressMap.get(code);
         return {
           code,
-          name: topicData?.name || code,
-          level_k: topicData?.level_k || progress?.level_k || "K1",
-          syllabus_text: topicData?.text || "",
+          name: topicData.name,
+          level_k: topicData.level_k,
+          syllabus_text: topicData.text,
           progress_status: progress?.status || "pending",
           attempts: progress?.attempts || 0,
           best_score: progress?.best_score || 0,
@@ -400,136 +682,135 @@ export async function POST(
       session.attempt_number,
     );
 
-    // ═══════════════════════════════════════════════════════════
-    // PASO 7: Llamar al LLM con cascada Gemini → OpenAI
-    // ═══════════════════════════════════════════════════════════
-    const modelRuntimes = createModelRuntimes({
-      timeoutMs: QUIZ_TIMEOUT_MS,
-      geminiModels: [process.env.GEMINI_QUIZ_MODEL],
-      openaiModels: [process.env.OPENAI_QUIZ_MODEL],
-      maxRetries: 2,
+    const operationFingerprint = createQuizAiFingerprint(
+      JSON.stringify({ sessionId, systemPrompt, userPrompt }),
+    );
+    const operationClaim = await claimQuizAiOperation(adminClient, {
+      userId: user.id,
+      sessionId,
+      operation: "generate",
+      fingerprint: operationFingerprint,
     });
 
+    if (operationClaim.outcome !== "acquired") {
+      const conflict = operationClaim.outcome === "conflict";
+      return NextResponse.json(
+        {
+          error: conflict
+            ? "La generación pendiente no coincide con esta sesión. Recarga e intenta de nuevo."
+            : "El quiz se está generando. Intenta de nuevo en unos segundos.",
+          code: conflict
+            ? "QUIZ_GENERATION_CONFLICT"
+            : "QUIZ_GENERATION_IN_PROGRESS",
+        },
+        { status: 409, headers: { "Retry-After": "2" } },
+      );
+    }
+
+    const claimInput = {
+      userId: user.id,
+      sessionId,
+      operation: "generate" as const,
+      fingerprint: operationFingerprint,
+      claimToken: operationClaim.claimToken,
+    };
+    const releaseClaim = async () => {
+      try {
+        await releaseQuizAiOperation(adminClient, claimInput);
+      } catch (error) {
+        console.error("[quiz] No se pudo liberar la reserva de IA:", error);
+      }
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    // PASO 7: Generar con runtime IA centralizado
+    // ═══════════════════════════════════════════════════════════
     console.log(
       `[quiz] Generando quiz para sesión ${sessionId} ` +
         `(${sessionTopics.length} tópicos)`,
     );
 
-    const expectedCodes = session.topic_codes || [];
-    let questionsWithIds: QuizQuestion[] | null = null;
-    let modelRuntime: (typeof modelRuntimes)[number] | null = null;
-    let elapsed = 0;
-    let tokensUsed = 0;
-    let allAttemptsTimedOut = modelRuntimes.length > 0;
+    const ai = await executeAiJson<QuizSnapshotQuestion[]>({
+      request,
+      userId: user.id,
+      feature: "quiz",
+      systemPrompt,
+      userPrompts: [userPrompt],
+      maxCompletionTokensPerAttempt: MAX_QUIZ_COMPLETION_TOKENS,
+      timeoutMs: QUIZ_TIMEOUT_MS,
+      parse: (rawText) => parseQuizResponse(rawText, sessionTopics),
+      createDemoRaw: () => createDemoQuizRaw(sessionTopics),
+      tuning: () => ({ temperature: 0.8 }),
+    }).catch(async (error: unknown) => {
+      await releaseClaim();
+      throw error;
+    });
 
-    for (const candidate of modelRuntimes) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), candidate.timeoutMs);
-      const startTime = Date.now();
-
-      try {
-        const completion = await candidate.client.chat.completions.create(
-          {
-            model: candidate.model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-            response_format: { type: "json_object" },
-            temperature: 0.8,
-            // Temperature 0.8 (vs 0.7 para teoría):
-            // Queremos más variedad en las preguntas. Un temperature más
-            // alto genera distractores más creativos y preguntas menos
-            // predecibles. Si siempre usamos 0.7, el quiz de hoy sería
-            // muy similar al quiz de ayer para el mismo tópico.
-          },
-          { signal: controller.signal },
-        );
-
-        const parsedQuestions = parseQuizResponse(
-          completion.choices[0]?.message?.content || "",
-        );
-        if (!parsedQuestions) {
-          allAttemptsTimedOut = false;
-          continue;
-        }
-
-        const candidateQuestions: QuizQuestion[] = parsedQuestions.map(
-          (q, index) => ({
-            ...q,
-            question_id: index,
-            // Normalizar correct a minúsculas por si el LLM retorna "A" en vez de "a"
-            correct: q.correct?.toLowerCase() as AnswerOption,
-          }),
-        );
-        const structuralErrors = validateQuizQuestions(
-          candidateQuestions,
-          expectedCodes,
-        ).filter(
-          (error) => !error.startsWith("Todas las respuestas correctas"),
-        );
-        if (structuralErrors.length > 0) {
-          allAttemptsTimedOut = false;
-          continue;
-        }
-
-        questionsWithIds = candidateQuestions;
-        modelRuntime = candidate;
-        elapsed = Date.now() - startTime;
-        tokensUsed = completion.usage?.total_tokens || 0;
-        break;
-      } catch (llmError) {
-        const status = getModelErrorStatus(llmError);
-        if (!isModelTimeout(llmError) && status !== 408 && status !== 504) {
-          allAttemptsTimedOut = false;
-        }
-      } finally {
-        clearTimeout(timeoutId);
-      }
+    if (!ai.ok) {
+      await releaseClaim();
+      return NextResponse.json(ai.body, { status: ai.status });
     }
 
-    if (!questionsWithIds || !modelRuntime) {
+    // ═══════════════════════════════════════════════════════════
+    // PASO 8: Persistir el snapshot privado antes de responder
+    // ═══════════════════════════════════════════════════════════
+    const topicNames = new Map(
+      sessionTopics.map((topic) => [topic.code, topic.name]),
+    );
+    const generatedAt = new Date().toISOString();
+    const questionsForStorage: Record<string, unknown>[] = ai.value.map(
+      (question) => ({
+        ...question,
+        topic_name: topicNames.get(question.topic_code) ?? question.topic_code,
+      }),
+    );
+
+    const { data: persistedAttempt, error: persistError } =
+      await adminClient.rpc("store_quiz_attempt_claimed", {
+        p_user_id: user.id,
+        p_session_id: sessionId,
+        p_questions: questionsForStorage,
+        p_model_provider: ai.provider ?? "demo",
+        p_model_name: ai.model ?? "fixture-ai05",
+        p_generated_at: generatedAt,
+        p_request_fingerprint: operationFingerprint,
+        p_claim_token: operationClaim.claimToken,
+      });
+
+    if (persistError) {
+      await releaseClaim();
+      console.error("[quiz] Error persistiendo snapshot privado:", persistError);
+      const status =
+        persistError.message === "QUIZ_SESSION_COMPLETED" ? 409 : 500;
       return NextResponse.json(
         {
           error:
-            allAttemptsTimedOut
-              ? "Los modelos de IA agotaron el tiempo de respuesta. Intenta de nuevo."
-              : "No se pudo generar un quiz válido. Intenta de nuevo.",
+            status === 409
+              ? "Esta sesión ya fue evaluada."
+              : "No se pudo guardar el quiz generado.",
         },
-        { status: allAttemptsTimedOut ? 504 : 502 },
+        { status },
       );
     }
 
-    console.log(
-      `[quiz] LLM respondió en ${elapsed}ms, ` +
-        `${tokensUsed} tokens, modelo=${modelRuntime.model}`,
-    );
-
-    // ═══════════════════════════════════════════════════════════
-    // PASO 8: Construir QuizContent y cachear
-    // ═══════════════════════════════════════════════════════════
-    const quizContent: QuizContent = {
-      questions: questionsWithIds,
-      total_questions: questionsWithIds.length,
-      generated_at: new Date().toISOString(),
-      model_provider: modelRuntime.provider,
-      model_name: modelRuntime.model,
-    };
-
-    // Guardar en cache en memoria
-    quizCache.set(sessionId, quizContent);
-
-    console.log(
-      `[quiz] Quiz generado: ${questionsWithIds.length} preguntas, ` +
-        `${elapsed}ms, ${tokensUsed} tokens, cacheado en memoria`,
-    );
+    const parsedAttempt = readPublicQuizContent(persistedAttempt);
+    if (!parsedAttempt) {
+      await releaseClaim();
+      console.error("[quiz] RPC de persistencia retornó un contrato inválido.");
+      return NextResponse.json(
+        { error: "El quiz generado tiene un formato inválido." },
+        { status: 500 },
+      );
+    }
 
     // ═══════════════════════════════════════════════════════════
     // PASO 9: Retornar el quiz
     // ═══════════════════════════════════════════════════════════
     return NextResponse.json({
-      quiz: quizContent,
-      cached: false,
+      quiz: parsedAttempt.quiz,
+      cached: parsedAttempt.created === false,
+      evaluation: parsedAttempt.evaluation,
+      adaptation: null,
     });
   } catch {
     console.error("[quiz] Error inesperado.");

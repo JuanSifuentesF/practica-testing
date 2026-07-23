@@ -24,7 +24,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BookOpen,
@@ -35,13 +35,13 @@ import {
   ArrowLeft,
   ArrowRight,
   Sparkles,
-  Loader2,
   AlertTriangle,
   RotateCcw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SessionTimer } from "./session-timer";
 import { TheoryTopicView } from "./theory-topic-view";
+import { useAiSession } from "@/components/ai/ai-session-provider";
 import type { SessionWithContext } from "@/types/sessions";
 import type { TheoryContent } from "@/types/theory";
 
@@ -50,14 +50,18 @@ interface TheoryPanelProps {
 }
 
 // ─── Mapeo de session_type a ícono ──────────────────────────
-function getSessionIcon(type: string) {
-  const map: Record<string, typeof Sun> = {
-    morning: Sun,
-    night: Moon,
-    reinforcement: RefreshCw,
-    mock_exam: FileCheck,
-  };
-  return map[type] || Sun;
+function SessionIcon({ type, className }: { type: string; className: string }) {
+  switch (type) {
+    case "night":
+      return <Moon className={className} />;
+    case "reinforcement":
+      return <RefreshCw className={className} />;
+    case "mock_exam":
+      return <FileCheck className={className} />;
+    case "morning":
+    default:
+      return <Sun className={className} />;
+  }
 }
 
 function getSessionTypeLabel(type: string): string {
@@ -89,8 +93,26 @@ function getMethodLabel(method: string): string {
   return map[method] || method;
 }
 
+async function requestTheory(
+  aiFetch: (path: string, init?: RequestInit) => Promise<Response>,
+  sessionId: string,
+  force: boolean,
+): Promise<TheoryContent> {
+  const response = await aiFetch(`/api/sessions/${sessionId}/theory`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ force }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || `Error ${response.status} al generar teoría`);
+  }
+  return data.theory;
+}
+
 export function TheoryPanel({ sessionData }: TheoryPanelProps) {
   const router = useRouter();
+  const { aiFetch } = useAiSession();
 
   // ═══════════════════════════════════════════════════════════
   // ESTADO
@@ -102,6 +124,7 @@ export function TheoryPanel({ sessionData }: TheoryPanelProps) {
   );
   const [activeTopicIndex, setActiveTopicIndex] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
+  const theoryRequestRef = useRef<Promise<TheoryContent> | null>(null);
 
   // ═══════════════════════════════════════════════════════════
   // EFECTO: Cargar teoría al montar
@@ -122,6 +145,10 @@ export function TheoryPanel({ sessionData }: TheoryPanelProps) {
               ? JSON.parse(sessionData.theory_content)
               : sessionData.theory_content;
 
+          if (parsed.source_extraction_version !== 2) {
+            throw new Error("THEORY_SOURCE_OUTDATED");
+          }
+
           if (!cancelled) {
             setTheoryContent(parsed);
             setActiveTopicIndex(0);
@@ -131,8 +158,9 @@ export function TheoryPanel({ sessionData }: TheoryPanelProps) {
           }
           return;
         } catch {
-          // Si el JSON está corrupto, continuar con la regeneración
-          console.warn("[TheoryPanel] theory_content corrupto, regenerando...");
+          console.warn(
+            "[TheoryPanel] theory_content inválido o desactualizado, regenerando...",
+          );
         }
       }
 
@@ -143,23 +171,27 @@ export function TheoryPanel({ sessionData }: TheoryPanelProps) {
       }
 
       try {
-        const response = await fetch(`/api/sessions/${sessionData.id}/theory`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ force: false }),
-        });
-
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
-          throw new Error(
-            data.error || `Error ${response.status} al generar teoría`,
+        let request = theoryRequestRef.current;
+        if (!request) {
+          request = requestTheory(aiFetch, sessionData.id, false);
+          theoryRequestRef.current = request;
+          void request.then(
+            () => {
+              if (theoryRequestRef.current === request) {
+                theoryRequestRef.current = null;
+              }
+            },
+            () => {
+              if (theoryRequestRef.current === request) {
+                theoryRequestRef.current = null;
+              }
+            },
           );
         }
-
-        const data = await response.json();
+        const theory = await request;
 
         if (!cancelled) {
-          setTheoryContent(data.theory);
+          setTheoryContent(theory);
           setActiveTopicIndex(0);
           setTimerActive(true);
         }
@@ -186,7 +218,7 @@ export function TheoryPanel({ sessionData }: TheoryPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [sessionData.id, sessionData.theory_content]);
+  }, [aiFetch, sessionData.id, sessionData.theory_content]);
 
   // ═══════════════════════════════════════════════════════════
   // HANDLERS
@@ -199,21 +231,8 @@ export function TheoryPanel({ sessionData }: TheoryPanelProps) {
     setTheoryContent(null);
 
     try {
-      const response = await fetch(`/api/sessions/${sessionData.id}/theory`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force: true }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(
-          data.error || `Error ${response.status} al regenerar teoría`,
-        );
-      }
-
-      const data = await response.json();
-      setTheoryContent(data.theory);
+      const theory = await requestTheory(aiFetch, sessionData.id, true);
+      setTheoryContent(theory);
       setActiveTopicIndex(0);
       setTimerActive(true);
     } catch (err) {
@@ -238,7 +257,6 @@ export function TheoryPanel({ sessionData }: TheoryPanelProps) {
   // ═══════════════════════════════════════════════════════════
   // VARIABLES DERIVADAS
   // ═══════════════════════════════════════════════════════════
-  const SessionIcon = getSessionIcon(sessionData.session_type);
   const sessionColor = getSessionTypeColor(sessionData.session_type);
   const totalTopics = theoryContent?.topics?.length || 0;
   const activeTopic = theoryContent?.topics?.[activeTopicIndex];
@@ -265,7 +283,10 @@ export function TheoryPanel({ sessionData }: TheoryPanelProps) {
           {/* Info de la sesión */}
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-800">
-              <SessionIcon className={`h-5 w-5 ${sessionColor}`} />
+              <SessionIcon
+                type={sessionData.session_type}
+                className={`h-5 w-5 ${sessionColor}`}
+              />
             </div>
             <div>
               <p
@@ -341,8 +362,9 @@ export function TheoryPanel({ sessionData }: TheoryPanelProps) {
               <p className="mt-1 text-sm text-slate-400">
                 Gemini está preparando la teoría para{" "}
                 {sessionData.topics.length} tópico
-                {sessionData.topics.length > 1 ? "s" : ""}. Esto puede tomar
-                15-30 segundos.
+                {sessionData.topics.length > 1 ? "s" : ""}. Normalmente toma
+                15-30 segundos; si el proveedor cambia de modelo puede tardar
+                más.
               </p>
             </div>
           </div>

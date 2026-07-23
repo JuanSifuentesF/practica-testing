@@ -1,7 +1,7 @@
 // frontend/app/(dashboard)/settings/ai/_components/test-connection-card.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -33,6 +33,14 @@ type InspectionResult =
       modelWasDefaulted: boolean;
     }
   | { status: "unavailable"; mode: AiUsageMode; reason: InspectionReason };
+
+interface InspectionState {
+  mode: AiUsageMode;
+  provider: AiProvider;
+  byokApiKey: string;
+  result: InspectionResult | null;
+  error: string | null;
+}
 
 const REASON_LABELS: Record<InspectionReason, string> = {
   BYOK_KEY_REQUIRED:
@@ -84,22 +92,42 @@ export function TestConnectionCard({
   provider,
   byokApiKey,
 }: TestConnectionCardProps) {
-  const [result, setResult] = useState<InspectionResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [inspection, setInspection] = useState<InspectionState>({
+    mode,
+    provider,
+    byokApiKey,
+    result: null,
+    error: null,
+  });
   const [isChecking, setIsChecking] = useState(false);
 
   // Un resultado corresponde a una configuración concreta. Si el usuario
-  // modifica modo, proveedor o key, ocultar el resultado anterior.
-  useEffect(() => {
-    setResult(null);
-    setError(null);
-  }, [mode, provider, byokApiKey]);
+  // modifica modo, proveedor o key, reiniciar ese estado antes del commit.
+  if (
+    inspection.mode !== mode ||
+    inspection.provider !== provider ||
+    inspection.byokApiKey !== byokApiKey
+  ) {
+    setInspection({
+      mode,
+      provider,
+      byokApiKey,
+      result: null,
+      error: null,
+    });
+  }
+
+  const { result, error } = inspection;
 
   async function checkConfiguration() {
     if (isChecking) return;
+    const checkedConfiguration = { mode, provider, byokApiKey };
     setIsChecking(true);
-    setResult(null);
-    setError(null);
+    setInspection({
+      ...checkedConfiguration,
+      result: null,
+      error: null,
+    });
 
     try {
       const body =
@@ -120,13 +148,20 @@ export function TestConnectionCard({
         throw new Error("INVALID_INSPECTION_RESPONSE");
       }
 
-      setResult(json.data);
+      setInspection({
+        ...checkedConfiguration,
+        result: json.data,
+        error: null,
+      });
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "No se pudo verificar la configuración.",
-      );
+      setInspection({
+        ...checkedConfiguration,
+        result: null,
+        error:
+          caught instanceof Error
+            ? caught.message
+            : "No se pudo verificar la configuración.",
+      });
     } finally {
       setIsChecking(false);
     }

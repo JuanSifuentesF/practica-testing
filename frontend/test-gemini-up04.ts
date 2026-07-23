@@ -5,9 +5,26 @@
 // 3) Valida la respuesta con la misma lógica del validador
 //
 // Ejecutar: cd frontend && npx tsx ../scripts/test-gemini-up04.ts
-import OpenAI from "openai";
+import OpenAI, { APIError } from "openai";
 import { config } from "dotenv";
 import { resolve } from "path";
+
+interface TestPlanSession {
+  day_number?: number;
+  session_type?: string;
+  topic_codes?: string[];
+}
+
+interface TestPlanCoverage {
+  total_topics?: number;
+  covered_topic_codes?: string[];
+  omitted_topic_codes?: string[];
+}
+
+interface TestPlan {
+  sessions?: TestPlanSession[];
+  coverage?: TestPlanCoverage;
+}
 
 // Cargar .env.local desde frontend/
 config({ path: resolve(__dirname, "../frontend/.env.local") });
@@ -105,11 +122,16 @@ async function main() {
       response_format: { type: "json_object" },
       temperature: 0.3,
     });
-  } catch (err: any) {
+  } catch (error: unknown) {
+    const apiError = error instanceof APIError ? error : null;
     console.error("❌ ERROR llamando a Gemini:");
-    console.error(`  status: ${err?.status}`);
-    console.error(`  message: ${err?.message}`);
-    if (err?.error) console.error(`  body: ${JSON.stringify(err.error, null, 2)}`);
+    console.error(`  status: ${apiError?.status}`);
+    console.error(
+      `  message: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    if (apiError?.error) {
+      console.error(`  body: ${JSON.stringify(apiError.error, null, 2)}`);
+    }
     process.exit(1);
   }
 
@@ -131,10 +153,10 @@ async function main() {
   }
 
   // ─── Parsear JSON ───
-  let plan: any;
+  let plan: TestPlan;
   try {
-    plan = JSON.parse(raw);
-  } catch (e) {
+    plan = JSON.parse(raw) as TestPlan;
+  } catch {
     console.error("❌ Gemini retornó JSON inválido");
     process.exit(1);
   }

@@ -24,10 +24,54 @@ interface TestResult {
   errorMessage: string | null;
 }
 
+async function getConnectionTestResult(): Promise<TestResult> {
+  try {
+    // Crear una instancia del cliente Supabase para el navegador.
+    // Internamente usa document.cookie para leer la sesión.
+    const supabase = createClient();
+
+    // 1. Verificar si hay sesión activa
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // 2. Intentar leer la tabla documents
+    // Si no hay sesión, RLS devuelve array vacío (no error)
+    const { data: documents, error } = await supabase
+      .from("documents")
+      .select("id, file_name, created_at")
+      .limit(5);
+
+    if (error) {
+      return {
+        status: "error",
+        documentCount: 0,
+        userEmail: null,
+        errorMessage: `${error.message} (${error.code})`,
+      };
+    }
+
+    return {
+      status: "success",
+      documentCount: documents?.length ?? 0,
+      userEmail: user?.email ?? null,
+      errorMessage: null,
+    };
+  } catch (err) {
+    // Error de red o configuración — no un error de Supabase
+    return {
+      status: "error",
+      documentCount: 0,
+      userEmail: null,
+      errorMessage: err instanceof Error ? err.message : "Error desconocido",
+    };
+  }
+}
+
 export function SupabaseClientTest() {
   // Estado local del componente — controla qué se muestra en la UI
   const [result, setResult] = useState<TestResult>({
-    status: "idle",
+    status: "loading",
     documentCount: 0,
     userEmail: null,
     errorMessage: null,
@@ -36,56 +80,24 @@ export function SupabaseClientTest() {
   // ─── Función para ejecutar la prueba de conexión ───
   async function runConnectionTest() {
     setResult((prev) => ({ ...prev, status: "loading" }));
-
-    try {
-      // Crear una instancia del cliente Supabase para el navegador.
-      // Internamente usa document.cookie para leer la sesión.
-      const supabase = createClient();
-
-      // 1. Verificar si hay sesión activa
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      // 2. Intentar leer la tabla documents
-      // Si no hay sesión, RLS devuelve array vacío (no error)
-      const { data: documents, error } = await supabase
-        .from("documents")
-        .select("id, file_name, created_at")
-        .limit(5);
-
-      if (error) {
-        setResult({
-          status: "error",
-          documentCount: 0,
-          userEmail: null,
-          errorMessage: `${error.message} (${error.code})`,
-        });
-        return;
-      }
-
-      setResult({
-        status: "success",
-        documentCount: documents?.length ?? 0,
-        userEmail: user?.email ?? null,
-        errorMessage: null,
-      });
-    } catch (err) {
-      // Error de red o configuración — no un error de Supabase
-      setResult({
-        status: "error",
-        documentCount: 0,
-        userEmail: null,
-        errorMessage: err instanceof Error ? err.message : "Error desconocido",
-      });
-    }
+    setResult(await getConnectionTestResult());
   }
 
   // ─── Ejecutar la prueba automáticamente al montar ───
   // useEffect con [] se ejecuta UNA vez al montar el componente.
   // Es el equivalente de "cuando el componente aparece en pantalla".
   useEffect(() => {
-    runConnectionTest();
+    let ignore = false;
+
+    void getConnectionTestResult().then((nextResult) => {
+      if (!ignore) {
+        setResult(nextResult);
+      }
+    });
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   return (

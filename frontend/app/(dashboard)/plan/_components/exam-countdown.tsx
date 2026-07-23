@@ -109,7 +109,11 @@ export function ExamCountdown({ estimatedEndDate }: ExamCountdownProps) {
   const [countdown, setCountdown] = useState<CountdownState | null>(null);
 
   useEffect(() => {
-    setCountdown(calculateCountdown(estimatedEndDate));
+    const timeoutId = window.setTimeout(() => {
+      setCountdown(calculateCountdown(estimatedEndDate));
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [estimatedEndDate]);
 
   // Primer render estable: evita HTML dinámico antes de hidratar.

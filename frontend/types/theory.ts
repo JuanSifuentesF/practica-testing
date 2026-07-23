@@ -113,6 +113,8 @@ export interface TheoryTopicContent {
  * sessions.theory_content y que SE-03 renderiza en la UI.
  */
 export interface TheoryContent {
+  /** Versión de la extracción autoritativa usada como fuente */
+  source_extraction_version: 2;
   /** Array de contenido teórico, uno por tópico de la sesión */
   topics: TheoryTopicContent[];
   /** Método de enseñanza usado para generar este contenido */

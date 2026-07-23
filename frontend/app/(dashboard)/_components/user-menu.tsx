@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAiSession } from "@/components/ai/ai-session-provider";
 
 // ─── Props del componente ───
 // Usamos una interface separada para documentar claramente qué espera este componente.
@@ -48,6 +49,8 @@ export function UserMenu({ email, name }: UserMenuProps) {
   // Lo usamos para redirigir al login después del logout.
   const router = useRouter();
 
+  const { clearByokApiKey } = useAiSession();
+
   // ─── Cliente Supabase del navegador ───
   // Usamos createClient() de lib/supabase/client.ts (no server.ts)
   // porque necesitamos invalidar las cookies del NAVEGADOR.
@@ -55,6 +58,8 @@ export function UserMenu({ email, name }: UserMenuProps) {
 
   // ─── Handler de Logout ───
   const handleLogout = async () => {
+    clearByokApiKey();
+
     // 1. Llamar a Supabase para invalidar la sesión.
     //    signOut() elimina las cookies de sesión del navegador
     //    y revoca el refresh token en el servidor de Supabase.

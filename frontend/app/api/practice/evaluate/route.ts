@@ -26,13 +26,8 @@
 // ─────────────────────────────────────────────────────────────────
 
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
-import {
-  createModelRuntimes,
-  getModelErrorStatus,
-  isModelTimeout,
-  type ModelRuntime,
-} from "@/lib/ai/model-cascade";
+import { executeAiJson } from "@/lib/ai/execute-json";
+import { parseFirstJsonObject } from "@/lib/ai/json-object";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -82,26 +77,6 @@ const VALID_TEST_CASE_TYPES: readonly TestCaseType[] = [
 
 const PRACTICE_EVALUATE_TIMEOUT_MS = 90_000;
 const MAX_FEEDBACK_TOKENS = 6000;
-const MAX_FEEDBACK_ATTEMPTS = 2;
-
-function createPracticeEvaluateModelRuntimes(): ModelRuntime[] {
-  const runtimes = createModelRuntimes({
-    timeoutMs: PRACTICE_EVALUATE_TIMEOUT_MS,
-    geminiModels: [process.env.GEMINI_EVALUATE_MODEL],
-    openaiModels: [
-      process.env.OPENAI_EVALUATE_MODEL,
-      process.env.OPENAI_PRACTICE_MODEL,
-    ],
-  });
-
-  if (runtimes.length === 0) {
-    throw new Error(
-      "No hay API key de LLM configurada. Define GEMINI_API_KEY o OPENAI_API_KEY en frontend/.env.local.",
-    );
-  }
-
-  return runtimes;
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -117,21 +92,6 @@ function isStringArray(value: unknown): value is string[] {
   return (
     Array.isArray(value) && value.every((item) => typeof item === "string")
   );
-}
-
-function toStringList(
-  value: unknown,
-  fallback: string[],
-  maxItems: number,
-): string[] {
-  if (!Array.isArray(value)) return fallback;
-
-  const items = value
-    .map((item) => (typeof item === "string" ? item.trim() : ""))
-    .filter((item) => item.length > 0)
-    .slice(0, maxItems);
-
-  return items.length > 0 ? items : fallback;
 }
 
 function isPracticeExerciseType(value: unknown): value is PracticeExerciseType {
@@ -312,82 +272,160 @@ function normalizeSubmission(
   return { submission: { type: "exploratory", notes, findings } };
 }
 
-function parseJsonObject(rawText: string): Record<string, unknown> | null {
-  let text = rawText.trim();
-
-  const markdownMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-  if (markdownMatch) {
-    text = markdownMatch[1].trim();
-  }
-
-  const firstBrace = text.indexOf("{");
-  const lastBrace = text.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    text = text.slice(firstBrace, lastBrace + 1);
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(text);
-    return isRecord(parsed) ? parsed : null;
-  } catch (error) {
-    console.error("[practice/evaluate] Error parseando JSON del LLM:", error);
+function readStringList(
+  value: unknown,
+  minimum: number,
+  maximum: number,
+): string[] | null {
+  if (
+    !Array.isArray(value) ||
+    value.length < minimum ||
+    value.length > maximum ||
+    !value.every(
+      (item) => typeof item === "string" && item.trim().length > 0,
+    )
+  ) {
     return null;
   }
+
+  return value;
 }
 
-function normalizeCriterionResults(
-  value: unknown,
+function parsePracticeFeedback(
+  rawText: string,
   expectedCriteria: string[],
-): CriterionResult[] {
-  const rawItems = Array.isArray(value) ? value : [];
+): PracticeFeedback | null {
+  const value = parseFirstJsonObject(rawText);
+  if (
+    !value ||
+    typeof value.feedback_summary !== "string" ||
+    value.feedback_summary.trim().length === 0 ||
+    !Array.isArray(value.criteria_results) ||
+    value.criteria_results.length !== expectedCriteria.length
+  ) {
+    return null;
+  }
 
-  return expectedCriteria.map((criterion, index) => {
-    const exactMatch = rawItems.find(
-      (item) => isRecord(item) && item.criterion === criterion,
-    );
-    const rawItem = exactMatch || rawItems[index];
-
-    if (!isRecord(rawItem)) {
-      return {
-        criterion,
-        passed: false,
-        detail: "El modelo no devolvió una evaluación para este criterio.",
-      };
+  const byCriterion = new Map<string, CriterionResult>();
+  for (const item of value.criteria_results) {
+    if (
+      !isRecord(item) ||
+      typeof item.criterion !== "string" ||
+      !expectedCriteria.includes(item.criterion) ||
+      byCriterion.has(item.criterion) ||
+      typeof item.passed !== "boolean" ||
+      typeof item.detail !== "string" ||
+      item.detail.trim().length === 0
+    ) {
+      return null;
     }
 
-    return {
+    byCriterion.set(item.criterion, {
+      criterion: item.criterion,
+      passed: item.passed,
+      detail: item.detail,
+    });
+  }
+
+  const criteriaResults: CriterionResult[] = [];
+  for (const criterion of expectedCriteria) {
+    const result = byCriterion.get(criterion);
+    if (!result) return null;
+    criteriaResults.push(result);
+  }
+
+  const missingCases = readStringList(value.missing_cases, 0, 8);
+  const strengths = readStringList(value.strengths, 1, 5);
+  const improvements = readStringList(value.improvements, 1, 5);
+  if (!missingCases || !strengths || !improvements) return null;
+
+  return {
+    feedback_summary: value.feedback_summary,
+    criteria_results: criteriaResults,
+    missing_cases: missingCases,
+    strengths,
+    improvements,
+  };
+}
+
+function createDemoPracticeFeedbackRaw(expectedCriteria: string[]): string {
+  return JSON.stringify({
+    feedback_summary:
+      "[MODO DEMO] Evaluación simulada para comprobar persistencia y UI sin proveedor externo.",
+    criteria_results: expectedCriteria.map((criterion) => ({
       criterion,
-      passed: rawItem.passed === true,
+      passed: true,
       detail:
-        readString(rawItem.detail) || "Sin detalle específico del modelo.",
-    };
+        "[MODO DEMO] El criterio se marca como cumplido únicamente para ejercitar el flujo.",
+    })),
+    missing_cases: [],
+    strengths: ["[MODO DEMO] La entrega tiene una estructura consumible."],
+    improvements: [
+      "[MODO DEMO] Repite la práctica en Managed o BYOK para feedback contextual.",
+    ],
   });
 }
 
-function normalizeFeedback(
-  value: unknown,
-  expectedCriteria: string[],
-): PracticeFeedback | null {
-  if (!isRecord(value)) return null;
-
-  const criteriaResults = normalizeCriterionResults(
-    value.criteria_results,
-    expectedCriteria,
-  );
-
+function feedbackToJson(feedback: PracticeFeedback): Record<string, unknown> {
   return {
-    feedback_summary:
-      readString(value.feedback_summary) ||
-      "La práctica fue evaluada. Revisa el detalle por criterio para identificar fortalezas y mejoras.",
-    criteria_results: criteriaResults,
-    missing_cases: toStringList(value.missing_cases, [], 8),
-    strengths: toStringList(value.strengths, ["Completaste la entrega."], 5),
-    improvements: toStringList(
-      value.improvements,
-      ["Revisa la solución de referencia y completa los criterios pendientes."],
-      5,
-    ),
+    feedback_summary: feedback.feedback_summary,
+    criteria_results: feedback.criteria_results.map((criterion) => ({
+      criterion: criterion.criterion,
+      passed: criterion.passed,
+      detail: criterion.detail,
+    })),
+    missing_cases: feedback.missing_cases,
+    strengths: feedback.strengths,
+    improvements: feedback.improvements,
   };
+}
+
+function submissionToJson(
+  submission: SubmissionContent,
+): Record<string, unknown> {
+  switch (submission.type) {
+    case "test_cases":
+      return {
+        type: submission.type,
+        test_cases: submission.test_cases.map((testCase) => ({
+          id: testCase.id,
+          scenario: testCase.scenario,
+          test_data: testCase.test_data,
+          expected_result: testCase.expected_result,
+          type: testCase.type,
+        })),
+      };
+    case "bug_report":
+      return {
+        type: submission.type,
+        bug_report: {
+          title: submission.bug_report.title,
+          preconditions: submission.bug_report.preconditions,
+          steps: submission.bug_report.steps,
+          actual_result: submission.bug_report.actual_result,
+          expected_result: submission.bug_report.expected_result,
+          severity: submission.bug_report.severity,
+          priority: submission.bug_report.priority,
+          evidence: submission.bug_report.evidence ?? "",
+        },
+      };
+    case "api_testing":
+      return {
+        type: submission.type,
+        checklist: submission.checklist.map((item) => ({
+          id: item.id,
+          validation: item.validation,
+          checked: item.checked,
+          notes: item.notes,
+        })),
+      };
+    case "exploratory":
+      return {
+        type: submission.type,
+        notes: submission.notes,
+        findings: submission.findings,
+      };
+  }
 }
 
 function calculateScorePercent(feedback: PracticeFeedback): number {
@@ -585,119 +623,45 @@ export async function POST(request: Request) {
       levelK,
     });
 
-    const modelRuntimes = createPracticeEvaluateModelRuntimes();
-    let feedback: PracticeFeedback | null = null;
-    let lastFinishReason = "unknown";
-    let timedOutModels = 0;
-    let evaluatedWith = "unknown";
+    const repairPrompt =
+      userPrompt +
+      "\n\n## REINTENTO OBLIGATORIO\n\n" +
+      "La respuesta anterior no cumplió el contrato JSON. " +
+      "Devuelve solo un objeto JSON completo, sin markdown, texto adicional " +
+      "ni cadenas o arrays truncados.";
 
-    for (const modelRuntime of modelRuntimes) {
-      for (let attempt = 1; attempt <= MAX_FEEDBACK_ATTEMPTS; attempt += 1) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(
-          () => controller.abort(),
-          modelRuntime.timeoutMs,
-        );
+    const ai = await executeAiJson<PracticeFeedback>({
+      request,
+      userId: user.id,
+      feature: "practice_evaluate",
+      systemPrompt,
+      userPrompts: [userPrompt, repairPrompt],
+      maxCompletionTokensPerAttempt: MAX_FEEDBACK_TOKENS,
+      timeoutMs: PRACTICE_EVALUATE_TIMEOUT_MS,
+      parse: (rawText) =>
+        parsePracticeFeedback(rawText, scenario.evaluation_criteria),
+      createDemoRaw: () =>
+        createDemoPracticeFeedbackRaw(scenario.evaluation_criteria),
+      tuning: () => ({
+        response_format: { type: "json_object" },
+        temperature: EVALUATE_TEMPERATURE,
+      }),
+    });
 
-        const attemptUserPrompt =
-          attempt === 1
-            ? userPrompt
-            : `${userPrompt}\n\n## REINTENTO OBLIGATORIO\n\nTu respuesta anterior no pudo parsearse como JSON válido. Devuelve SOLO un objeto JSON completo, sin markdown, sin texto adicional, sin truncar cadenas y con todos los arrays cerrados.`;
-
-        let completion: OpenAI.Chat.Completions.ChatCompletion;
-        try {
-          completion = await modelRuntime.client.chat.completions.create(
-            {
-              model: modelRuntime.model,
-              messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: attemptUserPrompt },
-              ],
-              response_format: { type: "json_object" },
-              temperature: EVALUATE_TEMPERATURE,
-              max_tokens: MAX_FEEDBACK_TOKENS,
-            },
-            { signal: controller.signal },
-          );
-        } catch (llmError) {
-          if (isModelTimeout(llmError)) {
-            timedOutModels += 1;
-            console.warn(
-              `[practice/evaluate] ${modelRuntime.model} agotó el timeout; ` +
-                "probando el siguiente candidato.",
-            );
-          } else {
-            const status = getModelErrorStatus(llmError);
-            console.warn(
-              `[practice/evaluate] ${modelRuntime.model} no está disponible ` +
-                `o rechazó la solicitud (status=${status}).`,
-            );
-          }
-          break;
-        } finally {
-          clearTimeout(timeoutId);
-        }
-
-        const choice = completion.choices[0];
-        const rawContent = choice?.message?.content || "";
-        lastFinishReason = String(choice?.finish_reason || "unknown");
-        const usage = completion.usage;
-
-        console.log(
-          `[practice/evaluate] ${modelRuntime.model} intento ` +
-            `${attempt}/${MAX_FEEDBACK_ATTEMPTS}: ` +
-            `finish_reason=${lastFinishReason}, ` +
-            `tokens=${usage?.total_tokens || "N/A"}, ` +
-            `completion_tokens=${usage?.completion_tokens || "N/A"}, ` +
-            `chars=${rawContent.length}`,
-        );
-
-        const parsedFeedback = parseJsonObject(rawContent);
-        feedback = normalizeFeedback(
-          parsedFeedback,
-          scenario.evaluation_criteria,
-        );
-
-        if (feedback) {
-          evaluatedWith = `${modelRuntime.provider}/${modelRuntime.model}`;
-          break;
-        }
-
-        console.warn(
-          `[practice/evaluate] ${modelRuntime.model} devolvió feedback ` +
-            `inválido en intento ${attempt}; finish_reason=${lastFinishReason}.`,
-        );
-      }
-
-      if (feedback) {
-        break;
-      }
+    if (!ai.ok) {
+      return NextResponse.json(ai.body, { status: ai.status });
     }
 
-    if (!feedback) {
-      const allModelsTimedOut = timedOutModels === modelRuntimes.length;
-      return NextResponse.json(
-        {
-          error: allModelsTimedOut
-            ? "Los modelos disponibles no respondieron a tiempo. Intenta de nuevo."
-            : "Ningún modelo disponible devolvió un PracticeFeedback válido. " +
-              `Último finish_reason=${lastFinishReason}. Intenta de nuevo.`,
-        },
-        { status: allModelsTimedOut ? 504 : 502 },
-      );
-    }
+    const feedback = ai.value;
 
     const scorePercent = calculateScorePercent(feedback);
 
     const insertData: PracticeSubmissionInsert = {
       user_id: user.id,
       exercise_id: exercise.id,
-      submission_json: normalizedSubmission.submission as unknown as Record<
-        string,
-        unknown
-      >,
+      submission_json: submissionToJson(normalizedSubmission.submission),
       score_percent: scorePercent,
-      feedback_json: feedback as unknown as Record<string, unknown>,
+      feedback_json: feedbackToJson(feedback),
     };
 
     const { data: insertedSubmission, error: insertError } = await supabase
@@ -757,36 +721,12 @@ export async function POST(request: Request) {
 
     const elapsedMs = Date.now() - startedAt;
     console.log(
-      `[practice/evaluate] ${exercise.topic_code} evaluado en ${elapsedMs}ms ` +
-        `con ${evaluatedWith}, score=${scorePercent}`,
+      `[practice/evaluate] ${exercise.topic_code} evaluado en ${elapsedMs}ms, score=${scorePercent}`,
     );
 
     return NextResponse.json(responseBody, { status: 200 });
-  } catch (error) {
-    console.error("[practice/evaluate] Error inesperado:", error);
-
-    if (error instanceof OpenAI.APIConnectionError) {
-      return NextResponse.json(
-        {
-          error:
-            "No se pudo conectar con el proveedor de IA. Verifica conexión y variables de entorno.",
-        },
-        { status: 502 },
-      );
-    }
-
-    if (error instanceof OpenAI.APIError) {
-      return NextResponse.json(
-        {
-          error: `Error del proveedor de IA (${error.status || 502}): ${error.message}`,
-        },
-        { status: 502 },
-      );
-    }
-
-    if (error instanceof Error && error.message.includes("No hay API key")) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+  } catch {
+    console.error("[practice/evaluate] Error inesperado");
 
     return NextResponse.json(
       { error: "Error interno del servidor al evaluar la práctica." },

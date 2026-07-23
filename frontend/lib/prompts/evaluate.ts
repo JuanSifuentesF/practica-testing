@@ -16,8 +16,25 @@
 //   Estas preguntas requieren comprensión de lenguaje natural.
 // ============================================================
 
-import type { UserAnswer } from "@/types/evaluate";
-import type { MethodUsed } from "@/types";
+import type {
+  AnswerOption,
+  LevelK,
+  MethodUsed,
+  OptionsJson,
+} from "@/types";
+
+/** Contexto privado construido desde el snapshot; nunca viene del navegador. */
+export interface EvaluationAnswerContext {
+  question_id: number;
+  user_answer: AnswerOption;
+  question: string;
+  options: OptionsJson;
+  correct: AnswerOption;
+  explanation: string;
+  topic_code: string;
+  topic_name: string;
+  level_k: LevelK;
+}
 
 // ──────────────────────────────────────────────────────────────
 // System Prompt
@@ -114,7 +131,7 @@ Recomendar basado en el método actual y los patrones de error:
  * @param attemptNumber - Número de intento (1 = primer intento)
  */
 export function buildEvaluateUserPrompt(
-  answers: UserAnswer[],
+  answers: EvaluationAnswerContext[],
   score: number,
   correctCount: number,
   totalQuestions: number,
@@ -134,7 +151,7 @@ export function buildEvaluateUserPrompt(
       }
 
       return `${i + 1}. [${mark}] ${a.topic_code} (${a.level_k})
-   Pregunta: ${a.question_text.slice(0, 200)}...
+   Pregunta: ${a.question.slice(0, 200)}...
    Respondió: "${a.user_answer}" — ${a.options[a.user_answer]}
    Correcta: "${a.correct}" — ${a.options[a.correct]}
    Explicación: ${a.explanation}`;

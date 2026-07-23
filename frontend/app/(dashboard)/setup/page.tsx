@@ -37,6 +37,7 @@ import {
   type StudyConfigData,
 } from "./_components/study-config";
 import { Separator } from "@/components/ui/separator";
+import { useAiSession } from "@/components/ai/ai-session-provider";
 
 // ─── Etapas del proceso ─────────────────────────────────────────
 // 🆕 Agregamos "generating" como nueva etapa entre extracting y complete.
@@ -107,6 +108,7 @@ export default function SetupPage() {
   // ═══════════════════════════════════════════════════════════
 
   const router = useRouter();
+  const { aiFetch } = useAiSession();
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
@@ -178,7 +180,7 @@ export default function SetupPage() {
 
       if (!extractResponse.ok) {
         throw new Error(
-          extractData.error || "Error al extraer los tópicos del PDF.",
+          extractData.detail || "Error al extraer los tópicos del PDF.",
         );
       }
 
@@ -192,12 +194,19 @@ export default function SetupPage() {
         warnings: extractData.warnings || [],
       });
 
+      if (!extractData.is_complete) {
+        throw new Error(
+          "La extracción no cubrió todos los objetivos oficiales. " +
+            "No se generará un plan parcial; revisa las advertencias.",
+        );
+      }
+
       // ─── ETAPA 3: 🆕 Generación del Plan ───────────────────
       // Llamamos a /api/plan/generate con el document_id y la
       // configuración del usuario (días, horarios).
       setStage("generating");
 
-      const planResponse = await fetch("/api/plan/generate", {
+      const planResponse = await aiFetch("/api/plan/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -208,7 +217,6 @@ export default function SetupPage() {
             objective_days: config.objectiveDays,
             morning_time: config.morningTime,
             night_time: config.nightTime,
-            model_provider: config.modelProvider,
           },
         }),
       });
@@ -445,7 +453,7 @@ export default function SetupPage() {
                 </span>
                 {extractionResult.is_complete ? (
                   <span className="text-xs text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                    ✅ Extracción completa
+                    ✅ Catálogo completo verificado
                   </span>
                 ) : (
                   <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">

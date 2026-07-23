@@ -1,8 +1,9 @@
 // ============================================================
 // types/quiz.ts — Tipos para el quiz generado por IA
 // ============================================================
-// Estos tipos definen la estructura del JSON que el LLM retorna
-// cuando genera preguntas de quiz estilo ISTQB.
+// Estos tipos definen el contrato PUBLICO que recibe el navegador.
+// La respuesta correcta y la explicación viven solo en el snapshot
+// privado del servidor y aparecen después de finalizar la evaluación.
 //
 // DISEÑO:
 //   - Cada pregunta tiene exactamente 4 opciones (a, b, c, d)
@@ -16,23 +17,22 @@
 //   - Reutilizamos esos tipos para mantener consistencia con la DB
 // ============================================================
 
-import type { AnswerOption, OptionsJson, LevelK } from "./database";
+import type { OptionsJson, LevelK } from "./database";
+import type { EvaluateResponse } from "./evaluate";
+import type { AdaptResponse } from "./adapt";
 
 // ──────────────────────────────────────────────────────────────
 // Pregunta individual del quiz
 // ──────────────────────────────────────────────────────────────
 
 /**
- * Una pregunta de quiz generada por el LLM.
+ * Proyección pública de una pregunta generada por el LLM.
  *
  * El formato sigue el estilo del examen ISTQB Foundation Level:
  *   - Un "stem" (enunciado) que puede incluir un escenario (K3)
  *   - Exactamente 4 opciones (a, b, c, d)
- *   - Una sola respuesta correcta
- *   - Una explicación de por qué la respuesta es correcta
- *
- * La explicación NO se muestra durante el quiz (SE-05).
- * Solo se muestra en el FeedbackPanel (SE-08) después de la evaluación.
+ * La respuesta correcta y la explicación se omiten por diseño. Ocultarlas
+ * solo en React no sería suficiente porque seguirían visibles en DevTools.
  */
 export interface QuizQuestion {
   /** Identificador único dentro del quiz (0-indexed, generado por la API) */
@@ -41,10 +41,6 @@ export interface QuizQuestion {
   question: string;
   /** Las 4 opciones de respuesta: { a: "...", b: "...", c: "...", d: "..." } */
   options: OptionsJson;
-  /** La respuesta correcta: "a", "b", "c", o "d" */
-  correct: AnswerOption;
-  /** Explicación de por qué la respuesta correcta es correcta */
-  explanation: string;
   /** Código del tópico ISTQB al que pertenece esta pregunta (ej. "FL-1.1.1") */
   topic_code: string;
   /** Nivel K de la pregunta: K1, K2, o K3 */
@@ -58,12 +54,11 @@ export interface QuizQuestion {
 /**
  * Quiz completo generado para una sesión de estudio.
  *
- * Contiene las preguntas + metadatos de generación.
- * Este tipo se almacena temporalmente en el estado del cliente (SE-05)
- * y NO se persiste como `quiz_content` en la DB. En SE-06 se guardará
- * un snapshot de cada pregunta junto con la respuesta del usuario en `answers`.
+ * Contiene la proyección pública y el identificador del snapshot durable.
  */
 export interface QuizContent {
+  /** Identificador opaco del snapshot privado persistido en PostgreSQL */
+  attempt_id: string;
   /** Array de preguntas del quiz (10-12 preguntas típicamente) */
   questions: QuizQuestion[];
   /** Total de preguntas generadas */
@@ -86,4 +81,8 @@ export interface QuizResponse {
   quiz: QuizContent;
   /** true si se retornó quiz previamente generado (cache) */
   cached: boolean;
+  /** Resultado durable disponible al recargar una sesión ya evaluada */
+  evaluation: EvaluateResponse | null;
+  /** Adaptación durable asociada a una evaluación completada */
+  adaptation: AdaptResponse | null;
 }

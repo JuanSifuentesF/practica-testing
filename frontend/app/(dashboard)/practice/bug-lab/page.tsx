@@ -14,6 +14,7 @@ import {
   type BugReportEvaluateResponse,
 } from "@/lib/practice/bug-report-contract";
 import { createClient } from "@/lib/supabase/client";
+import { useAiSession } from "@/components/ai/ai-session-provider";
 import type { BugReportData, BugReportExercise } from "@/types/practice";
 import type { LevelK } from "@/types/database";
 
@@ -113,6 +114,7 @@ export default function BugLabPage() {
 
 function BugLabContent() {
   const searchParams = useSearchParams();
+  const { aiFetch } = useAiSession();
   const documentId = searchParams.get("document_id") ?? "";
   const topicCode = searchParams.get("topic_code") ?? "";
   const [state, setState] = useState<State>({
@@ -196,7 +198,7 @@ function BugLabContent() {
       submitError: null,
     }));
     try {
-      const response = await fetch("/api/practice/generate", {
+      const response = await aiFetch("/api/practice/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -236,7 +238,7 @@ function BugLabContent() {
       submitError: null,
     }));
     try {
-      const response = await fetch("/api/practice/evaluate", {
+      const response = await aiFetch("/api/practice/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

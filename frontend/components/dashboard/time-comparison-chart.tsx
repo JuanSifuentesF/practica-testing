@@ -28,6 +28,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { TooltipContentProps } from "recharts";
 import type { TimeComparison } from "@/types/dashboard";
 
 interface TimeComparisonChartProps {
@@ -186,7 +187,7 @@ function formatSignedMinutes(value: number | null): string {
   return value > 0 ? `+${value} min` : `${value} min`;
 }
 
-function CustomTooltip({ active, payload }: any) {
+function CustomTooltip({ active, payload }: TooltipContentProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
   }

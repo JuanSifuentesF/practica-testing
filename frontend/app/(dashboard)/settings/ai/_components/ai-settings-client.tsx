@@ -1,7 +1,7 @@
-// frontend/app/(dashboard)/settings/ai/_components/ai-settings-client.tsx
 "use client";
 
 import { useState } from "react";
+import { useAiSession } from "@/components/ai/ai-session-provider";
 import {
   getApiErrorCode,
   isAiSettingsApiResponse,
@@ -19,12 +19,10 @@ interface AiSettingsClientProps {
 }
 
 export function AiSettingsClient({ initialSettings }: AiSettingsClientProps) {
-  // Solo esta capa posee la fila persistida. Los hijos no hacen fetch ni
-  // conservan una prop inicial que pueda quedarse vieja tras un PATCH exitoso.
   const [settings, setSettings] = useState(initialSettings);
-  const [byokApiKey, setByokApiKey] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const { byokApiKey, setByokApiKey, clearByokApiKey } = useAiSession();
 
   async function save(update: AiSettingsPreferencesUpdate) {
     if (isSaving) return;
@@ -46,10 +44,12 @@ export function AiSettingsClient({ initialSettings }: AiSettingsClientProps) {
         throw new Error("INVALID_SETTINGS_RESPONSE");
       }
 
-      // Actualizar solo con la respuesta persistida; no hay estado optimista
-      // que después tenga que revertirse a un proveedor o modo obsoleto.
+      const providerChanged = json.data.provider !== settings.provider;
       setSettings(json.data);
-      if (json.data.mode !== "byok") setByokApiKey("");
+
+      if (json.data.mode !== "byok" || providerChanged) {
+        clearByokApiKey();
+      }
     } catch (caught) {
       setSaveError(
         caught instanceof Error

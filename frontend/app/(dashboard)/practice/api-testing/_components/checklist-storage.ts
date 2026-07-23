@@ -18,6 +18,7 @@ export interface EndpointDefinition {
   path: "/extract-pdf-full";
   contentType: "multipart/form-data";
   requestField: "file";
+  authentication: "Bearer BFF-to-backend";
   successShape: "FullExtractionResponse";
   errorShape: "ErrorResponse";
 }
@@ -44,6 +45,7 @@ export const EXTRACT_PDF_FULL_ENDPOINT: EndpointDefinition = {
   path: "/extract-pdf-full",
   contentType: "multipart/form-data",
   requestField: "file",
+  authentication: "Bearer BFF-to-backend",
   successShape: "FullExtractionResponse",
   errorShape: "ErrorResponse",
 };
@@ -69,9 +71,10 @@ export const EXTRACT_PDF_FULL_CHECKLIST: readonly ApiChecklistDefinition[] = [
     id: "wrong-extension-400",
     category: "validation",
     description:
-      "Enviar un archivo que no sea PDF o tenga content type incompatible.",
+      "Enviar bytes que no empiecen con %PDF- o un content type incompatible.",
     expectedResult: "400 y ErrorResponse; no se ejecuta el pipeline.",
-    documentation: "Comprueba tipo y magic bytes.",
+    documentation:
+      "El id es legacy: MIME y magic bytes son el oraculo, no la extension.",
   },
   {
     id: "scanned-pdf-422",
@@ -86,8 +89,9 @@ export const EXTRACT_PDF_FULL_CHECKLIST: readonly ApiChecklistDefinition[] = [
     category: "error",
     description: "Inspeccionar una respuesta de error controlado.",
     expectedResult:
-      "JSON con detail y error_code, sin stack trace ni secretos.",
-    documentation: "Contrato ErrorResponse para el cliente.",
+      "400/401/413/422/429/500/503 preservado; JSON plano con detail y error_code.",
+    documentation:
+      "Sin detail anidado, stack, secreto BFF ni texto crudo de excepciones.",
   },
   {
     id: "success-response-shape",
@@ -144,8 +148,14 @@ export function parseApiChecklistProgress(
 export function readApiChecklistProgress():
   | { kind: "empty" }
   | { kind: "valid"; progress: ApiChecklistProgress }
-  | { kind: "invalid" } {
-  const raw = window.localStorage.getItem(API_CHECKLIST_STORAGE_KEY);
+  | { kind: "invalid" }
+  | { kind: "unavailable" } {
+  let raw: string | null;
+  try {
+    raw = window.localStorage.getItem(API_CHECKLIST_STORAGE_KEY);
+  } catch {
+    return { kind: "unavailable" };
+  }
   if (raw === null) return { kind: "empty" };
   try {
     const progress = parseApiChecklistProgress(JSON.parse(raw));
@@ -174,8 +184,13 @@ export function saveApiChecklistProgress(
   }
 }
 
-export function clearApiChecklistProgress(): void {
-  window.localStorage.removeItem(API_CHECKLIST_STORAGE_KEY);
+export function clearApiChecklistProgress(): boolean {
+  try {
+    window.localStorage.removeItem(API_CHECKLIST_STORAGE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 const validFixture: StoredApiChecklistProgress = {

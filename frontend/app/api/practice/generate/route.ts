@@ -32,13 +32,7 @@
 // ─────────────────────────────────────────────────────────────────
 
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
-import {
-  createModelRuntimes,
-  getModelErrorStatus,
-  isModelTimeout,
-  type ModelRuntime,
-} from "@/lib/ai/model-cascade";
+import { executeAiJson } from "@/lib/ai/execute-json";
 import { createClient } from "@/lib/supabase/server";
 import {
   buildPracticeSystemPrompt,
@@ -97,30 +91,7 @@ const VALID_TEST_CASE_TYPES: readonly TestCaseType[] = [
  * (escenario + solución de referencia), similar a la teoría.
  */
 const PRACTICE_TIMEOUT_MS = 90_000; // 90 segundos
-// ──────────────────────────────────────────────────────────────
-// Multi-Provider LLM (mismo patrón que SE-02)
-// ──────────────────────────────────────────────────────────────
-
-/**
- * Crea la cascada de candidatos. Cada uno se prueba con la generación real:
- * evita gastar una llamada de salud que no garantiza la generación posterior.
- */
-function createPracticeModelRuntimes(): ModelRuntime[] {
-  const runtimes = createModelRuntimes({
-    timeoutMs: PRACTICE_TIMEOUT_MS,
-    geminiModels: [process.env.GEMINI_PRACTICE_MODEL],
-    openaiModels: [process.env.OPENAI_PRACTICE_MODEL],
-  });
-
-  if (runtimes.length === 0) {
-    throw new Error(
-      "No hay API key de LLM configurada. " +
-        "Define GEMINI_API_KEY o OPENAI_API_KEY en frontend/.env.local",
-    );
-  }
-
-  return runtimes;
-}
+const MAX_PRACTICE_COMPLETION_TOKENS = 6_000;
 
 // ──────────────────────────────────────────────────────────────
 // Parser defensivo del response del LLM
@@ -149,85 +120,20 @@ interface LlmPracticeResponse {
  * @param rawText - Texto crudo del LLM
  * @returns Objeto parseado o null si el JSON es inválido
  */
-function parsePracticeResponse(rawText: string): LlmPracticeResponse | null {
-  const parsed = parseFirstJsonObject(rawText);
-  if (!parsed) {
-    console.error(
-      `[practice/generate] No se encontró un objeto JSON válido (${rawText.length} chars).`,
-    );
-    return null;
-  }
-
-  // Verificar que tiene la estructura esperada
-  if (!parsed.scenario || typeof parsed.scenario !== "object") {
-    console.error(
-      "[practice/generate] JSON parseado pero sin campo 'scenario':",
-      Object.keys(parsed),
-    );
-    return null;
-  }
-
-  if (
-    !parsed.reference_solution ||
-    typeof parsed.reference_solution !== "object"
-  ) {
-    console.error(
-      "[practice/generate] JSON parseado pero sin campo 'reference_solution':",
-      Object.keys(parsed),
-    );
-    return null;
-  }
-
-  return parsed as unknown as LlmPracticeResponse;
-}
-
-/**
- * Valida que el escenario generado tiene la estructura mínima
- * requerida por ExerciseScenario.
- *
- * @returns Array de errores (vacío si todo es válido)
- */
-function validateScenario(scenario: Record<string, unknown>): string[] {
-  const errors: string[] = [];
-
-  if (!scenario.scenario || typeof scenario.scenario !== "string") {
-    errors.push("Falta el campo 'scenario' (descripción del sistema).");
-  } else if ((scenario.scenario as string).length < 50) {
-    errors.push("El campo 'scenario' es demasiado corto (mín. 50 caracteres).");
-  }
-
-  if (
-    !scenario.task_description ||
-    typeof scenario.task_description !== "string"
-  ) {
-    errors.push("Falta el campo 'task_description'.");
-  } else if ((scenario.task_description as string).length < 20) {
-    errors.push("El campo 'task_description' es demasiado corto.");
-  }
-
-  if (
-    !Array.isArray(scenario.constraints) ||
-    scenario.constraints.length === 0
-  ) {
-    errors.push(
-      "Falta o está vacío el campo 'constraints' (debe ser un array no vacío).",
-    );
-  }
-
-  if (
-    !Array.isArray(scenario.evaluation_criteria) ||
-    scenario.evaluation_criteria.length === 0
-  ) {
-    errors.push(
-      "Falta o está vacío el campo 'evaluation_criteria' (debe ser un array no vacío).",
-    );
-  }
-
-  return errors;
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isNonEmptyStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(isNonEmptyString)
+  );
 }
 
 function validateTestCaseRow(value: unknown, index: number): string[] {
@@ -268,8 +174,8 @@ function validateTestCaseReferenceAnswer(modelAnswer: unknown): string[] {
     return ["model_answer.test_cases debe ser un array."];
   }
 
-  if (modelAnswer.test_cases.length === 0) {
-    return ["model_answer.test_cases debe tener al menos una fila."];
+  if (modelAnswer.test_cases.length !== 6) {
+    return ["model_answer.test_cases debe contener exactamente 6 filas."];
   }
 
   return modelAnswer.test_cases.flatMap((row, index) =>
@@ -277,48 +183,276 @@ function validateTestCaseReferenceAnswer(modelAnswer: unknown): string[] {
   );
 }
 
-/**
- * Valida que la solución de referencia tiene la estructura mínima
- * requerida por ExerciseSolution.
- *
- * @returns Array de errores (vacío si todo es válido)
- */
-function validateSolution(
-  solution: Record<string, unknown>,
-  exerciseType: PracticeExerciseType,
-): string[] {
-  const errors: string[] = [];
+function isApiChecklistReferenceAnswer(value: unknown): boolean {
+  if (!isRecord(value) || !Array.isArray(value.checklist)) return false;
 
-  if (!isRecord(solution.model_answer)) {
-    errors.push("Falta el campo 'model_answer' en reference_solution.");
-  } else if (exerciseType === "test_cases") {
-    errors.push(...validateTestCaseReferenceAnswer(solution.model_answer));
-  } else if (
-    exerciseType === "bug_report" &&
-    !isBugReportReferenceAnswer(solution.model_answer)
+  return (
+    value.checklist.length > 0 &&
+    value.checklist.every(
+      (item) =>
+        isRecord(item) &&
+        isNonEmptyString(item.id) &&
+        isNonEmptyString(item.validation) &&
+        typeof item.checked === "boolean" &&
+        isNonEmptyString(item.notes),
+    )
+  );
+}
+
+function isExploratoryReferenceAnswer(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isNonEmptyString(value.notes) &&
+    isNonEmptyStringArray(value.findings)
+  );
+}
+
+function readScenario(
+  value: unknown,
+  exerciseType: PracticeExerciseType,
+): ExerciseScenario | null {
+  if (
+    !isRecord(value) ||
+    typeof value.scenario !== "string" ||
+    value.scenario.trim().length < 50 ||
+    typeof value.task_description !== "string" ||
+    value.task_description.trim().length < 20 ||
+    !isNonEmptyStringArray(value.constraints) ||
+    !isNonEmptyStringArray(value.evaluation_criteria)
   ) {
-    errors.push(
-      "model_answer de bug_report debe contener title, preconditions, steps, actual_result, expected_result, severity y priority válidos.",
-    );
+    return null;
   }
 
-  if (!solution.explanation || typeof solution.explanation !== "string") {
-    errors.push("Falta el campo 'explanation' en reference_solution.");
-  } else if (solution.explanation.length < 30) {
-    errors.push("El campo 'explanation' es demasiado corto.");
+  const base: ExerciseScenario = {
+    scenario: value.scenario,
+    task_description: value.task_description,
+    constraints: value.constraints,
+    evaluation_criteria: value.evaluation_criteria,
+  };
+
+  if (exerciseType !== "bug_report") return base;
+
+  const bugScenario = {
+    ...base,
+    user_story: value.user_story,
+    business_rule: value.business_rule,
+    observed_bug: value.observed_bug,
+  };
+
+  return isBugReportScenario(bugScenario) ? bugScenario : null;
+}
+
+function readSolution(
+  value: unknown,
+  exerciseType: PracticeExerciseType,
+): ExerciseSolution | null {
+  if (
+    !isRecord(value) ||
+    !isRecord(value.model_answer) ||
+    typeof value.explanation !== "string" ||
+    value.explanation.trim().length < 30 ||
+    !isNonEmptyStringArray(value.key_points)
+  ) {
+    return null;
   }
 
   if (
-    !Array.isArray(solution.key_points) ||
-    solution.key_points.length === 0 ||
-    !solution.key_points.every(
-      (item) => typeof item === "string" && item.trim().length > 0,
-    )
+    exerciseType === "test_cases" &&
+    validateTestCaseReferenceAnswer(value.model_answer).length > 0
   ) {
-    errors.push("key_points debe ser un array no vacío de strings.");
+    return null;
   }
 
-  return errors;
+  if (
+    exerciseType === "bug_report" &&
+    (!isBugReportReferenceAnswer(value.model_answer) ||
+      !isNonEmptyString(value.model_answer.evidence))
+  ) {
+    return null;
+  }
+
+  if (
+    exerciseType === "api_testing" &&
+    !isApiChecklistReferenceAnswer(value.model_answer)
+  ) {
+    return null;
+  }
+
+  if (
+    exerciseType === "exploratory" &&
+    !isExploratoryReferenceAnswer(value.model_answer)
+  ) {
+    return null;
+  }
+
+  return {
+    model_answer: value.model_answer,
+    explanation: value.explanation,
+    key_points: value.key_points,
+  };
+}
+
+function parsePracticeResponse(
+  rawText: string,
+  exerciseType: PracticeExerciseType,
+): LlmPracticeResponse | null {
+  const value = parseFirstJsonObject(rawText);
+  if (!value) return null;
+
+  const scenario = readScenario(value.scenario, exerciseType);
+  const referenceSolution = readSolution(
+    value.reference_solution,
+    exerciseType,
+  );
+
+  return scenario && referenceSolution
+    ? { scenario, reference_solution: referenceSolution }
+    : null;
+}
+
+function scenarioToJson(scenario: ExerciseScenario): Record<string, unknown> {
+  const base = {
+    scenario: scenario.scenario,
+    task_description: scenario.task_description,
+    constraints: scenario.constraints,
+    evaluation_criteria: scenario.evaluation_criteria,
+  };
+
+  return isBugReportScenario(scenario)
+    ? {
+        ...base,
+        user_story: scenario.user_story,
+        business_rule: scenario.business_rule,
+        observed_bug: scenario.observed_bug,
+      }
+    : base;
+}
+
+function solutionToJson(solution: ExerciseSolution): Record<string, unknown> {
+  return {
+    model_answer: solution.model_answer,
+    explanation: solution.explanation,
+    key_points: solution.key_points,
+  };
+}
+
+function createDemoPracticeRaw(
+  exerciseType: PracticeExerciseType,
+  topicCode: string,
+): string {
+  const baseScenario: ExerciseScenario = {
+    scenario:
+      "[MODO DEMO] Una plataforma de estudio permite guardar un progreso y debe rechazar entradas incompatibles sin perder datos previamente válidos.",
+    task_description:
+      "Diseña una evidencia de prueba clara para el comportamiento descrito.",
+    constraints: [
+      "Usar datos concretos.",
+      "Incluir al menos un caso negativo.",
+    ],
+    evaluation_criteria: [
+      "La respuesta cubre el flujo principal.",
+      "La respuesta incluye validación de error.",
+    ],
+  };
+
+  const scenario =
+    exerciseType === "bug_report"
+      ? {
+          ...baseScenario,
+          user_story:
+            "Como estudiante quiero guardar mi avance para continuar después.",
+          business_rule:
+            "El progreso válido no puede perderse si una entrada nueva falla.",
+          observed_bug:
+            "Al enviar un valor inválido se elimina el progreso anterior.",
+        }
+      : baseScenario;
+
+  let modelAnswer: Record<string, unknown>;
+  switch (exerciseType) {
+    case "test_cases":
+      modelAnswer = {
+        test_cases: Array.from({ length: 6 }, (_, index) => ({
+          id: "DEMO-TC-" + String(index + 1).padStart(3, "0"),
+          scenario:
+            index % 2 === 0
+              ? "Guardar un valor válido"
+              : "Rechazar un valor inválido",
+          test_data: index % 2 === 0 ? "progreso=50" : "progreso=-1",
+          expected_result:
+            index % 2 === 0
+              ? "El progreso queda almacenado."
+              : "Se muestra error y se conserva el progreso previo.",
+          type:
+            index % 3 === 0
+              ? "boundary"
+              : index % 2 === 0
+                ? "positive"
+                : "negative",
+        })),
+      };
+      break;
+    case "bug_report":
+      modelAnswer = {
+        title: "Se elimina el progreso previo al enviar un valor inválido",
+        preconditions: "Existe un progreso válido guardado.",
+        steps: [
+          "Abrir la configuración de progreso.",
+          "Enviar un valor fuera del rango permitido.",
+          "Recargar la vista.",
+        ],
+        actual_result: "El progreso anterior desaparece.",
+        expected_result:
+          "Se rechaza el valor y se conserva el progreso anterior.",
+        severity: "high",
+        priority: "high",
+        evidence: "Fixture textual de modo Demo.",
+      };
+      break;
+    case "api_testing":
+      modelAnswer = {
+        checklist: [
+          {
+            id: "DEMO-API-001",
+            validation: "Respuesta exitosa con input válido",
+            checked: true,
+            notes: "Esperar contrato JSON documentado.",
+          },
+          {
+            id: "DEMO-API-002",
+            validation: "Rechazo con input fuera de rango",
+            checked: true,
+            notes: "Esperar 400 sin mutación parcial.",
+          },
+        ],
+      };
+      break;
+    case "exploratory":
+      modelAnswer = {
+        notes:
+          "Explorar persistencia, recuperación y mensajes de error del progreso.",
+        findings: [
+          "El valor válido se conserva después de recargar.",
+          "El valor inválido se rechaza sin mutar el estado previo.",
+        ],
+      };
+      break;
+  }
+
+  return JSON.stringify({
+    scenario,
+    reference_solution: {
+      model_answer: modelAnswer,
+      explanation:
+        "[MODO DEMO] La solución demuestra el shape esperado y no reemplaza una evaluación pedagógica real.",
+      key_points: [
+        "Definir precondición.",
+        "Usar datos concretos.",
+        "Comparar actual contra esperado.",
+        "Tópico " + topicCode,
+      ],
+    },
+  });
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -488,6 +622,17 @@ export async function POST(request: Request) {
       );
     }
 
+    if (topicData.level_k !== validatedLevelK) {
+      return NextResponse.json(
+        {
+          error:
+            `level_k="${validatedLevelK}" contradice el nivel autoritativo ` +
+            `del tópico ${validatedTopicCode} (${topicData.level_k}).`,
+        },
+        { status: 400 },
+      );
+    }
+
     const syllabusText = topicData.text || "";
     const topicName = topicData.name || validatedTopicCode;
 
@@ -530,130 +675,38 @@ export async function POST(request: Request) {
     });
 
     // ═══════════════════════════════════════════════════════════
-    // PASOS 7 y 8: Generar, parsear y validar con fallback
+    // PASOS 7 y 8: Generar, parsear y validar con runtime IA
     // ═══════════════════════════════════════════════════════════
-    const modelRuntimes = createPracticeModelRuntimes();
-    let parsed: LlmPracticeResponse | null = null;
-    let timedOutModels = 0;
+    console.log(
+      `[practice/generate] Generando ejercicio para ${validatedTopicCode} ` +
+        `(${validatedExerciseType}, ${validatedLevelK}, intento #${attemptNumber})`,
+    );
 
-    for (const modelRuntime of modelRuntimes) {
-      console.log(
-        `[practice/generate] Generando ejercicio para ${validatedTopicCode} ` +
-          `(${validatedExerciseType}, ${validatedLevelK}, intento #${attemptNumber}, ` +
-          `modelo=${modelRuntime.model})`,
-      );
+    const ai = await executeAiJson<LlmPracticeResponse>({
+      request,
+      userId: user.id,
+      feature: "practice_generate",
+      systemPrompt,
+      userPrompts: [userPrompt],
+      maxCompletionTokensPerAttempt: MAX_PRACTICE_COMPLETION_TOKENS,
+      timeoutMs: PRACTICE_TIMEOUT_MS,
+      parse: (rawText) =>
+        parsePracticeResponse(rawText, validatedExerciseType),
+      createDemoRaw: () =>
+        createDemoPracticeRaw(validatedExerciseType, validatedTopicCode),
+      tuning: (provider) => ({
+        response_format: buildPracticeResponseFormat(validatedExerciseType),
+        ...(provider === "gemini"
+          ? { reasoning_effort: "low" as const }
+          : { temperature: 0.3 }),
+      }),
+    });
 
-      const startTime = Date.now();
-      const controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller.abort(),
-        modelRuntime.timeoutMs,
-      );
-
-      let completion: OpenAI.Chat.Completions.ChatCompletion;
-      try {
-        completion = await modelRuntime.client.chat.completions.create(
-          {
-            model: modelRuntime.model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-            // Structured Outputs exige el contrato completo del ejercicio.
-            response_format: buildPracticeResponseFormat(
-              validatedExerciseType,
-            ),
-            // Gemini 3.x conserva su temperatura predeterminada y usa un
-            // esfuerzo bajo porque esta generación prioriza latencia.
-            ...(modelRuntime.provider === "gemini"
-              ? { reasoning_effort: "low" as const }
-              : { temperature: 0.3 }),
-          },
-          { signal: controller.signal },
-        );
-      } catch (llmError) {
-        if (isModelTimeout(llmError)) {
-          timedOutModels += 1;
-          console.warn(
-            `[practice/generate] ${modelRuntime.model} agotó el timeout; ` +
-              "probando el siguiente candidato.",
-          );
-        } else {
-          const status = getModelErrorStatus(llmError);
-          console.warn(
-            `[practice/generate] ${modelRuntime.model} no está disponible ` +
-              `o rechazó la solicitud (status=${status}).`,
-          );
-        }
-        continue;
-      } finally {
-        clearTimeout(timeoutId);
-      }
-
-      const rawResponse = completion.choices[0]?.message?.content || "";
-      const elapsed = Date.now() - startTime;
-      const tokensUsed = completion.usage?.total_tokens || 0;
-
-      console.log(
-        `[practice/generate] ${modelRuntime.model} respondió en ${elapsed}ms, ` +
-          `${tokensUsed} tokens, ${rawResponse.length} chars`,
-      );
-
-      const candidate = parsePracticeResponse(rawResponse);
-      if (!candidate) {
-        console.warn(
-          `[practice/generate] ${modelRuntime.model} devolvió JSON inválido; ` +
-            "probando el siguiente candidato.",
-        );
-        continue;
-      }
-
-      const scenarioErrors = [
-        ...validateScenario(
-          candidate.scenario as unknown as Record<string, unknown>,
-        ),
-        ...(validatedExerciseType === "bug_report" &&
-        !isBugReportScenario(candidate.scenario)
-          ? [
-              "scenario de bug_report requiere user_story, business_rule y observed_bug como strings no vacíos.",
-            ]
-          : []),
-      ];
-      if (scenarioErrors.length > 0) {
-        console.warn(
-          `[practice/generate] ${modelRuntime.model} devolvió un scenario ` +
-            `inválido: ${scenarioErrors.join("; ")}`,
-        );
-        continue;
-      }
-
-      const solutionErrors = validateSolution(
-        candidate.reference_solution as unknown as Record<string, unknown>,
-        validatedExerciseType,
-      );
-      if (solutionErrors.length > 0) {
-        console.warn(
-          `[practice/generate] ${modelRuntime.model} devolvió una solución ` +
-            `inválida: ${solutionErrors.join("; ")}`,
-        );
-        continue;
-      }
-
-      parsed = candidate;
-      break;
+    if (!ai.ok) {
+      return NextResponse.json(ai.body, { status: ai.status });
     }
 
-    if (!parsed) {
-      const allModelsTimedOut = timedOutModels === modelRuntimes.length;
-      return NextResponse.json(
-        {
-          error: allModelsTimedOut
-            ? "Los modelos disponibles no respondieron a tiempo. Intenta de nuevo."
-            : "Ningún modelo disponible devolvió un ejercicio válido. Intenta de nuevo.",
-        },
-        { status: allModelsTimedOut ? 504 : 502 },
-      );
-    }
+    const parsed = ai.value;
 
     // ═══════════════════════════════════════════════════════════
     // PASO 9: Persistir en Supabase
@@ -670,11 +723,8 @@ export async function POST(request: Request) {
       level_k: validatedLevelK,
       exercise_type: validatedExerciseType,
       attempt_number: attemptNumber,
-      scenario_json: parsed.scenario as unknown as Record<string, unknown>,
-      solution_json: parsed.reference_solution as unknown as Record<
-        string,
-        unknown
-      >,
+      scenario_json: scenarioToJson(parsed.scenario),
+      solution_json: solutionToJson(parsed.reference_solution),
     };
 
     const { data: insertedExercise, error: insertError } = await supabase
@@ -747,33 +797,11 @@ export async function POST(request: Request) {
         created_at: insertedExercise.created_at,
       },
     });
-  } catch (error) {
+  } catch {
     // ═══════════════════════════════════════════════════════════
     // Error handler global — mismo patrón que SE-02
     // ═══════════════════════════════════════════════════════════
-    console.error("[practice/generate] Error inesperado:", error);
-
-    // Distinguir errores del LLM de otros errores
-    if (error instanceof OpenAI.APIError) {
-      const statusCode = error.status || 502;
-      return NextResponse.json(
-        {
-          error: `Error del proveedor de IA (${statusCode}): ${error.message}`,
-        },
-        { status: 502 },
-      );
-    }
-
-    if (error instanceof OpenAI.APIConnectionError) {
-      return NextResponse.json(
-        {
-          error:
-            "No se pudo conectar con el proveedor de IA. " +
-            "Verifica tu conexión a internet.",
-        },
-        { status: 502 },
-      );
-    }
+    console.error("[practice/generate] Error inesperado");
 
     return NextResponse.json(
       { error: "Error interno del servidor." },

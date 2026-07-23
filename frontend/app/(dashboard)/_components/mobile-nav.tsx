@@ -4,9 +4,7 @@
 // _components/mobile-nav.tsx — Navegación Mobile (Hamburguesa)
 // ============================================================
 // DIRECTIVA: 'use client' porque:
-//   - useState → controla si el Sheet está abierto o cerrado
 //   - usePathname → detecta la ruta activa para estilizar links
-//   - useEffect → cierra el Sheet automáticamente al navegar
 //   - onClick handlers → manejados internamente por Sheet/Link
 //
 // VISIBILIDAD: Solo se muestra en pantallas <768px (md:hidden).
@@ -29,7 +27,6 @@
 //   true → el menú permanece resaltado.
 // ============================================================
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
@@ -84,18 +81,6 @@ function isActivePath(pathname: string, href: string): boolean {
 
 export function MobileNav() {
   // ───────────────────────────────────────────────────────────
-  // Estado del Sheet
-  // ───────────────────────────────────────────────────────────
-  // open:
-  //   true  → panel visible
-  //   false → panel oculto
-  //
-  // setOpen:
-  //   función para abrir/cerrar el drawer.
-  // ───────────────────────────────────────────────────────────
-  const [open, setOpen] = useState(false);
-
-  // ───────────────────────────────────────────────────────────
   // Ruta actual
   // ───────────────────────────────────────────────────────────
   // usePathname obtiene la URL activa desde App Router.
@@ -106,23 +91,6 @@ export function MobileNav() {
   //   /practice/123
   // ───────────────────────────────────────────────────────────
   const pathname = usePathname();
-
-  // ───────────────────────────────────────────────────────────
-  // Cerrar automáticamente al navegar
-  // ───────────────────────────────────────────────────────────
-  // Cada vez que cambia pathname:
-  //
-  // 1. Usuario toca un link
-  // 2. Next.js navega
-  // 3. pathname cambia
-  // 4. setOpen(false)
-  //
-  // Resultado:
-  // El drawer desaparece automáticamente después de navegar.
-  // ───────────────────────────────────────────────────────────
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
 
   return (
     // ─────────────────────────────────────────────────────────
@@ -139,13 +107,12 @@ export function MobileNav() {
     // ─────────────────────────────────────────────────────────
     <div className="md:hidden">
       {/* ────────────────────────────────────────────────
-          Sheet controlado
+          Sheet con estado interno
           ────────────────────────────────────────────────
-          open + onOpenChange permiten controlar el estado
-          desde React en lugar de depender del estado
-          interno de Radix.
+          SheetClose lo cierra desde el evento del link. La key
+          reinicia su estado si la ruta cambia por otro medio.
       */}
-      <Sheet open={open} onOpenChange={setOpen}>
+      <Sheet key={pathname}>
         {/* ──────────────────────────────────────────────
             Trigger (botón hamburguesa)
             ──────────────────────────────────────────────

@@ -27,8 +27,8 @@
 //
 // PATRÓN "FETCH ON MOUNT":
 //   Al montar, el componente hace POST a la API de quiz.
-//   Si el quiz ya fue generado, la API retorna el cache
-//   (cached: true). Si no, genera uno nuevo con Gemini.
+//   Si el quiz ya fue generado, la API retorna el snapshot durable
+//   (cached: true). Si no, genera y persiste uno antes de responder.
 //   Igual que TheoryPanel hace con la teoría en SE-03.
 // ============================================================
 
@@ -55,28 +55,63 @@ import { QuizSummary } from "./quiz-summary";
 import type { SessionWithContext } from "@/types/sessions";
 import type { QuizContent } from "@/types/quiz";
 import type { AnswerOption } from "@/types/database";
-import type { UserAnswer, EvaluateResponse } from "@/types/evaluate";
-import type { AdaptRequest, AdaptResponse } from "@/types/adapt";
+import type {
+  UserAnswer,
+  EvaluateResponse,
+  EvaluateWithAdaptationResponse,
+} from "@/types/evaluate";
+import type { AdaptResponse } from "@/types/adapt";
 import { FeedbackPanel } from "./feedback-panel";
+import { useAiSession } from "@/components/ai/ai-session-provider";
 
 // ─── Props del componente ───────────────────────────────────
 interface QuizCardProps {
   sessionData: SessionWithContext;
 }
 
+type QuizFetcher = (input: string, init?: RequestInit) => Promise<Response>;
+
+async function fetchQuizWithRetry(
+  fetcher: QuizFetcher,
+  sessionId: string,
+): Promise<Response> {
+  const request = () =>
+    fetcher(`/api/sessions/${sessionId}/quiz`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+  let response = await request();
+  for (let attempt = 0; attempt < 15; attempt += 1) {
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    if (
+      response.status !== 409 ||
+      !Number.isFinite(retryAfter) ||
+      retryAfter <= 0
+    ) {
+      return response;
+    }
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(retryAfter, 5) * 1_000),
+    );
+    response = await request();
+  }
+
+  return response;
+}
+
 // ─── Helpers reutilizados de TheoryPanel ─────────────────────
 // Mismas funciones para mantener consistencia visual entre
 // la fase de teoría y la fase de quiz.
 
-function getSessionIcon(type: string) {
-  const map: Record<string, typeof Sun> = {
-    morning: Sun,
-    night: Moon,
-    reinforcement: RefreshCw,
-    mock_exam: FileCheck,
-  };
-  return map[type] || Sun;
-}
+const SESSION_ICONS: Record<string, typeof Sun> = {
+  morning: Sun,
+  night: Moon,
+  reinforcement: RefreshCw,
+  mock_exam: FileCheck,
+};
 
 function getSessionTypeLabel(type: string): string {
   const map: Record<string, string> = {
@@ -101,6 +136,7 @@ function getSessionTypeColor(type: string): string {
 // ─── Componente principal ───────────────────────────────────
 export function QuizCard({ sessionData }: QuizCardProps) {
   const router = useRouter();
+  const { aiFetch } = useAiSession();
 
   // ═══════════════════════════════════════════════════════════
   // ESTADO
@@ -139,11 +175,7 @@ export function QuizCard({ sessionData }: QuizCardProps) {
       setAdaptResult(null);
 
       try {
-        const response = await fetch(`/api/sessions/${sessionData.id}/quiz`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ force: false }),
-        });
+        const response = await fetchQuizWithRetry(aiFetch, sessionData.id);
 
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
@@ -156,7 +188,9 @@ export function QuizCard({ sessionData }: QuizCardProps) {
 
         if (!cancelled) {
           setQuizContent(data.quiz);
-          setTimerActive(true);
+          setEvaluationResult(data.evaluation ?? null);
+          setAdaptResult(data.adaptation ?? null);
+          setTimerActive(!data.evaluation);
         }
       } catch (err) {
         if (!cancelled) {
@@ -178,7 +212,7 @@ export function QuizCard({ sessionData }: QuizCardProps) {
     return () => {
       cancelled = true;
     };
-  }, [sessionData.id]);
+  }, [aiFetch, sessionData.id]);
 
   // ═══════════════════════════════════════════════════════════
   // HANDLERS
@@ -218,9 +252,8 @@ export function QuizCard({ sessionData }: QuizCardProps) {
   }
 
   // ── Enviar respuestas a /api/sessions/[id]/evaluate ───────
-  // Construye el array de UserAnswer combinando las respuestas
-  // del usuario (answers) con los datos de cada pregunta
-  // (quizContent.questions). Luego hace POST al endpoint.
+  // Envía solo IDs y selecciones. El servidor recupera del snapshot
+  // privado la pregunta, respuesta correcta y explicación.
   async function handleSubmit() {
     const total = quizContent?.questions.length || 0;
     const answered = Object.keys(answers).length;
@@ -233,7 +266,7 @@ export function QuizCard({ sessionData }: QuizCardProps) {
     setAdaptResult(null);
 
     try {
-      // ── Paso 1: Construir UserAnswer[] ──────────────────────
+      // ── Paso 1: Construir selecciones públicas ──────────────
       const userAnswers: UserAnswer[] = quizContent.questions.map((q) => {
         const selectedAnswer = answers[q.question_id];
 
@@ -246,68 +279,65 @@ export function QuizCard({ sessionData }: QuizCardProps) {
         return {
           question_id: q.question_id,
           user_answer: selectedAnswer,
-          question_text: q.question,
-          options: q.options,
-          correct: q.correct,
-          explanation: q.explanation,
-          topic_code: q.topic_code,
-          level_k: q.level_k,
         };
       });
 
       // ── Paso 2: POST a /api/sessions/[id]/evaluate ──────────
-      const response = await fetch(`/api/sessions/${sessionData.id}/evaluate`, {
+      const response = await aiFetch(`/api/sessions/${sessionData.id}/evaluate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers: userAnswers }),
+        body: JSON.stringify({
+          attempt_id: quizContent.attempt_id,
+          answers: userAnswers,
+        }),
       });
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
+
+        if (response.status === 409) {
+          const retryAfter = Number(response.headers.get("Retry-After"));
+          const delaySeconds =
+            Number.isFinite(retryAfter) && retryAfter > 0
+              ? Math.min(retryAfter, 5)
+              : 2;
+
+          for (let attempt = 0; attempt < 15; attempt += 1) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, delaySeconds * 1_000),
+            );
+            const latestResponse = await fetchQuizWithRetry(
+              aiFetch,
+              sessionData.id,
+            );
+            if (latestResponse.ok) {
+              const latest = await latestResponse.json();
+              if (latest.evaluation) {
+                setQuizContent(latest.quiz);
+                setEvaluationResult(latest.evaluation);
+                setAdaptResult(latest.adaptation ?? null);
+                setTimerActive(false);
+                setShowSummary(false);
+                router.refresh();
+                return;
+              }
+            }
+          }
+        }
+
         throw new Error(
           data.error || `Error ${response.status} al evaluar quiz`,
         );
       }
 
-      const result: EvaluateResponse = await response.json();
+      const result: EvaluateWithAdaptationResponse = await response.json();
 
       // ── Paso 3: Guardar resultado de evaluación ────────────
       setEvaluationResult(result);
+      setAdaptResult(result.adaptation);
       setTimerActive(false);
       setShowSummary(false);
-
-      // ── Paso 4: Llamar a /adapt automáticamente ────────────
-      const adaptBody: AdaptRequest = {
-        next_method: result.next_method,
-      };
-
-      try {
-        const adaptResponse = await fetch(
-          `/api/sessions/${sessionData.id}/adapt`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(adaptBody),
-          },
-        );
-
-        if (adaptResponse.ok) {
-          const adaptData: AdaptResponse = await adaptResponse.json();
-          setAdaptResult(adaptData);
-          console.log(
-            "[quiz-card] adapt OK:",
-            adaptData.action,
-            adaptData.message,
-          );
-        } else {
-          console.warn(
-            "[quiz-card] /adapt retornó error no crítico:",
-            adaptResponse.status,
-          );
-        }
-      } catch (adaptErr) {
-        console.error("[quiz-card] Error de red al llamar /adapt:", adaptErr);
-      }
+      router.refresh();
 
       // La UI del FeedbackPanel se renderiza automáticamente
       // cuando evaluationResult no es null (ver sección JSX).
@@ -334,11 +364,7 @@ export function QuizCard({ sessionData }: QuizCardProps) {
     setAdaptResult(null);
 
     try {
-      const response = await fetch(`/api/sessions/${sessionData.id}/quiz`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force: true }),
-      });
+      const response = await fetchQuizWithRetry(aiFetch, sessionData.id);
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -349,7 +375,9 @@ export function QuizCard({ sessionData }: QuizCardProps) {
 
       const data = await response.json();
       setQuizContent(data.quiz);
-      setTimerActive(true);
+      setEvaluationResult(data.evaluation ?? null);
+      setAdaptResult(data.adaptation ?? null);
+      setTimerActive(!data.evaluation);
     } catch (err) {
       setError(
         err instanceof Error
@@ -364,7 +392,7 @@ export function QuizCard({ sessionData }: QuizCardProps) {
   // ═══════════════════════════════════════════════════════════
   // VARIABLES DERIVADAS
   // ═══════════════════════════════════════════════════════════
-  const SessionIcon = getSessionIcon(sessionData.session_type);
+  const SessionIcon = SESSION_ICONS[sessionData.session_type] || Sun;
   const sessionColor = getSessionTypeColor(sessionData.session_type);
 
   // Progreso del plan (barra superior)
@@ -378,7 +406,9 @@ export function QuizCard({ sessionData }: QuizCardProps) {
   // Datos del quiz
   const currentQuestion = quizContent?.questions[currentQuestionIndex] ?? null;
   const totalQuestions = quizContent?.questions.length || 0;
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = evaluationResult
+    ? evaluationResult.total_questions
+    : Object.keys(answers).length;
   const allAnswered = totalQuestions > 0 && answeredCount === totalQuestions;
 
   // ═══════════════════════════════════════════════════════════
@@ -560,8 +590,6 @@ export function QuizCard({ sessionData }: QuizCardProps) {
         <FeedbackPanel
           evaluation={evaluationResult}
           adaptation={adaptResult}
-          questions={quizContent.questions}
-          userAnswers={answers}
           session={sessionData}
         />
       )}

@@ -29,11 +29,15 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { executeAiJson } from "@/lib/ai/execute-json";
+import { parseFirstJsonObject } from "@/lib/ai/json-object";
 import {
-  createModelRuntimes,
-  getModelErrorStatus,
-  isModelTimeout,
-} from "@/lib/ai/model-cascade";
+  claimTheoryAiOperation,
+  createTheoryAiFingerprint,
+  releaseTheoryAiOperation,
+} from "@/lib/ai/theory-operation";
+import { parseCachedFastApiExtraction } from "@/lib/api/fastapi-contract";
 import {
   buildTheorySystemPrompt,
   buildTheoryUserPrompt,
@@ -52,49 +56,163 @@ const UUID_REGEX =
 // Timeout para la generación de teoría (más corto que el plan)
 // La teoría genera ~3-5K tokens vs ~15K tokens del plan
 const THEORY_TIMEOUT_MS = 90_000; // 90 segundos — contenido 3-5K tokens requiere más margen
+const MAX_THEORY_COMPLETION_TOKENS = 6_000;
 
 // ──────────────────────────────────────────────────────────────
 // Parser defensivo del response del LLM
 // ──────────────────────────────────────────────────────────────
 
-/**
- * Extrae y parsea el JSON del response del LLM.
- *
- * Los LLMs a veces retornan el JSON envuelto en:
- *   - Texto introductorio ("Aquí tienes el contenido:")
- *   - Bloques de código markdown (```json ... ```)
- *   - Texto final ("Espero que esto sea útil")
- *
- * Esta función maneja todos esos casos.
- */
-function parseTheoryResponse(rawText: string): TheoryContent["topics"] | null {
-  let text = rawText.trim();
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
-  // ─── Intentar extraer de bloque markdown ────────────────
-  const markdownMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-  if (markdownMatch) {
-    text = markdownMatch[1].trim();
-  }
+function isLevelK(value: unknown): value is "K1" | "K2" | "K3" {
+  return value === "K1" || value === "K2" || value === "K3";
+}
 
-  // ─── Intentar encontrar el JSON delimitado por {} ───────
-  const firstBrace = text.indexOf("{");
-  const lastBrace = text.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    text = text.slice(firstBrace, lastBrace + 1);
-  }
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
 
-  try {
-    const parsed = JSON.parse(text);
+function isKeyConcept(
+  value: unknown,
+): value is TheoryTopicContent["key_concepts"][number] {
+  if (!isRecord(value)) return false;
+  return (
+    isNonEmptyString(value.term) &&
+    isNonEmptyString(value.definition) &&
+    (value.example === undefined || isNonEmptyString(value.example))
+  );
+}
 
-    // Verificar que tiene la estructura esperada
-    if (!parsed.topics || !Array.isArray(parsed.topics)) {
-      return null;
-    }
+function isTheoryExample(
+  value: unknown,
+): value is TheoryTopicContent["examples"][number] {
+  if (!isRecord(value)) return false;
+  return (
+    isNonEmptyString(value.title) &&
+    isNonEmptyString(value.description) &&
+    isNonEmptyString(value.lesson)
+  );
+}
 
-    return parsed.topics as TheoryTopicContent[];
-  } catch {
+function isTopicConnection(
+  value: unknown,
+): value is TheoryTopicContent["connections"][number] {
+  if (!isRecord(value)) return false;
+  return (
+    isNonEmptyString(value.related_topic_code) &&
+    isNonEmptyString(value.relationship)
+  );
+}
+
+function isTheoryTopic(value: unknown): value is TheoryTopicContent {
+  if (!isRecord(value)) return false;
+  return (
+    isNonEmptyString(value.topic_code) &&
+    isNonEmptyString(value.topic_name) &&
+    isLevelK(value.level_k) &&
+    isNonEmptyString(value.introduction) &&
+    Array.isArray(value.key_concepts) &&
+    value.key_concepts.every(isKeyConcept) &&
+    Array.isArray(value.examples) &&
+    value.examples.every(isTheoryExample) &&
+    Array.isArray(value.connections) &&
+    value.connections.every(isTopicConnection) &&
+    isNonEmptyString(value.summary)
+  );
+}
+
+function parseTheoryResponse(
+  rawText: string,
+  expectedTopics: SessionTopic[],
+): TheoryTopicContent[] | null {
+  const value = parseFirstJsonObject(rawText);
+  if (
+    !value ||
+    !Array.isArray(value.topics) ||
+    !value.topics.every(isTheoryTopic)
+  ) {
     return null;
   }
+
+  const expectedCodes = expectedTopics.map((topic) => topic.code);
+  const expectedCodeSet = new Set(expectedCodes);
+  const expectedLevelByCode = new Map(
+    expectedTopics.map((topic) => [topic.code, topic.level_k]),
+  );
+  const generatedCodes = value.topics.map((topic) => topic.topic_code);
+  if (
+    expectedCodeSet.size !== expectedCodes.length ||
+    value.topics.length !== expectedCodes.length ||
+    new Set(generatedCodes).size !== generatedCodes.length ||
+    generatedCodes.some((code) => !expectedCodeSet.has(code)) ||
+    value.topics.some(
+      (topic) => topic.level_k !== expectedLevelByCode.get(topic.topic_code),
+    )
+  ) {
+    return null;
+  }
+
+  if (validateTheoryTopics(value.topics, expectedCodes).length > 0) {
+    return null;
+  }
+
+  const generatedByCode = new Map(
+    value.topics.map((topic) => [topic.topic_code, topic]),
+  );
+  const orderedTopics: TheoryTopicContent[] = [];
+  for (const expected of expectedTopics) {
+    const generated = generatedByCode.get(expected.code);
+    if (!generated) return null;
+    orderedTopics.push({
+      ...generated,
+      topic_name: expected.name,
+      level_k: expected.level_k,
+    });
+  }
+  return orderedTopics;
+}
+
+function createDemoTheoryRaw(topics: SessionTopic[]): string {
+  const demoTopics: TheoryTopicContent[] = topics.map((topic) => ({
+    topic_code: topic.code,
+    topic_name: topic.name,
+    level_k: topic.level_k,
+    introduction:
+      "[MODO DEMO] Este contenido explica de forma guiada el objetivo " +
+      topic.code +
+      " y permite comprobar la navegación sin contactar un proveedor externo.",
+    key_concepts: [
+      {
+        term: topic.name,
+        definition:
+          "Concepto educativo determinista basado en el tópico seleccionado.",
+        example:
+          "Relaciona el objetivo con una situación cotidiana de aseguramiento de calidad.",
+      },
+    ],
+    examples: [
+      {
+        title: "Ejemplo de modo Demo",
+        description:
+          "Un equipo revisa un criterio verificable antes de liberar una funcionalidad.",
+        lesson:
+          "La evidencia y el resultado esperado deben definirse antes de ejecutar la prueba.",
+      },
+    ],
+    connections: [
+      {
+        related_topic_code: topic.code,
+        relationship:
+          "El fixture conserva el código real para validar el contrato de la sesión.",
+      },
+    ],
+    summary:
+      "[MODO DEMO] Repasa la definición, identifica evidencia y aplica el concepto en un caso sencillo.",
+  }));
+
+  return JSON.stringify({ topics: demoTopics });
 }
 
 /**
@@ -140,6 +258,13 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  let theoryClaim: {
+    userId: string;
+    sessionId: string;
+    fingerprint: string;
+    claimToken: string;
+  } | null = null;
+
   try {
     // ═══════════════════════════════════════════════════════════
     // PASO 1: Extraer y validar parámetros
@@ -206,7 +331,10 @@ export async function POST(
     // ═══════════════════════════════════════════════════════════
     // PASO 4: Verificar caché (idempotencia)
     // ═══════════════════════════════════════════════════════════
-    if (session.theory_content && !force) {
+    if (
+      session.theory_content &&
+      (!force || session.status === "completed")
+    ) {
       // El contenido ya fue generado — retornar sin llamar al LLM
       let cachedTheory: TheoryContent;
       try {
@@ -221,12 +349,21 @@ export async function POST(
         cachedTheory = null as unknown as TheoryContent;
       }
 
-      if (cachedTheory) {
+      if (cachedTheory?.source_extraction_version === 2) {
         return NextResponse.json({
           theory: cachedTheory,
           cached: true,
         });
       }
+
+      console.warn("[theory] theory_content desactualizado, regenerando...");
+    }
+
+    if (session.status !== "pending" && session.status !== "active") {
+      return NextResponse.json(
+        { error: "La sesión ya no admite regenerar contenido teórico." },
+        { status: 409 },
+      );
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -258,12 +395,28 @@ export async function POST(
     // Obtener topics_json del documento
     const { data: doc } = await supabase
       .from("documents")
-      .select("topics_json")
+      .select("topics_json, extracted_text")
       .eq("id", plan.document_id)
       .eq("user_id", user.id)
       .maybeSingle();
 
-    const topicsJson: TopicsJson = doc?.topics_json || {};
+    const extraction = parseCachedFastApiExtraction(
+      doc?.topics_json,
+      doc?.extracted_text,
+    );
+    if (!extraction?.is_complete) {
+      return NextResponse.json(
+        {
+          error:
+            "El documento usa una extracción incompleta o desactualizada. " +
+            "Vuelve a extraer el PDF y regenera el plan antes de estudiar.",
+          code: "EXTRACTION_OUTDATED",
+        },
+        { status: 409 },
+      );
+    }
+
+    const topicsJson: TopicsJson = extraction.topics;
 
     // Obtener progreso de los tópicos de esta sesión
     const { data: progressRows } = await supabase
@@ -308,6 +461,60 @@ export async function POST(
     // PASO 6: Construir prompts
     // ═══════════════════════════════════════════════════════════
     const method = session.method_used as MethodUsed;
+    const fingerprint = createTheoryAiFingerprint(
+      JSON.stringify({
+        version: 2,
+        sessionId,
+        force,
+        method,
+        attemptNumber: session.attempt_number,
+        topicCodes: sessionTopics.map((topic) => topic.code),
+      }),
+    );
+    const adminClient = createAdminClient();
+    let claim: Awaited<ReturnType<typeof claimTheoryAiOperation>>;
+    try {
+      claim = await claimTheoryAiOperation(adminClient, {
+        userId: user.id,
+        sessionId,
+        fingerprint,
+      });
+    } catch {
+      return NextResponse.json(
+        {
+          error: "No se pudo coordinar la generación de teoría. Intenta de nuevo.",
+          code: "THEORY_CLAIM_UNAVAILABLE",
+        },
+        { status: 503 },
+      );
+    }
+
+    if (claim.outcome === "in_progress") {
+      return NextResponse.json(
+        {
+          error: "La teoría ya se está generando. Espera un momento.",
+          code: "THEORY_GENERATION_IN_PROGRESS",
+        },
+        { status: 409, headers: { "Retry-After": "2" } },
+      );
+    }
+    if (claim.outcome === "conflict") {
+      return NextResponse.json(
+        {
+          error: "Hay otra generación de teoría activa para esta sesión.",
+          code: "THEORY_GENERATION_CONFLICT",
+        },
+        { status: 409, headers: { "Retry-After": "2" } },
+      );
+    }
+
+    theoryClaim = {
+      userId: user.id,
+      sessionId,
+      fingerprint,
+      claimToken: claim.claimToken,
+    };
+
     const systemPrompt = buildTheorySystemPrompt(method);
     const userPrompt = buildTheoryUserPrompt(
       sessionTopics,
@@ -318,104 +525,39 @@ export async function POST(
     );
 
     // ═══════════════════════════════════════════════════════════
-    // PASO 7: Llamar al LLM con cascada Gemini → OpenAI
+    // PASO 7: Generar con runtime IA centralizado
     // ═══════════════════════════════════════════════════════════
-    const modelRuntimes = createModelRuntimes({
-      timeoutMs: THEORY_TIMEOUT_MS,
-      geminiModels: [process.env.GEMINI_THEORY_MODEL],
-      openaiModels: [process.env.OPENAI_THEORY_MODEL],
-      maxRetries: 2,
-    });
-
     console.log(
       `[theory] Generando teoría para sesión ${sessionId} ` +
         `(${sessionTopics.length} tópicos, método=${method})`,
     );
 
-    const expectedCodes = session.topic_codes || [];
-    let parsedTopics: TheoryTopicContent[] | null = null;
-    let modelRuntime: (typeof modelRuntimes)[number] | null = null;
-    let elapsed = 0;
-    let tokensUsed = 0;
-    let allAttemptsTimedOut = modelRuntimes.length > 0;
+    const ai = await executeAiJson<TheoryTopicContent[]>({
+      request,
+      userId: user.id,
+      feature: "theory",
+      systemPrompt,
+      userPrompts: [userPrompt],
+      maxCompletionTokensPerAttempt: MAX_THEORY_COMPLETION_TOKENS,
+      timeoutMs: THEORY_TIMEOUT_MS,
+      parse: (rawText) => parseTheoryResponse(rawText, sessionTopics),
+      createDemoRaw: () => createDemoTheoryRaw(sessionTopics),
+    });
 
-    for (const candidate of modelRuntimes) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), candidate.timeoutMs);
-      const startTime = Date.now();
-
-      try {
-        const completion = await candidate.client.chat.completions.create(
-          {
-            model: candidate.model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-            // JSON mode reduce respuestas con markdown o texto extra.
-            // El prompt ya menciona JSON explícitamente, requisito de OpenAI.
-            response_format: { type: "json_object" },
-            // Gemini 2.5 Flash y gpt-4o-mini aceptan temperature.
-            // No usamos GPT-5 en SE-02 para evitar rechazos por parámetros.
-            temperature: 0.7,
-          },
-          { signal: controller.signal },
-        );
-
-        const candidateTopics = parseTheoryResponse(
-          completion.choices[0]?.message?.content || "",
-        );
-        if (!candidateTopics) {
-          allAttemptsTimedOut = false;
-          continue;
-        }
-
-        if (validateTheoryTopics(candidateTopics, expectedCodes).length > 0) {
-          allAttemptsTimedOut = false;
-          continue;
-        }
-
-        parsedTopics = candidateTopics;
-        modelRuntime = candidate;
-        elapsed = Date.now() - startTime;
-        tokensUsed = completion.usage?.total_tokens || 0;
-        break;
-      } catch (llmError) {
-        const status = getModelErrorStatus(llmError);
-        if (!isModelTimeout(llmError) && status !== 408 && status !== 504) {
-          allAttemptsTimedOut = false;
-        }
-      } finally {
-        clearTimeout(timeoutId);
-      }
+    if (!ai.ok) {
+      return NextResponse.json(ai.body, { status: ai.status });
     }
-
-    if (!parsedTopics || !modelRuntime) {
-      return NextResponse.json(
-        {
-          error:
-            allAttemptsTimedOut
-              ? "Los modelos de IA agotaron el tiempo de respuesta. Intenta de nuevo."
-              : "No se pudo generar teoría válida. Intenta de nuevo.",
-        },
-        { status: allAttemptsTimedOut ? 504 : 502 },
-      );
-    }
-
-    console.log(
-      `[theory] LLM respondió en ${elapsed}ms, ` +
-        `${tokensUsed} tokens, modelo=${modelRuntime.model}`,
-    );
 
     // ═══════════════════════════════════════════════════════════
     // PASO 8: Construir el TheoryContent completo
     // ═══════════════════════════════════════════════════════════
     const theoryContent: TheoryContent = {
-      topics: parsedTopics,
+      source_extraction_version: 2,
+      topics: ai.value,
       method_used: method,
       generated_at: new Date().toISOString(),
-      model_provider: modelRuntime.provider,
-      model_name: modelRuntime.model,
+      model_provider: ai.provider ?? "demo",
+      model_name: ai.model ?? "fixture-ai05",
     };
 
     // ═══════════════════════════════════════════════════════════
@@ -434,11 +576,20 @@ export async function POST(
       updateData.started_at = now;
     }
 
-    const { error: updateError } = await supabase
+    let updateQuery = adminClient
       .from("sessions")
       .update(updateData)
       .eq("id", sessionId)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .neq("status", "completed");
+
+    if (session.status === "pending") {
+      updateQuery = updateQuery.eq("status", "pending");
+    }
+
+    const { data: updatedSession, error: updateError } = await updateQuery
+      .select("id")
+      .maybeSingle();
 
     if (updateError) {
       console.error("[theory] Error al guardar theory_content:", updateError);
@@ -449,6 +600,16 @@ export async function POST(
             "Intenta de nuevo antes de continuar.",
         },
         { status: 500 },
+      );
+    }
+
+    if (!updatedSession) {
+      return NextResponse.json(
+        {
+          error:
+            "La sesión cambió de estado mientras se generaba la teoría. Recarga antes de continuar.",
+        },
+        { status: 409 },
       );
     }
 
@@ -466,5 +627,13 @@ export async function POST(
       { error: "Error interno del servidor" },
       { status: 500 },
     );
+  } finally {
+    if (theoryClaim) {
+      try {
+        await releaseTheoryAiOperation(createAdminClient(), theoryClaim);
+      } catch {
+        console.error("[theory] No se pudo liberar el lease de generación.");
+      }
+    }
   }
 }

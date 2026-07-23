@@ -41,6 +41,7 @@ import { createClient } from "@/lib/supabase/server";
 import { UserMenu } from "./_components/user-menu";
 import { MainNav } from "./_components/main-nav";
 import { MobileNav } from "./_components/mobile-nav";
+import { AiSessionProvider } from "@/components/ai/ai-session-provider";
 
 export default async function DashboardLayout({
   children,
@@ -117,106 +118,108 @@ export default async function DashboardLayout({
     // flex-col → los hijos (header y main) se apilan verticalmente
     // bg-slate-950 → fondo oscuro casi negro (#020617)
     // text-slate-50 → texto claro por defecto (#f8fafc)
-    <div className="flex min-h-screen flex-col bg-slate-950 text-slate-50">
-      {/* ════════════════════════════════════════════════════ */}
-      {/* HEADER SUPERIOR — Persistente en todas las páginas   */}
-      {/* ════════════════════════════════════════════════════ */}
-      <header
-        className="
-          sticky top-0           
-          z-40                   
-          w-full                 
-          border-b border-slate-800
-          bg-slate-950/80        
-          backdrop-blur          
-          supports-[backdrop-filter]:bg-slate-950/60
-        "
-      >
-        {/* sticky top-0 → el header se "pega" al tope al hacer scroll.
-            No desaparece cuando el usuario scrollea hacia abajo.
+    <AiSessionProvider>
+      <div className="flex min-h-screen flex-col bg-slate-950 text-slate-50">
+        {/* ════════════════════════════════════════════════════ */}
+        {/* HEADER SUPERIOR — Persistente en todas las páginas   */}
+        {/* ════════════════════════════════════════════════════ */}
+        <header
+          className="
+            sticky top-0
+            z-40
+            w-full
+            border-b border-slate-800
+            bg-slate-950/80
+            backdrop-blur
+            supports-[backdrop-filter]:bg-slate-950/60
+          "
+        >
+          {/* sticky top-0 → el header se "pega" al tope al hacer scroll.
+              No desaparece cuando el usuario scrollea hacia abajo.
 
-            z-40 → z-index: 40. Asegura que el header se renderice
-            POR ENCIMA del contenido de la página al hacer scroll.
-            Los modales y sheets usan z-50 para estar encima del header.
+              z-40 → z-index: 40. Asegura que el header se renderice
+              POR ENCIMA del contenido de la página al hacer scroll.
+              Los modales y sheets usan z-50 para estar encima del header.
 
-            w-full → ocupa el 100% del ancho del viewport.
+              w-full → ocupa el 100% del ancho del viewport.
 
-            border-b border-slate-800 → línea gris sutil en el borde inferior
-            que separa visualmente el header del contenido.
+              border-b border-slate-800 → línea gris sutil en el borde inferior
+              que separa visualmente el header del contenido.
 
-            bg-slate-950/80 → fondo oscuro con 80% de opacidad.
-            El 20% de transparencia permite ver una silueta del contenido
-            detrás del header al hacer scroll.
+              bg-slate-950/80 → fondo oscuro con 80% de opacidad.
+              El 20% de transparencia permite ver una silueta del contenido
+              detrás del header al hacer scroll.
 
-            backdrop-blur → aplica un efecto blur (desenfoque) al contenido
-            que está DETRÁS del header. Combinado con la transparencia,
-            crea el efecto "glass" (vidrio esmerilado) moderno.
+              backdrop-blur → aplica un efecto blur (desenfoque) al contenido
+              que está DETRÁS del header. Combinado con la transparencia,
+              crea el efecto "glass" (vidrio esmerilado) moderno.
 
-            supports-[backdrop-filter]:bg-slate-950/60 → esta es una
-            PROGRESSIVE ENHANCEMENT. Si el navegador soporta backdrop-filter
-            (la mayoría modernos lo hacen), reduce la opacidad a 60% para
-            que el efecto blur sea más visible. Si no lo soporta, mantiene
-            el 80% de opacidad que sigue viéndose bien. */}
+              supports-[backdrop-filter]:bg-slate-950/60 → esta es una
+              PROGRESSIVE ENHANCEMENT. Si el navegador soporta backdrop-filter
+              (la mayoría modernos lo hacen), reduce la opacidad a 60% para
+              que el efecto blur sea más visible. Si no lo soporta, mantiene
+              el 80% de opacidad que sigue viéndose bien. */}
 
-        {/* ─── Contenedor interior con ancho máximo ─── */}
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          {/* container → ancho máximo responsivo (por defecto max-width por breakpoint)
-              mx-auto → centra el container horizontalmente
-              flex → los hijos se disponen en fila horizontal
-              h-16 → altura fija de 64px para el header (estándar de diseño)
-              items-center → centra verticalmente los elementos
-              justify-between → distribuye el espacio: logo+nav a la izquierda, avatar a la derecha
-              px-4 → padding horizontal de 16px en cada lado */}
+          {/* ─── Contenedor interior con ancho máximo ─── */}
+          <div className="container mx-auto flex h-16 items-center justify-between px-4">
+            {/* container → ancho máximo responsivo (por defecto max-width por breakpoint)
+                mx-auto → centra el container horizontalmente
+                flex → los hijos se disponen en fila horizontal
+                h-16 → altura fija de 64px para el header (estándar de diseño)
+                items-center → centra verticalmente los elementos
+                justify-between → distribuye el espacio: logo+nav a la izquierda, avatar a la derecha
+                px-4 → padding horizontal de 16px en cada lado */}
 
-          {/* ─── LADO IZQUIERDO: Logo + Navegación ─── */}
-          <div className="flex items-center gap-6 md:gap-10">
-            {/* gap-6 → espacio de 24px entre logo y nav en mobile
-                md:gap-10 → espacio de 40px en desktop (más holgado) */}
+            {/* ─── LADO IZQUIERDO: Logo + Navegación ─── */}
+            <div className="flex items-center gap-6 md:gap-10">
+              {/* gap-6 → espacio de 24px entre logo y nav en mobile
+                  md:gap-10 → espacio de 40px en desktop (más holgado) */}
 
-            {/* ─── Hamburguesa (solo mobile) ─── */}
-            <MobileNav />
+              {/* ─── Hamburguesa (solo mobile) ─── */}
+              <MobileNav />
 
-            {/* ─── Logotipo ─── */}
-            <Link href="/dashboard" className="flex items-center space-x-2">
-              <span className="inline-block font-bold text-xl tracking-tight">
-                ISTQB <span className="text-emerald-400">Agent</span>
-              </span>
-              {/* tracking-tight → reduce el espacio entre letras (letter-spacing)
-                  para que el logotipo se vea más compacto y profesional.
-                  text-emerald-400 → el verde esmeralda es el color acento
-                  de nuestra marca, consistente con el login y la landing. */}
-            </Link>
+              {/* ─── Logotipo ─── */}
+              <Link href="/dashboard" className="flex items-center space-x-2">
+                <span className="inline-block font-bold text-xl tracking-tight">
+                  ISTQB <span className="text-emerald-400">Agent</span>
+                </span>
+                {/* tracking-tight → reduce el espacio entre letras (letter-spacing)
+                    para que el logotipo se vea más compacto y profesional.
+                    text-emerald-400 → el verde esmeralda es el color acento
+                    de nuestra marca, consistente con el login y la landing. */}
+              </Link>
 
-            {/* ─── Navegación Desktop ─── */}
-            <MainNav />
+              {/* ─── Navegación Desktop ─── */}
+              <MainNav />
+            </div>
+
+            {/* ─── LADO DERECHO: Menú de Usuario ─── */}
+            {/* Le pasamos las props calculadas en el servidor.
+                El UserMenu es un Client Component que recibe estos datos
+                como props estáticas — no necesita hacer queries propias. */}
+            <UserMenu email={email} name={displayName} />
           </div>
+        </header>
 
-          {/* ─── LADO DERECHO: Menú de Usuario ─── */}
-          {/* Le pasamos las props calculadas en el servidor.
-              El UserMenu es un Client Component que recibe estos datos
-              como props estáticas — no necesita hacer queries propias. */}
-          <UserMenu email={email} name={displayName} />
-        </div>
-      </header>
+        {/* ════════════════════════════════════════════════════ */}
+        {/* CONTENIDO PRINCIPAL — Cambia según la página         */}
+        {/* ════════════════════════════════════════════════════ */}
+        <main className="flex-1 container mx-auto px-4 py-8">
+          {/* flex-1 → el main ocupa todo el espacio vertical restante
+              después del header. Esto empuja el contenido a llenar
+              la pantalla completa incluso cuando hay poco contenido.
 
-      {/* ════════════════════════════════════════════════════ */}
-      {/* CONTENIDO PRINCIPAL — Cambia según la página         */}
-      {/* ════════════════════════════════════════════════════ */}
-      <main className="flex-1 container mx-auto px-4 py-8">
-        {/* flex-1 → el main ocupa todo el espacio vertical restante
-            después del header. Esto empuja el contenido a llenar
-            la pantalla completa incluso cuando hay poco contenido.
+              container mx-auto → ancho máximo centrado (responsive)
+              px-4 → padding horizontal de 16px
+              py-8 → padding vertical de 32px
 
-            container mx-auto → ancho máximo centrado (responsive)
-            px-4 → padding horizontal de 16px
-            py-8 → padding vertical de 32px
-
-            {children} es donde Next.js inyecta la página actual.
-            Al navegar entre /dashboard, /setup, /session, etc.,
-            solo este {children} cambia. El header y su contenido
-            permanecen intactos (no se re-renderizan). */}
-        {children}
-      </main>
-    </div>
+              {children} es donde Next.js inyecta la página actual.
+              Al navegar entre /dashboard, /setup, /session, etc.,
+              solo este {children} cambia. El header y su contenido
+              permanecen intactos (no se re-renderizan). */}
+          {children}
+        </main>
+      </div>
+    </AiSessionProvider>
   );
 }

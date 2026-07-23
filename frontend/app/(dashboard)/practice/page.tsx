@@ -16,7 +16,7 @@
 // ¿POR QUÉ CLIENT COMPONENT?
 //   1. Necesita useState para filtros interactivos
 //   2. Necesita useEffect para fetch de datos al montar
-//   3. Necesita useCallback para memoizar funciones
+//   3. Necesita event handlers para reintentos y filtros
 //   Los filtros cambian la lista en tiempo real sin recargar.
 //
 // PATRÓN: Container Component (mismo que dashboard/page.tsx)
@@ -29,7 +29,7 @@
 //   No necesitamos una API Route adicional para lecturas simples.
 // ============================================================
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { LevelK } from "@/types/database";
@@ -124,6 +124,129 @@ function getChapterFromCode(code: string): string {
   return match ? match[1] : "0";
 }
 
+async function loadPracticeData(): Promise<PracticeHubState> {
+  const supabase = createClient();
+
+  // ─── 1. Obtener el plan de estudio activo ──────────────
+  // Buscamos el plan más reciente con status = 'active'.
+  // RLS filtra automáticamente por user_id = auth.uid().
+  const { data: plan, error: planError } = await supabase
+    .from("study_plans")
+    .select("id, document_id")
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (planError) {
+    console.error("[practice] Error al buscar plan activo:", planError);
+    throw new Error("Error al buscar tu plan de estudio.");
+  }
+
+  // Si no hay plan activo, mostrar estado vacío.
+  if (!plan) {
+    return {
+      isLoading: false,
+      error: null,
+      documentId: null,
+      fileName: null,
+      topics: [],
+      exerciseCountsByType: {
+        test_cases: 0,
+        bug_report: 0,
+        api_testing: 0,
+        exploratory: 0,
+      },
+      totalExercises: 0,
+    };
+  }
+
+  // ─── 2. Obtener el documento con topics_json ───────────
+  const { data: doc, error: docError } = await supabase
+    .from("documents")
+    .select("id, topics_json, file_name")
+    .eq("id", plan.document_id)
+    .single();
+
+  if (docError || !doc) {
+    console.error("[practice] Error al obtener documento:", docError);
+    throw new Error("No se pudo cargar el documento de tu plan.");
+  }
+
+  // ─── 3. Obtener ejercicios existentes ──────────────────
+  // Hacemos SELECT de todos los ejercicios del documento
+  // para calcular conteos por tópico y por tipo.
+  const { data: exercises, error: exError } = await supabase
+    .from("practice_exercises")
+    .select("id, topic_code, exercise_type")
+    .eq("document_id", plan.document_id);
+
+  if (exError) {
+    console.error("[practice] Error al obtener ejercicios:", exError);
+    // No es crítico — continuamos con conteos en 0
+  }
+
+  // ─── 4. Procesar datos ─────────────────────────────────
+
+  // 4a. Parsear topics_json a TopicForDisplay[]
+  const topicsJson =
+    (doc.topics_json as Record<string, TopicEntry> | null) ?? {};
+  const exerciseList = exercises ?? [];
+
+  // 4b. Contar ejercicios por tópico (para el progreso)
+  const exercisesByTopic = new Map<string, number>();
+  for (const ex of exerciseList) {
+    const current = exercisesByTopic.get(ex.topic_code) ?? 0;
+    exercisesByTopic.set(ex.topic_code, current + 1);
+  }
+
+  // 4c. Contar ejercicios por tipo (para las summary cards)
+  const countsByType: Record<PracticeExerciseType, number> = {
+    test_cases: 0,
+    bug_report: 0,
+    api_testing: 0,
+    exploratory: 0,
+  };
+  for (const ex of exerciseList) {
+    const exType = ex.exercise_type as PracticeExerciseType;
+    if (exType in countsByType) {
+      countsByType[exType]++;
+    }
+  }
+
+  // 4d. Construir array de tópicos para display
+  const topicEntries: TopicForDisplay[] = Object.entries(topicsJson)
+    .map(([code, data]) => ({
+      topicCode: code,
+      topicName: data.name || code,
+      levelK: (data.level_k || "K1") as LevelK,
+      exerciseCount: exercisesByTopic.get(code) ?? 0,
+    }))
+    // Ordenar por código de tópico (FL-1.1.1 < FL-1.2.1 < FL-2.1.1)
+    .sort((a, b) => a.topicCode.localeCompare(b.topicCode));
+
+  return {
+    isLoading: false,
+    error: null,
+    documentId: doc.id as string,
+    fileName: (doc.file_name as string) ?? null,
+    topics: topicEntries,
+    exerciseCountsByType: countsByType,
+    totalExercises: exerciseList.length,
+  };
+}
+
+function withPracticeError(
+  state: PracticeHubState,
+  caught: unknown,
+): PracticeHubState {
+  return {
+    ...state,
+    isLoading: false,
+    error: caught instanceof Error ? caught.message : "Error al cargar los datos.",
+  };
+}
+
 // ──────────────────────────────────────────────────────────────
 // Componente Principal
 // ──────────────────────────────────────────────────────────────
@@ -157,136 +280,39 @@ export default function PracticePage() {
   // FETCH DE DATOS
   // ═══════════════════════════════════════════════════════════
 
-  const fetchPracticeData = useCallback(async () => {
+  function fetchPracticeData() {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
-
-    try {
-      const supabase = createClient();
-
-      // ─── 1. Obtener el plan de estudio activo ────────────
-      // Buscamos el plan más reciente con status = 'active'.
-      // RLS filtra automáticamente por user_id = auth.uid().
-      const { data: plan, error: planError } = await supabase
-        .from("study_plans")
-        .select("id, document_id")
-        .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (planError) {
-        console.error("[practice] Error al buscar plan activo:", planError);
-        throw new Error("Error al buscar tu plan de estudio.");
-      }
-
-      // Si no hay plan activo, mostrar estado vacío.
-      if (!plan) {
-        setState({
-          isLoading: false,
-          error: null,
-          documentId: null,
-          fileName: null,
-          topics: [],
-          exerciseCountsByType: {
-            test_cases: 0,
-            bug_report: 0,
-            api_testing: 0,
-            exploratory: 0,
-          },
-          totalExercises: 0,
-        });
-        return;
-      }
-
-      // ─── 2. Obtener el documento con topics_json ─────────
-      const { data: doc, error: docError } = await supabase
-        .from("documents")
-        .select("id, topics_json, file_name")
-        .eq("id", plan.document_id)
-        .single();
-
-      if (docError || !doc) {
-        console.error("[practice] Error al obtener documento:", docError);
-        throw new Error("No se pudo cargar el documento de tu plan.");
-      }
-
-      // ─── 3. Obtener ejercicios existentes ────────────────
-      // Hacemos SELECT de todos los ejercicios del documento
-      // para calcular conteos por tópico y por tipo.
-      const { data: exercises, error: exError } = await supabase
-        .from("practice_exercises")
-        .select("id, topic_code, exercise_type")
-        .eq("document_id", plan.document_id);
-
-      if (exError) {
-        console.error("[practice] Error al obtener ejercicios:", exError);
-        // No es crítico — continuamos con conteos en 0
-      }
-
-      // ─── 4. Procesar datos ───────────────────────────────
-
-      // 4a. Parsear topics_json a TopicForDisplay[]
-      const topicsJson =
-        (doc.topics_json as Record<string, TopicEntry> | null) ?? {};
-      const exerciseList = exercises ?? [];
-
-      // 4b. Contar ejercicios por tópico (para el progreso)
-      const exercisesByTopic = new Map<string, number>();
-      for (const ex of exerciseList) {
-        const current = exercisesByTopic.get(ex.topic_code) ?? 0;
-        exercisesByTopic.set(ex.topic_code, current + 1);
-      }
-
-      // 4c. Contar ejercicios por tipo (para las summary cards)
-      const countsByType: Record<PracticeExerciseType, number> = {
-        test_cases: 0,
-        bug_report: 0,
-        api_testing: 0,
-        exploratory: 0,
-      };
-      for (const ex of exerciseList) {
-        const exType = ex.exercise_type as PracticeExerciseType;
-        if (exType in countsByType) {
-          countsByType[exType]++;
-        }
-      }
-
-      // 4d. Construir array de tópicos para display
-      const topicEntries: TopicForDisplay[] = Object.entries(topicsJson)
-        .map(([code, data]) => ({
-          topicCode: code,
-          topicName: data.name || code,
-          levelK: (data.level_k || "K1") as LevelK,
-          exerciseCount: exercisesByTopic.get(code) ?? 0,
-        }))
-        // Ordenar por código de tópico (FL-1.1.1 < FL-1.2.1 < FL-2.1.1)
-        .sort((a, b) => a.topicCode.localeCompare(b.topicCode));
-
-      // ─── 5. Actualizar estado ────────────────────────────
-      setState({
-        isLoading: false,
-        error: null,
-        documentId: doc.id as string,
-        fileName: (doc.file_name as string) ?? null,
-        topics: topicEntries,
-        exerciseCountsByType: countsByType,
-        totalExercises: exerciseList.length,
-      });
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Error al cargar los datos.";
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: errorMessage,
-      }));
-    }
-  }, []);
+    void loadPracticeData().then(
+      (nextState) => {
+        setState(nextState);
+      },
+      (caught: unknown) => {
+        setState((prev) => withPracticeError(prev, caught));
+      },
+    );
+  }
 
   // ─── Fetch al montar ────────────────────────────────────
   useEffect(() => {
-    fetchPracticeData();
-  }, [fetchPracticeData]);
+    let ignore = false;
+
+    void loadPracticeData().then(
+      (nextState) => {
+        if (!ignore) {
+          setState(nextState);
+        }
+      },
+      (caught: unknown) => {
+        if (!ignore) {
+          setState((prev) => withPracticeError(prev, caught));
+        }
+      },
+    );
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // ═══════════════════════════════════════════════════════════
   // FILTROS (Computed)

@@ -17,7 +17,6 @@ import type {
   AiUsageMode,
   AiUsageSummary,
   ProviderUsage,
-  UserAiSettingsRow,
 } from "@/types/ai";
 
 import { createDefaultAiSettings } from "./settings-contract";
@@ -42,6 +41,10 @@ export interface RecordAiUsageInput {
   fallbackPromptTokens: number;
   fallbackCompletionTokens: number;
 }
+
+type ResolveAiRuntimeRequest = AiRuntimeRequest & {
+  modelOverride?: string;
+};
 
 const EMPTY_USAGE: AiUsageSummary = {
   daily_requests: 0,
@@ -212,7 +215,7 @@ async function reserveAiQuota(
 }
 
 export async function resolveAiRuntime(
-  request: AiRuntimeRequest,
+  request: ResolveAiRuntimeRequest,
 ): Promise<ResolvedAiRuntime> {
   // El admin client es válido aquí porque el Route Handler ya autenticó
   // y userId proviene de getUser(), nunca del body sin verificar.
@@ -244,12 +247,20 @@ export async function resolveAiRuntime(
 
   const provider = settings.provider;
   const requestedModel = settings.model_name?.trim();
-  // Una preferencia legacy se corrige al default allowlisted y queda
-  // visible mediante modelWasDefaulted para AI-03.
-  const model =
+  const configuredModel =
     requestedModel && isAllowedModel(provider, requestedModel)
       ? requestedModel
       : MODEL_ALLOWLIST[provider][0];
+  const model = request.modelOverride?.trim() || configuredModel;
+  if (!isAllowedModel(provider, model)) {
+    return {
+      status: "unavailable",
+      mode: settings.mode,
+      reason: "PROVIDER_CONFIGURATION_ERROR",
+      eventId: request.eventId,
+      settings,
+    };
+  }
   const modelWasDefaulted = model !== requestedModel;
   const estimatedPromptTokens = estimatePromptTokens(request.promptText);
 
@@ -266,6 +277,25 @@ export async function resolveAiRuntime(
         settings.mode === "byok"
           ? "BYOK_KEY_REQUIRED"
           : "PROVIDER_CONFIGURATION_ERROR",
+      eventId: request.eventId,
+      settings,
+    };
+  }
+
+  let providerRuntime: ModelRuntime;
+  try {
+    providerRuntime = createProviderRuntime({
+      provider,
+      model,
+      apiKey: key,
+      timeoutMs: request.timeoutMs,
+      maxRetries: 0,
+    });
+  } catch {
+    return {
+      status: "unavailable",
+      mode: settings.mode,
+      reason: "PROVIDER_CONFIGURATION_ERROR",
       eventId: request.eventId,
       settings,
     };
@@ -321,35 +351,20 @@ export async function resolveAiRuntime(
     }
   }
 
-  try {
-    // La key se entrega directamente al SDK y no se copia al resultado.
-    return {
-      status: "ready",
-      mode: settings.mode,
-      provider,
-      model,
-      modelWasDefaulted,
-      estimatedPromptTokens,
-      maxCompletionTokens: request.maxCompletionTokens,
-      eventId: request.eventId,
-      settings,
-      usage,
-      runtime: createProviderRuntime({
-        provider,
-        model,
-        apiKey: key,
-        timeoutMs: request.timeoutMs,
-      }),
-    };
-  } catch {
-    return {
-      status: "unavailable",
-      mode: settings.mode,
-      reason: "PROVIDER_CONFIGURATION_ERROR",
-      eventId: request.eventId,
-      settings,
-    };
-  }
+  // La key se entrega directamente al SDK y no se copia al resultado.
+  return {
+    status: "ready",
+    mode: settings.mode,
+    provider,
+    model,
+    modelWasDefaulted,
+    estimatedPromptTokens,
+    maxCompletionTokens: request.maxCompletionTokens,
+    eventId: request.eventId,
+    settings,
+    usage,
+    runtime: providerRuntime,
+  };
 }
 
 function nonNegativeInteger(value: number | null | undefined): number | null {

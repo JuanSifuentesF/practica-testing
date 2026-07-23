@@ -121,12 +121,14 @@ export type {
   UserAnswer,
   EvaluateRequest,
   EvaluateResponse,
+  EvaluateWithAdaptationResponse,
+  QuestionResult,
   FailedTopic,
   ErrorPattern,
 } from "./evaluate";
 
 // 🆕 SE-07: Re-exportar tipos de adaptación
-export type { AdaptRequest, AdaptResponse } from "./adapt";
+export type { AdaptResponse } from "./adapt";
 
 // 🆕 SE-04: Re-exportar tipos de quiz
 export type { QuizQuestion, QuizContent, QuizResponse } from "./quiz";
