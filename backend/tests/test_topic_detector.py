@@ -19,10 +19,13 @@ Salida esperada:
     ✅ Test 6 PASÓ: Detección completa (is_complete=True)
     ✅ Test 7 PASÓ: Texto vacío retorna 0 tópicos
     ✅ Test 8 PASÓ: Deduplicación funciona correctamente
+    ✅ Test 9 PASÓ: Layout español real detectado y delimitado
+    ✅ Test 10 PASÓ: 63/64 se considera extracción parcial
     ══════════════════════════════════════════
-    ✅ TODOS LOS TESTS PASARON (8/8)
+    ✅ TODOS LOS TESTS PASARON (10/10)
 """
 
+import re
 import sys
 
 # Agregar el directorio backend al path para poder importar módulos
@@ -182,6 +185,63 @@ def main() -> None:
         passed += 1
     except AssertionError as e:
         print(f"❌ Test 8 FALLÓ: {e}")
+
+    # ─── Test 9: Layout real con K espaciado y nombres partidos ───
+    total += 1
+    try:
+        real_layout = """
+2.1 Ciclo de Vida
+FL-2.1.2 (K1) Recordar las buenas prácticas de prueba que se aplican a todos los ciclos de vida de
+desarrollo de software
+3.2 Proceso de Retroalimentación y Revisión
+FL-3.2.4 ( K2) Comparar y contrastar los diferentes tipos de revisión
+FL-3.2.5 (K1) Recordar los factores que contribuyen a una revisión exitosa
+
+2.1.2. Ciclo de Vida de Desarrollo de Software y Buenas Prácticas
+Las actividades de prueba deben adaptarse al ciclo de vida elegido.
+
+3.2.4. Tipos de Revisiones
+Los tipos principales son revisión informal, revisión guiada, revisión técnica e inspección.
+
+3.2.5. Factores de Éxito para las Revisiones
+Los objetivos claros y el tiempo suficiente favorecen una revisión exitosa.
+"""
+        layout_service = TopicDetectorService(
+            expected_topics=["FL-2.1.2", "FL-3.2.4", "FL-3.2.5"],
+        )
+        layout_result = layout_service.detect(real_layout)
+        layout_topics = {topic.code: topic for topic in layout_result.topics}
+
+        assert layout_result.is_complete, layout_result.warnings
+        assert layout_topics["FL-3.2.4"].level_k == "K2"
+        assert "desarrollo de software" in layout_topics["FL-2.1.2"].name
+        assert layout_topics["FL-3.2.4"].text.startswith(
+            "3.2.4. Tipos de Revisiones"
+        )
+        assert "Factores de Éxito" not in layout_topics["FL-3.2.4"].text
+        print("✅ Test 9 PASÓ: Layout español real detectado y delimitado")
+        passed += 1
+    except AssertionError as e:
+        print(f"❌ Test 9 FALLÓ: {e}")
+
+    # ─── Test 10: Completitud requiere el catálogo exacto ───
+    total += 1
+    try:
+        partial_fixture = re.sub(
+            r"^FL-3\.2\.4 \(K2\).*$",
+            "",
+            SAMPLE_SYLLABUS_TEXT,
+            count=1,
+            flags=re.MULTILINE,
+        )
+        partial_result = service.detect(partial_fixture)
+        assert partial_result.total_topics == EXPECTED_TOTAL_TOPICS - 1
+        assert not partial_result.is_complete
+        assert any("FL-3.2.4" in warning for warning in partial_result.warnings)
+        print("✅ Test 10 PASÓ: 63/64 se considera extracción parcial")
+        passed += 1
+    except AssertionError as e:
+        print(f"❌ Test 10 FALLÓ: {e}")
 
     # ─── Resumen ───
     print("═" * 50)

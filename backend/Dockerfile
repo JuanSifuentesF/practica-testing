@@ -77,6 +77,23 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 
 # ───────────────────────────────────────────────────────────────
+# STAGE OPCIONAL: Tests reproducibles en Python 3.12
+# ───────────────────────────────────────────────────────────────
+FROM python:3.12-slim AS test
+
+WORKDIR /app
+
+COPY requirements.txt requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
+
+COPY ./app ./app
+COPY ./tests ./tests
+COPY pytest.ini .
+
+CMD ["python", "-m", "pytest", "-c", "pytest.ini", "tests", "-q"]
+
+
+# ───────────────────────────────────────────────────────────────
 # STAGE 2: Production — Imagen final optimizada
 # ───────────────────────────────────────────────────────────────
 #

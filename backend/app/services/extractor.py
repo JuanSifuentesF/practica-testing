@@ -76,6 +76,8 @@ HOURS_PER_K_LEVEL: dict[str, float] = {
     "K3": 1.5,
 }
 
+EXTRACTION_CONTRACT_VERSION = 2
+
 
 @dataclass
 class FullExtractionResult:
@@ -95,7 +97,7 @@ class FullExtractionResult:
         level_distribution: Diccionario con cuenta por nivel K.
         estimated_study_hours: Horas estimadas de estudio.
         warnings: Lista de advertencias del proceso.
-        is_complete: True si se detectaron >= 90% de los tópicos esperados.
+        is_complete: True si se detectó exactamente el catálogo esperado.
     """
 
     filename: str
@@ -107,6 +109,7 @@ class FullExtractionResult:
     estimated_study_hours: float
     warnings: list[str]
     is_complete: bool
+    contract_version: int = EXTRACTION_CONTRACT_VERSION
 
 
 class ExtractorService:

@@ -8,7 +8,7 @@ Endpoints:
   POST /extract-pdf       → Extrae texto crudo del PDF (BE-03).
   POST /extract-pdf-full  → Pipeline completo: PDF → Tópicos → JSON (BE-05).
 
-Autenticación: Ninguna en esta versión (se agregará en guías futuras).
+Autenticación: Bearer privado entre el BFF de Next.js y FastAPI.
 Content-Type de entrada: multipart/form-data
 Content-Type de salida: application/json
 
@@ -19,22 +19,50 @@ Consumidores futuros:
 
 import logging
 
+from app.core.errors import ApiError
 from app.models.schemas import (ErrorResponse, FullExtractionResponse,
-                                KLevelDistribution, PageContent,
-                                PdfExtractResponse, TopicInfo)
+                                 KLevelDistribution, PageContent,
+                                 PdfExtractResponse, TopicInfo)
 from app.services.extractor import ExtractorService
 from app.services.pdf_extractor import PdfExtractionError, PdfExtractorService
 from app.services.topic_detector import TopicDetectionError
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Request, Security, UploadFile, status
+from fastapi.security import HTTPBearer
 
 # ─── Logger del módulo ───
 logger = logging.getLogger(__name__)
 
 # ─── Crear instancia del Router ───
 # tags: agrupa los endpoints en Swagger UI bajo la etiqueta "PDF Extraction".
+_bff_bearer = HTTPBearer(
+    scheme_name="BFFBearer",
+    description="Credencial privada compartida por el BFF de Next.js.",
+    auto_error=False,
+)
+
 router = APIRouter(
     tags=["PDF Extraction"],
+    dependencies=[Security(_bff_bearer)],
 )
+
+_GUARD_ERROR_RESPONSES = {
+    401: {
+        "description": "Credencial BFF ausente o inválida.",
+        "model": ErrorResponse,
+    },
+    413: {
+        "description": "El archivo supera el tamaño máximo permitido.",
+        "model": ErrorResponse,
+    },
+    429: {
+        "description": "Se alcanzó el límite temporal de extracciones.",
+        "model": ErrorResponse,
+    },
+    503: {
+        "description": "La credencial BFF no está configurada en el servicio.",
+        "model": ErrorResponse,
+    },
+}
 
 # ─── Instancias de servicios ───
 # Ambos servicios son stateless, así que creamos una instancia
@@ -67,20 +95,14 @@ def _validate_pdf_content_type(file: UploadFile) -> None:
             file.content_type,
             file.filename,
         )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "detail": (
-                    f"El archivo '{file.filename}' no es un PDF válido. "
-                    f"Se recibió content_type '{file.content_type}', "
-                    "pero se esperaba 'application/pdf'."
-                ),
-                "error_code": "INVALID_FILE_TYPE",
-            },
+        raise ApiError(
+            status.HTTP_400_BAD_REQUEST,
+            "El archivo debe usar content_type 'application/pdf'.",
+            "INVALID_FILE_TYPE",
         )
 
 
-async def _read_pdf_bytes(file: UploadFile) -> bytes:
+async def _read_pdf_bytes(file: UploadFile, max_bytes: int) -> bytes:
     """
     Lee los bytes del archivo y valida que no esté vacío y sea un PDF.
 
@@ -94,47 +116,60 @@ async def _read_pdf_bytes(file: UploadFile) -> bytes:
         HTTPException(400): Si el archivo está vacío o no es PDF.
         HTTPException(500): Si hay un error al leer el archivo.
     """
-    # Leer bytes
+    if file.size is not None and file.size > max_bytes:
+        raise ApiError(
+            413,
+            "El archivo supera el tamaño máximo permitido.",
+            "PAYLOAD_TOO_LARGE",
+        )
+
     try:
-        pdf_bytes = await file.read()
-    except Exception as e:
-        logger.error("Error al leer el archivo '%s': %s", file.filename, str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "detail": f"Error al leer el archivo: {str(e)}",
-                "error_code": "FILE_READ_ERROR",
-            },
-        ) from e
+        chunks: list[bytes] = []
+        total_bytes = 0
+        while chunk := await file.read(64 * 1024):
+            total_bytes += len(chunk)
+            if total_bytes > max_bytes:
+                raise ApiError(
+                    413,
+                    "El archivo supera el tamaño máximo permitido.",
+                    "PAYLOAD_TOO_LARGE",
+                )
+            chunks.append(chunk)
+        pdf_bytes = b"".join(chunks)
+    except ApiError:
+        raise
+    except Exception as exc:
+        logger.error(
+            "Error de lectura para '%s': %s",
+            file.filename,
+            type(exc).__name__,
+        )
+        raise ApiError(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "No se pudo leer el archivo enviado.",
+            "FILE_READ_ERROR",
+        ) from exc
 
     # Validar que no está vacío
     if len(pdf_bytes) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "detail": "El archivo PDF está vacío (0 bytes).",
-                "error_code": "EMPTY_FILE",
-            },
+        raise ApiError(
+            status.HTTP_400_BAD_REQUEST,
+            "El archivo PDF está vacío.",
+            "EMPTY_FILE",
         )
 
     # Validar magic bytes del PDF
-    if not pdf_bytes[:4] == b"%PDF":
+    if not pdf_bytes.startswith(b"%PDF-"):
         logger.warning(
             "Archivo rechazado por magic bytes: filename='%s', "
             "primeros bytes=%r",
             file.filename,
             pdf_bytes[:10],
         )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "detail": (
-                    f"El archivo '{file.filename}' no es un PDF válido. "
-                    "Los primeros bytes del archivo no corresponden al "
-                    "formato PDF (esperado: %PDF)."
-                ),
-                "error_code": "INVALID_PDF_HEADER",
-            },
+        raise ApiError(
+            status.HTTP_400_BAD_REQUEST,
+            "El contenido no tiene una cabecera PDF válida.",
+            "INVALID_PDF_HEADER",
         )
 
     return pdf_bytes
@@ -164,6 +199,7 @@ async def _read_pdf_bytes(file: UploadFile) -> bytes:
         "- PDFs escaneados sin OCR no retornarán texto útil."
     ),
     responses={
+        **_GUARD_ERROR_RESPONSES,
         200: {
             "description": "Texto extraído exitosamente.",
             "content": {
@@ -196,6 +232,7 @@ async def _read_pdf_bytes(file: UploadFile) -> bytes:
     },
 )
 async def extract_pdf(
+    request: Request,
     file: UploadFile = File(
         ...,
         description=(
@@ -223,35 +260,34 @@ async def extract_pdf(
     _validate_pdf_content_type(file)
 
     # Leer y validar bytes
-    pdf_bytes = await _read_pdf_bytes(file)
+    pdf_bytes = await _read_pdf_bytes(
+        file,
+        request.app.state.settings.MAX_UPLOAD_BYTES,
+    )
     filename = file.filename or "unknown.pdf"
 
     # Extraer texto
     try:
         result = _pdf_service.extract(pdf_bytes=pdf_bytes, filename=filename)
-    except PdfExtractionError as e:
+    except PdfExtractionError as exc:
         logger.error(
             "Error de extracción para '%s': %s (code: %s)",
             filename,
-            e.message,
-            e.error_code,
+            exc.error_code,
+            exc.error_code,
         )
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "detail": e.message,
-                "error_code": e.error_code,
-            },
-        ) from e
-    except Exception as e:
+        raise ApiError(
+            422,
+            "No se pudo extraer texto utilizable del PDF.",
+            exc.error_code,
+        ) from exc
+    except Exception as exc:
         logger.exception("Error inesperado procesando '%s'", filename)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "detail": f"Error interno al procesar el PDF: {str(e)}",
-                "error_code": "INTERNAL_ERROR",
-            },
-        ) from e
+        raise ApiError(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Ocurrió un error interno al procesar el PDF.",
+            "INTERNAL_ERROR",
+        ) from exc
 
     # Construir respuesta
     return PdfExtractResponse(
@@ -289,6 +325,7 @@ async def extract_pdf(
         "syllabus ISTQB CTFL v4.0.1 (~135 páginas)."
     ),
     responses={
+        **_GUARD_ERROR_RESPONSES,
         200: {
             "description": "Extracción completa exitosa.",
             "content": {
@@ -330,6 +367,7 @@ async def extract_pdf(
     },
 )
 async def extract_pdf_full(
+    request: Request,
     file: UploadFile = File(
         ...,
         description=(
@@ -356,7 +394,10 @@ async def extract_pdf_full(
     """
     # ─── Validaciones (reutilizando funciones auxiliares) ───
     _validate_pdf_content_type(file)
-    pdf_bytes = await _read_pdf_bytes(file)
+    pdf_bytes = await _read_pdf_bytes(
+        file,
+        request.app.state.settings.MAX_UPLOAD_BYTES,
+    )
     filename = file.filename or "unknown.pdf"
 
     # ─── Pipeline completo ───
@@ -365,50 +406,52 @@ async def extract_pdf_full(
             pdf_bytes=pdf_bytes,
             filename=filename,
         )
-    except PdfExtractionError as e:
+    except PdfExtractionError as exc:
         logger.error(
             "Error de extracción para '%s': %s (code: %s)",
             filename,
-            e.message,
-            e.error_code,
+            exc.error_code,
+            exc.error_code,
         )
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "detail": e.message,
-                "error_code": e.error_code,
-            },
-        ) from e
-    except TopicDetectionError as e:
+        raise ApiError(
+            422,
+            "No se pudo extraer texto utilizable del PDF.",
+            exc.error_code,
+        ) from exc
+    except TopicDetectionError as exc:
         logger.error(
             "Error de detección de tópicos para '%s': %s (code: %s)",
             filename,
-            e.message,
-            e.error_code,
+            exc.error_code,
+            exc.error_code,
         )
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "detail": e.message,
-                "error_code": e.error_code,
-            },
-        ) from e
-    except Exception as e:
+        raise ApiError(
+            422,
+            "No se pudieron detectar tópicos ISTQB en el PDF.",
+            exc.error_code,
+        ) from exc
+    except Exception as exc:
         logger.exception(
             "Error inesperado en extracción completa de '%s'", filename
         )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "detail": f"Error interno al procesar el PDF: {str(e)}",
-                "error_code": "INTERNAL_ERROR",
-            },
-        ) from e
+        raise ApiError(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Ocurrió un error interno al procesar el PDF.",
+            "INTERNAL_ERROR",
+        ) from exc
+
+    if result.total_topics == 0:
+        raise ApiError(
+            422,
+            "No se detectaron tópicos ISTQB en el PDF.",
+            "NO_TOPICS_DETECTED",
+        )
 
     # ─── Construir respuesta Pydantic ───
     # Convertimos el FullExtractionResult (dataclass interno)
     # al FullExtractionResponse (schema Pydantic serializable).
     return FullExtractionResponse(
+        contract_version=result.contract_version,
         filename=result.filename,
         total_pages=result.total_pages,
         extraction_method=result.extraction_method,

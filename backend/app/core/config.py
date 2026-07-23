@@ -19,6 +19,7 @@ Ejemplo de uso en un router:
 
 from functools import lru_cache
 
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -45,6 +46,14 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
+    # ─── Frontera privada Next.js BFF → FastAPI ───
+    BFF_SHARED_SECRET: SecretStr | None = None
+    MAX_UPLOAD_BYTES: int = Field(default=20 * 1024 * 1024, ge=1024)
+    MULTIPART_OVERHEAD_BYTES: int = Field(default=256 * 1024, ge=1024)
+    PDF_RATE_LIMIT_REQUESTS: int = Field(default=5, ge=1)
+    PDF_RATE_LIMIT_WINDOW_SECONDS: int = Field(default=60, ge=1)
+    CORS_ORIGINS: list[str] = Field(default_factory=list)
+
     # ─── Supabase (se usarán a partir de BE-03) ───
     # Estas variables NO son requeridas en BE-01.
     # Se definen como opcionales con None por defecto.
@@ -60,7 +69,7 @@ class Settings(BaseSettings):
         env_file=".env",
 
         # Si el archivo .env no existe, no lanzar error.
-        # En producción (DigitalOcean), las variables se configuran
+        # En producción, las variables se configuran
         # directamente en el entorno del contenedor, no en un archivo.
         env_file_encoding="utf-8",
 

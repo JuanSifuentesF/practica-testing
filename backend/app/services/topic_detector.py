@@ -81,11 +81,6 @@ EXPECTED_TOPICS_V4: list[str] = [
     "FL-6.2.1",
 ]
 
-# Umbral para considerar la detección como "completa".
-# 90% de 64 tópicos = 57.6; en la práctica, al menos 58.
-COMPLETENESS_THRESHOLD = 0.90
-
-
 # ═══════════════════════════════════════════════════════════════
 # PATRONES REGEX
 # ═══════════════════════════════════════════════════════════════
@@ -102,18 +97,27 @@ COMPLETENESS_THRESHOLD = 0.90
 # Grupo 3: nombre del tópico (hasta fin de línea)
 TOPIC_HEADER_PATTERN = re.compile(
     r"(FL-\d+\.\d+\.\d+)"   # Grupo 1: código del tópico
-    r"\s*"                    # Espacios opcionales
-    r"\(?(K[123])\)?"         # Grupo 2: nivel K, paréntesis opcionales
-    r"\s+"                    # Al menos un espacio
+    r"[ \t]*"                  # Espacios horizontales opcionales
+    r"\(?[ \t]*(K[123])[ \t]*\)?"  # Grupo 2: (K2), ( K2) o K2
+    r"[ \t]+"                  # Al menos un espacio horizontal
     r"(.+?)$",                # Grupo 3: nombre del tópico (hasta fin de línea)
     re.MULTILINE,             # ^ y $ matchean inicio/fin de cada línea
 )
 
-# Patrón para encontrar solo los códigos FL-x.x.x (sin K ni nombre).
-# Se usa para delimitar el texto de cada tópico.
-TOPIC_CODE_PATTERN = re.compile(
-    r"FL-\d+\.\d+\.\d+",
+# Encabezados del cuerpo del syllabus. A diferencia de la tabla de objetivos
+# (FL-3.2.4), el contenido autoritativo usa "3.2.4. Tipos de Revisiones".
+BODY_SECTION_PATTERN = re.compile(
+    r"^([1-6]\.\d+(?:\.\d+)?)\.[ \t]+([^\n]+)$",
+    re.MULTILINE,
 )
+
+TOC_DOT_LEADER_PATTERN = re.compile(r"[.…]{4,}[ \t]*\d+[ \t]*$")
+REFERENCES_HEADING_PATTERN = re.compile(r"^7\.[ \t]+Referencias\b", re.MULTILINE)
+PAGE_MARKER_PATTERN = re.compile(
+    r"^v\d+(?:\.\d+)?[ \t]+Página[ \t]+\d+[ \t]+de[ \t]+\d{4}-\d{2}-\d{2}$",
+    re.IGNORECASE,
+)
+MAX_FALLBACK_TEXT_CHARS = 2_000
 
 
 @dataclass
@@ -157,7 +161,7 @@ class TopicDetectionResult:
         total_topics: Número total de tópicos detectados.
         level_distribution: Diccionario con la cuenta por nivel K.
         warnings: Lista de advertencias (tópicos faltantes, etc.).
-        is_complete: True si se detectó >= 90% de los tópicos esperados.
+        is_complete: True si se detectó exactamente el catálogo esperado.
     """
 
     topics: list[DetectedTopic] = field(default_factory=list)
@@ -188,7 +192,6 @@ class TopicDetectorService:
     def __init__(
         self,
         expected_topics: list[str] | None = None,
-        completeness_threshold: float = COMPLETENESS_THRESHOLD,
     ):
         """
         Inicializa el servicio con la configuración de validación.
@@ -197,17 +200,11 @@ class TopicDetectorService:
             expected_topics: Lista de códigos FL-x.x.x esperados.
                 Si es None, usa la lista predefinida del ISTQB v4.0.
                 Permite usar listas diferentes para otras versiones.
-            completeness_threshold: Porcentaje mínimo de tópicos que
-                deben detectarse para considerar la detección completa.
-                Default: 0.90 (90%).
         """
         self._expected_topics = expected_topics or EXPECTED_TOPICS_V4
-        self._completeness_threshold = completeness_threshold
         logger.info(
-            "TopicDetectorService inicializado: %d tópicos esperados, "
-            "umbral de completitud: %.0f%%",
+            "TopicDetectorService inicializado: %d tópicos esperados",
             len(self._expected_topics),
-            self._completeness_threshold * 100,
         )
 
     def detect(self, full_text: str) -> TopicDetectionResult:
@@ -373,7 +370,11 @@ class TopicDetectorService:
         for match in TOPIC_HEADER_PATTERN.finditer(text):
             code = match.group(1).strip()
             level_k = match.group(2).strip()
-            name = match.group(3).strip()
+            name = self._extend_wrapped_topic_name(
+                match.group(3).strip(),
+                text,
+                match.end(),
+            )
 
             # Extraer capítulo y sección del código.
             # FL-1.2.3 → capítulo=1, sección="1.2"
@@ -402,6 +403,103 @@ class TopicDetectorService:
 
         return topics
 
+    @staticmethod
+    def _extend_wrapped_topic_name(
+        name: str,
+        full_text: str,
+        header_end: int,
+    ) -> str:
+        """Une continuaciones en minúscula partidas por el layout del PDF."""
+        continuation_lines: list[str] = []
+        for line in full_text[header_end:].splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if (
+                len(continuation_lines) >= 2
+                or PAGE_MARKER_PATTERN.fullmatch(stripped)
+                or not stripped[0].islower()
+            ):
+                break
+            continuation_lines.append(stripped)
+
+        return " ".join([name, *continuation_lines])
+
+    @staticmethod
+    def _clean_body_section_text(text: str) -> str:
+        """Retira encabezados de página repetidos sin alterar el contenido."""
+        lines = text.splitlines()
+        cleaned: list[str] = []
+        index = 0
+        boilerplate = {
+            "Comité Internacional de Cualificación de Pruebas de",
+            "Software",
+            "Probador",
+            "Certificado.",
+            "Nivel básico",
+        }
+
+        while index < len(lines):
+            line = lines[index].strip()
+            if PAGE_MARKER_PATTERN.fullmatch(line):
+                index += 1
+                skipped = 0
+                while index < len(lines) and skipped < 8:
+                    candidate = lines[index].strip()
+                    if (
+                        not candidate
+                        or candidate.isdigit()
+                        or candidate in boilerplate
+                    ):
+                        index += 1
+                        skipped += 1
+                        continue
+                    break
+                continue
+            cleaned.append(line)
+            index += 1
+
+        normalized = "\n".join(cleaned)
+        return re.sub(r"\n{3,}", "\n\n", normalized).strip()
+
+    def _extract_body_sections(self, full_text: str) -> dict[str, str]:
+        """Indexa el cuerpo del syllabus por subsección (por ejemplo, 3.2.4)."""
+        matches = [
+            match
+            for match in BODY_SECTION_PATTERN.finditer(full_text)
+            if not TOC_DOT_LEADER_PATTERN.search(match.group(2))
+        ]
+        body_start = matches[0].start() if matches else 0
+        references = next(
+            (
+                match
+                for match in REFERENCES_HEADING_PATTERN.finditer(full_text)
+                if match.start() > body_start
+            ),
+            None,
+        )
+        document_end = references.start() if references else len(full_text)
+        matches = [match for match in matches if match.start() < document_end]
+        sections: dict[str, str] = {}
+
+        for index, match in enumerate(matches):
+            end = (
+                matches[index + 1].start()
+                if index + 1 < len(matches)
+                else document_end
+            )
+            if end <= match.start():
+                continue
+            section_text = self._clean_body_section_text(
+                full_text[match.start():end],
+            )
+            section_code = match.group(1)
+            current = sections.get(section_code, "")
+            if len(section_text) > len(current):
+                sections[section_code] = section_text
+
+        return sections
+
     def _extract_topic_texts(
         self,
         topics: list[DetectedTopic],
@@ -411,9 +509,9 @@ class TopicDetectorService:
         Delimita y extrae el texto del syllabus para cada tópico.
 
         Estrategia:
-        El texto de un tópico empieza en su encabezado FL-x.x.x y
-        termina donde empieza el SIGUIENTE tópico FL-x.x.x (o donde
-        termina el texto completo para el último tópico).
+        El objetivo FL-x.y.z se enlaza primero con la subsección x.y.z.
+        del cuerpo del syllabus. Solo se usa el bloque entre objetivos
+        como fallback acotado para otros formatos de documento.
 
         Ejemplo visual:
             FL-1.1.1 (K1) Identify Typical Test Objectives
@@ -430,6 +528,7 @@ class TopicDetectorService:
             Lista de tópicos con el campo text lleno.
         """
         result: list[DetectedTopic] = []
+        body_sections = self._extract_body_sections(full_text)
 
         for i, topic in enumerate(topics):
             # El texto empieza en la posición del encabezado FL-x.x.x
@@ -442,24 +541,21 @@ class TopicDetectorService:
             else:
                 end = len(full_text)
 
-            # Extraer el bloque de texto para este tópico.
-            raw_text = full_text[start:end].strip()
-
-            # Remover el encabezado del tópico del texto para dejar
-            # solo el contenido. El encabezado ya está capturado en
-            # code, level_k y name.
-            # Buscamos la primera línea (que contiene FL-x.x.x) y la quitamos.
-            lines = raw_text.split("\n")
-            if lines:
-                # Quitar la primera línea (encabezado FL-x.x.x ...)
-                content_lines = lines[1:]
-                text = "\n".join(content_lines).strip()
-            else:
-                text = ""
-
-            # Si el texto quedó vacío, dejar al menos el encabezado completo.
+            section_code = topic.code.removeprefix("FL-")
+            text = body_sections.get(section_code, "")
             if not text:
-                text = raw_text
+                topics_in_section = [
+                    code
+                    for code in self._expected_topics
+                    if code.startswith(f"FL-{topic.section}.")
+                ]
+                if len(topics_in_section) == 1:
+                    text = body_sections.get(topic.section, "")
+            if not text:
+                raw_text = full_text[start:end].strip()
+                content_lines = raw_text.split("\n")[1:]
+                text = "\n".join(content_lines).strip() or raw_text
+                text = text[:MAX_FALLBACK_TEXT_CHARS].rstrip()
 
             topic_with_text = DetectedTopic(
                 code=topic.code,
@@ -564,7 +660,7 @@ class TopicDetectorService:
 
         Returns:
             Tupla de (is_complete, warnings):
-            - is_complete: True si se detectó >= umbral de los esperados.
+            - is_complete: True si se detectó exactamente el catálogo esperado.
             - warnings: Lista de advertencias sobre tópicos faltantes.
         """
         warnings: list[str] = []
@@ -599,23 +695,14 @@ class TopicDetectorService:
                 ", ".join(sorted_unexpected),
             )
 
-        # Calcular completitud
-        if len(expected_codes) == 0:
-            is_complete = len(detected_codes) > 0
-        else:
-            completeness_ratio = len(
-                detected_codes & expected_codes
-            ) / len(expected_codes)
-            is_complete = completeness_ratio >= self._completeness_threshold
-
-            logger.info(
-                "Completitud: %.1f%% (%d/%d), umbral: %.0f%%, completo: %s",
-                completeness_ratio * 100,
-                len(detected_codes & expected_codes),
-                len(expected_codes),
-                self._completeness_threshold * 100,
-                is_complete,
-            )
+        is_complete = bool(expected_codes) and detected_codes == expected_codes
+        logger.info(
+            "Completitud exacta: %d/%d, extras=%d, completo=%s",
+            len(detected_codes & expected_codes),
+            len(expected_codes),
+            len(unexpected),
+            is_complete,
+        )
 
         return is_complete, warnings
 

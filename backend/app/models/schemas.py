@@ -16,7 +16,9 @@ Convención de nombres:
 Ejemplo: HealthResponse es lo que retorna GET /health.
 """
 
-from pydantic import BaseModel, Field
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 # ═══════════════════════════════════════════════════════════════
 # SCHEMAS DE HEALTH CHECK
@@ -182,14 +184,19 @@ class ErrorResponse(BaseModel):
         }
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     detail: str = Field(
         ...,
+        min_length=1,
         description="Mensaje descriptivo del error en lenguaje humano.",
         examples=["El archivo subido no es un PDF válido."],
     )
 
     error_code: str = Field(
         ...,
+        min_length=1,
+        pattern=r"^[A-Z][A-Z0-9_]*$",
         description=(
             "Código de error programático para el frontend. Permite al "
             "cliente mostrar mensajes de error específicos sin parsear "
@@ -256,9 +263,8 @@ class DetectedTopicSchema(BaseModel):
         ...,
         min_length=1,
         description=(
-            "Texto completo del syllabus asociado a este tópico. "
-            "Incluye todo el contenido desde el encabezado FL-x.x.x "
-            "hasta el inicio del siguiente tópico."
+            "Texto autoritativo de la subsección x.y.z del cuerpo del "
+            "syllabus asociada al objetivo FL-x.y.z."
         ),
     )
 
@@ -371,9 +377,9 @@ class TopicDetectionResponse(BaseModel):
     is_complete: bool = Field(
         ...,
         description=(
-            "True si se detectaron al menos el 90% de los tópicos "
-            "esperados del syllabus (>= 58 de 64 para CTFL v4.0.1). "
-            "False si faltan tópicos significativos."
+            "True si los códigos detectados coinciden exactamente con los "
+            "64 tópicos esperados del syllabus CTFL v4.0. False si falta "
+            "alguno o aparece un código inesperado."
         ),
     )
     
@@ -497,6 +503,11 @@ class FullExtractionResponse(BaseModel):
         }
     """
 
+    contract_version: Literal[2] = Field(
+        default=2,
+        description="Versión del contrato de extracción y delimitación de tópicos.",
+    )
+
     filename: str = Field(
         ...,
         description="Nombre original del archivo PDF subido.",
@@ -562,7 +573,7 @@ class FullExtractionResponse(BaseModel):
     is_complete: bool = Field(
         ...,
         description=(
-            "True si se detectaron >= 90% de los tópicos esperados. "
-            "Si es False, el frontend debe alertar al usuario."
+            "True si se detectó exactamente el catálogo esperado. "
+            "Si es False, el frontend no debe generar el plan."
         ),
     )

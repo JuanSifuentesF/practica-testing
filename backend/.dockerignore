@@ -44,8 +44,7 @@ Dockerfile
 .dockerignore
 docker-compose*.yml
 
-# --- Tests y documentación ---
-tests/
+# --- Documentación ---
 docs/
 *.md
 LICENSE
