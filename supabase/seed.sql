@@ -1,0 +1,1 @@
+-- Intentionally empty. Tests and remote fixtures create transactional data.

@@ -20,6 +20,9 @@
 - Mantener snippets completos, estrictamente tipados, formateados y copiables.
 - Marcar cada ruta como existente verificada, nueva o planificada.
 - No mencionar un entregable que la guía no cree o modifique explícitamente.
+- Después de una auditoría de cierre, cambiar futuro por pasado solo donde haya
+  evidencia y eliminar estados/checklists obsoletos. Las subsecciones históricas
+  pueden conservarse si están etiquetadas y remiten al cierre vigente.
 
 ## Sección 1: fundamentos
 
@@ -93,6 +96,16 @@ Para navegación, enseñar matching por segmento —ruta exacta o hija real, no 
 
 Para datos LLM/API/JSONB, mostrar esquema productor, tipo, validador runtime antes de persistir y guard del consumidor. Un contrato obligatorio incompatible debe producir un diagnóstico visible, no una colección vacía que parezca éxito.
 
+Para prompts con cantidades variables, incluir la fórmula que demuestre que el
+resultado es posible en todo el rango aceptado y una tabla con caso mínimo,
+medio y máximo. No fijar densidades, tamaños o números de sesiones que entren en
+conflicto con los límites del body.
+
+Para selección/fallback de modelos, mostrar por separado: autoridad de
+provider/modelo inicial, orden allowlisted, errores que permiten avanzar,
+errores que detienen, reserva por intento y auditoría por candidato. No llamar
+“cascada” a una lista que en runtime solo usa su primer elemento.
+
 Si se modifica un contrato existente, ordenar los pasos así: dominio, prompt/schema, validador de generación, persistencia/API, normalizador/guard del evaluador, serializer, guard del cliente, fixtures y checks.
 
 Si se modifica una configuración (`package.json`, `next.config.*`, Tailwind, `proxy.ts`/`middleware.ts`, `tsconfig.json`), mostrar el contenido completo o un reemplazo inequívoco anclado al archivo actual.
@@ -117,6 +130,11 @@ Mostrar salidas esperadas realistas, incluida cualquier advertencia no bloqueant
 
 Incluir checklist completa y tabla de edge cases. Para datos estructurados o localStorage, incluir fixtures offline: válido, legacy/mismatch, campo requerido ausente, enum/discriminante inválido y colección vacía. Probar aceptación y rechazo; buscar texto no es una prueba runtime.
 
+Cada checklist cerrada debe indicar fecha, conteo (`X/X`) y evidencia agrupada:
+fixtures, TypeScript/build, inspección estructural y pruebas manuales o reales.
+No marcar una interacción BYOK/Managed solo por presencia de archivos. En LLM,
+una prueba real controlada debe corroborar el evento de uso finalizado.
+
 Cuando Proxy filtre UI y el matcher también alcance APIs, demostrar con una petición runtime que la UI redirige y que la API conserva status y JSON propios. Si un archivo nuevo sigue untracked, recordar que `git diff` y `git diff --check` no lo incluyen: inspeccionarlo y validarlo de forma explícita.
 
 ## Sección 7: troubleshooting
@@ -138,3 +156,7 @@ Usar exactamente:
 ```
 
 Resumir en lista numerada, indicar cómo solicitar la validación del checkpoint y anticipar el siguiente milestone real. No declarar completada la implementación al generar una guía; usar `Guía generada; implementación pendiente` hasta ejecutar sus verificaciones contra el código.
+
+Si la tarea es una auditoría posterior a la implementación, la Sección 8 debe
+indicar el estado realmente alcanzado, deuda no bloqueante y gate siguiente. No
+conservar “cómo implementar” o “archivos futuros” como si siguieran pendientes.

@@ -1,5 +1,5 @@
 # ISTQB Study Agent — Árbol de Guías de Implementación
-**Versión:** 2.9
+**Versión:** 2.19
 **Fecha:** Julio 2026  
 **Principio:** Cada guía depende de las anteriores. Nunca saltar una.
 
@@ -20,6 +20,96 @@
 **Nota de generación v2.8:** AI-04 fue generada el 13/07/2026 y su estado inicial fue **Guía generada; implementación pendiente**. Su Addendum Correctivo Obligatorio definió tres acciones: crear una migración nueva para que `reserve_ai_quota` cuente solo eventos `managed`, serializar la finalización Managed con el mismo lock e idempotencia, y agregar una RPC de resumen UTC de lectura bajo RLS. En v2.8 la guía no aplicaba aún esos cambios ni conectaba consumidores LLM; el cierre vigente está documentado en v2.9.
 
 **Nota de cierre v2.9:** AI-04 implementada y verificada (19/07/2026). La migración `20260719011944_scope_managed_ai_quota_and_add_usage_summary.sql` está alineada en Local/Remote; `reserve_ai_quota` cuenta solo eventos `managed`, `finalize_managed_ai_usage` serializa la finalización con el mismo lock y `get_ai_usage_summary()` expone lectura UTC bajo RLS. `GET /api/settings/ai/usage`, la UI de consumo en `/settings/ai` y el fixture remoto quedaron implementados. Verificación ejecutada: `tsc`, build Next.js sin warnings observados, `PASS AI-02` y `PASS AI-04`. Bloque I: 4/5 completado; AI-05 sigue en `Por iniciar`.
+
+**Nota de generación v2.10:** AI-05 fue generada y revisada adversarialmente el 18/07/2026 (America/Lima), después de reconfirmar el cierre de AI-04 con migración Local/Remote, `PASS AI-02`, `PASS AI-04`, TypeScript y build Next.js 16.2.9 sin warnings observados. La guía integra los seis consumidores LLM con el runtime, define Demo determinista, BYOK efímero en el layout autenticado, una sola selección allowlisted por Settings y finalización de uso fail-closed. Su Addendum Correctivo Obligatorio reconcilia el alcance de la key BYOK de AI-03, la construcción del SDK antes de reservar, el selector/cascada legacy y los parsers permisivos. Esta actualización es solo documental: Bloque I permanece 4/5 y AI-05 queda en **Guía generada; implementación pendiente**.
+
+**Nota de cierre v2.11:** AI-05 implementada y verificada el 19/07/2026. Pasa `PASS AI-02`, `PASS AI-04`, `PASS AI-05`, TypeScript, lint dirigido y build Next.js 16.2.9 sin warnings observados. La prueba real corrigió una densidad imposible heredada de UP-04 y la contradicción entre AI-02 (conservar cascada) y AI-05 (eliminarla). El prompt deriva 1-2, 2-3 o 4-5 tópicos según días/sesiones; la cascada central usa Gemini por versión descendente, solo ante disponibilidad, y audita una reserva/evento por candidato. `/api/plan/generate` respondió `200` con 30 sesiones, cobertura 63/63 y 11 025 tokens; `/api/plan/save` respondió `201`. El lint global mantiene deuda preexistente fuera del runtime. Bloque I: 5/5 completado.
+
+**Nota histórica de auditoría v2.12, supersedida por v2.13:** el cierre AI-05 fue reabierto el 19/07/2026. Una prueba autenticada efímera en modo Demo, sin llamadas LLM, ejecutó `/api/plan/generate` con 63 tópicos para 7, 15 y 30 días; los tres casos devolvieron `500 AI_DEMO_FIXTURE_INVALID`. `createDemoPlan()` ordena K global y reparte round-robin, mientras el parser exige capítulos ascendentes y K1 → K2 → K3 dentro de cada capítulo. UP-04 quedó 3/4 y AI-05, provisionalmente, 18/19. La interpretación provisional de PL-12 como 7/7 y la evidencia de fallback fueron corregidas en v2.13. La auditoría también detectó que el hub no enlaza Bug Lab/API Testing y mantiene texto futuro obsoleto, además de 16 errores y 2 warnings de lint global. Una prueba remota A/B confirmó además que un usuario puede insertar un `study_plan` propio referenciando el `document_id` de otro usuario. PR-01 quedó auditada en 3/8 y `pytest` recolecta 0 tests, aunque los módulos reales pasan 8/8 y 9/9 en Python 3.12.
+
+**Nota adversarial v2.13:** PL-12 se reabre en 6/7 porque
+`HTTPException(detail={...})` serializa un error anidado que contradice
+`ErrorResponse`, el consumidor Next.js y el contrato enseñado. AI-05 queda
+18/20: `PASS AI-05` ejercita RPCs y dos eventos/modelos, pero no el ejecutor ni
+un fallback real. El endpoint FastAPI de extracción es público, no tiene rate
+limit ni límite previo a leer el archivo completo. Estos defectos, la brecha
+cross-tenant, la regresión Demo, lint y una suite backend no recolectable forman
+un gate correctivo obligatorio antes de QA. El borrador QA limitado a Cypress
+debe rediseñarse como testing integral antes de generar guías. El hosting futuro
+del backend será Heroku; PR-02 DigitalOcean queda suspendida e histórica.
+
+**Nota de recuperación v2.14:** UP-04 recuperó 4/4 el 19/07/2026. La nueva
+suite `test:plan` pasa 6/6 y ejecuta el parser y `POST /api/plan/generate` real
+en Demo para 7, 15 y 30 días, sin transporte externo. Las sesiones cumplen
+densidad `floor/ceil`, método `theory`, duración 90, título máximo 80,
+dificultad derivada de K, orden por capítulo/K y cobertura exacta. TypeScript,
+lint dirigido y build Next.js 16.2.9 pasan. AI-05 avanza a 19/20; solo falta la
+prueba del ejecutor/fallback con proveedor stub.
+
+**Nota de cierre v2.15:** AI-05 recuperó 20/20 el 19/07/2026. `test:ai05`
+pasa 8/8 e invoca Route Handler, `executeAiJson`, parser y cascada reales con
+provider stub: disponibilidad avanza al segundo candidato con eventos distintos
+y `AI_INVALID_RESPONSE` se detiene sin fallback. Los fixtures remotos AI-02,
+AI-04 y AI-05 DB pasan; TypeScript, lint dirigido y build también pasan. El
+validador cross-layer descubrió deuda heredada que se incorpora al gate pre-QA:
+quiz confía en `correct` enviado por cliente, `/api/plan/save` no revalida el
+contrato endurecido, varios flujos no comparan K con el tópico fuente y la
+evaluación cualitativa puede contradecir la acción determinística.
+
+**Nota de cierre v2.16:** PL-12 recuperó 7/7 el 19/07/2026. FastAPI ahora
+falla cerrado con bearer privado BFF-to-backend, límite declarado y prelectura
+ASGI acotada también para cuerpos chunked,
+rate limit, CORS explícito y `ErrorResponse` plano. OpenAPI declara
+`BFFBearer` y `200/400/401/413/422/429/500/503`; `/api/extract` valida cache y
+respuesta upstream, conserva status y `Retry-After`, limita la descarga y no
+expone texto crudo. El DTO TS conserva `name`, `chapter` y `section` como
+Pydantic. `test:extract` pasa 29/29, pytest HTTP 15/15 y los módulos
+offline 8/8 y 9/9; TypeScript, lint dirigido, build Next.js e imagen Python
+3.12 pasan. El despliegue remoto y sus secrets siguen siendo trabajo de PR-02.
+
+**Nota de cierre v2.17:** la integridad cross-tenant core quedó implementada y
+verificada el 19/07/2026 mediante
+`20260719193643_enforce_core_ownership_integrity.sql`. Cuatro FKs compuestas
+obligan a que plan/documento, sesión/plan, respuesta/sesión y progreso/plan
+compartan `user_id`; las policies `INSERT/UPDATE` validan además el padre bajo
+RLS. Reset local, `db lint`, catálogo exacto y ocho rechazos SQL pasaron. El
+preflight remoto encontró 25 documentos, 2 planes, 49 sesiones, 40 respuestas,
+126 progresos y cero inconsistencias; el fixture remoto confirmó A/A válido,
+A/B rechazado por RLS y `23503` incluso con `service_role`, con cleanup completo.
+Local/Remote están alineados en 13 migraciones. El push mostró `WARNING 25P01`:
+los dos `SET LOCAL` no surtieron efecto fuera de una transacción explícita; no
+afectó constraints ni policies y queda como aprendizaje operativo, no bloqueo.
+
+**Nota de cierre correctivo v2.18:** la autoridad de quiz y adaptación quedó
+implementada y verificada el 20/07/2026. Las migraciones
+`20260719205030_create_private_quiz_attempts.sql`,
+`20260719221300_make_session_adaptation_atomic.sql` y
+`20260719224046_finalize_quiz_with_adaptation.sql` están alineadas Local/Remote
+(16/16). La clave de respuestas vive en `private`, el navegador envía solo
+`attempt_id`, `question_id` y `user_answer`, y grading + adaptación se cierran
+atómicamente mediante un lease cercado por token. El backfill histórico renumeró
+3 filas y reconoció 3 adaptaciones, con 0 cadenas ambiguas; el fixture remoto
+confirmó claim, snapshot privado, score 70, adaptación `advance`, replay
+idempotente y cleanup. El suite DB completo pasa 4/4; `test:quiz` 13/13,
+`test:plan` 9/9 y `test:extract` 29/29; TypeScript, lint global y build Next.js
+16.2.9 pasan sin warnings observados. Los planes nuevos limitan cada sesión a 12
+tópicos evaluables y rechazan densidad imposible antes de llamar al LLM.
+Producción sigue bloqueada: DigitalOcean procesa el PDF real con 63 tópicos,
+pero conserva el contrato backend legado sin `BFFBearer`; faltan secrets/URL
+productivos, revalidar `/api/plan/save`, cerrar navegación del Practice Hub,
+QA integral y PR-01..PR-03A. Una `SUPABASE_SERVICE_ROLE_KEY` real apareció en
+la versión histórica de BE-06 y en el commit `3a0f3e8`: el archivo actual quedó
+redactado, pero la key debe rotarse y el historial/clones deben sanearse.
+
+**Nota de desarrollo v2.19:** los límites de cuota (`daily_request_limit`,
+`monthly_request_limit`, `daily_token_limit`, `monthly_token_limit`) se subieron
+a 2 000 000 000 (efectivamente ilimitados) mediante la migración
+`20260720173000_disable_ai_quota_limits.sql` para no entorpecer las pruebas
+de desarrollo. **Antes de producción**, una migración nueva debe restaurar
+límites razonables (e.g. 60/150 000 diarios, 900/1 500 000 mensuales) y la
+constante `AI_SETTINGS_DEFAULTS` en `settings-contract.ts` debe reflejarlos.
+Este análisis de cuotas requiere una sesión dedicada; no debe resolverse como
+nota al margen.
 
 ---
 
@@ -45,17 +135,17 @@
 | **📤 BLOQUE D: Upload** | **UP-01** | UI: página de setup (upload PDF + config días/horarios) | ✅ **Completado** | [Guía UP-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-01.md) — *Checkpoints verificados* |
 | | **UP-02** | API Route `/api/upload` → Supabase Storage | ✅ **Completado** | [Guía UP-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-02.md) — *Fix de tipos Supabase v2.108+ aplicado* |
 | | **UP-03** | Llamada Next.js → FastAPI `/extract-pdf-full` | ✅ **Completado** | [Guía UP-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-03.md) — *Extracción validada con 63 tópicos* |
-| | **UP-04** | Prompt de generación de plan + API Route | ✅ **Completado** | [Guía UP-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-04.md) — *Multi-proveedor (Gemini + GPT-5) funcional* |
+| | **UP-04** | Prompt de generación de plan + API Route | ✅ **Implementado y verificado** | [Guía UP-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-04.md) — *4/4; `test:plan` 9/9, máximo 12 tópicos/sesión, tsc+lint+build OK* |
 | | **UP-05** | Persistencia del plan en Supabase | ✅ **Completado** | [Guía UP-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-05.md) — *study_plans + sessions + topic_progress funcional* |
 | | **UP-06** | UI: visualización de plan como calendario | ✅ **Completado** | [Guía UP-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/UP-06.md) — *Calendario dinámico funcional con 10 componentes* |
 | | **SE-01** | API Routes de sesión + página /session funcional | ✅ **Completado** | [Guía SE-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-01.md) — *2 endpoints + página /session funcional* |
 | | **SE-02** | Prompt de teoría + API Route `/api/sessions/[id]/theory` | ✅ **Completado** | [Guía SE-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-02.md) — *Gemini genera teoría con idempotencia y cache* |
 | **📚 BLOQUE E: Sesión** | **SE-03** | UI: TheoryPanel (lectura de teoría + timer) | ✅ **Completado** | [Guía SE-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-03.md) — *5 archivos, tsc limpio, 11/11 checkpoints* |
-| | **SE-04** | Prompt de quiz + API Route `/api/sessions/[id]/quiz` | ✅ **Completado** | [Guía SE-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-04.md) — *3 archivos + tsc limpio, 10/10 checkpoints* |
-| | **SE-05** | UI: QuizCard (opciones A/B/C/D, sin feedback inmediato) | ✅ **Completado** | [Guía SE-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-05.md) — *4 archivos + 1 modificado, tsc limpio, build OK, 11/11 checkpoints* |
-| | **SE-06** | Envío en conjunto + API Route `/api/sessions/[id]/evaluate` | ✅ **Completado** | [Guía SE-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-06.md) — *3 archivos nuevos + 2 modificados, tsc limpio, build OK, /evaluate funcional* |
-| | **SE-07** | Lógica adaptativa: advance, reinforce, restructure | ✅ **Completado** | [Guía SE-07](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-07.md) — *2 archivos nuevos + 2 modificados, tsc limpio, build OK, RESTRUCTURE verificado* |
-| | **SE-08** | UI: FeedbackPanel (score, errores, decisión, próxima sesión) | ✅ **Completado** | [Guía SE-08](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-08.md) — *1 archivo nuevo + 1 modificado, tsc limpio, build OK, FeedbackPanel conectado* |
+| | **SE-04** | Prompt de quiz + API Route `/api/sessions/[id]/quiz` | ✅ **Implementado y verificado** | [Guía SE-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-04.md) — *snapshot privado, lease cercado, cobertura autoritativa y 10-12 preguntas* |
+| | **SE-05** | UI: QuizCard (opciones A/B/C/D, sin feedback inmediato) | ✅ **Implementado y verificado** | [Guía SE-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-05.md) — *sin answer key, polling 409 y rehidratación durable* |
+| | **SE-06** | Envío en conjunto + API Route `/api/sessions/[id]/evaluate` | ✅ **Implementado y verificado** | [Guía SE-06](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-06.md) — *payload mínimo, grading server-only y finalización cercada* |
+| | **SE-07** | Lógica adaptativa: advance, reinforce, restructure | ✅ **Implementado y verificado** | [Guía SE-07](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-07.md) — *adaptación exactly-once y atómica con grading* |
+| | **SE-08** | UI: FeedbackPanel (score, errores, decisión, próxima sesión) | ✅ **Implementado y verificado** | [Guía SE-08](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/SE-08.md) — *parser runtime estricto, replay y refresh del plan* |
 | **📊 BLOQUE F: Dashboard** | ✅ **DA-01** | API Route `/api/dashboard/metrics` | ✅ **Completado** | [Guía DA-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-01.md) — *2 archivos nuevos + 1 modificado, tsc limpio, build OK, endpoint responde JSON con métricas reales* |
 | | **DA-02** | UI: gráfica de score por sesión (LineChart) | ✅ **Completado** | [Guía DA-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-02.md) — *ScoreChart implementado + integrado en dashboard* |
 | | **DA-03** | UI: heatmap de tópicos por estado | ✅ **Completado** | [Guía DA-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/DA-03.md) — *TopicHeatmap implementado + API enriquecida + 63 tópicos validados* |
@@ -72,17 +162,17 @@
 | | **PL-09** | API Route `/api/practice/evaluate` | ✅ **Implementado y verificado** | [Guía PL-09](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-09.md) — *Lectura server-only, ownership, idempotencia y persistencia verificadas* |
 | | **PL-10** | UI: Feedback de práctica + comparar con solución | ✅ **Completado** | [Guía PL-10](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-10.md) — *Flujo K1/K2/K3 validado: generación con fallback, evaluación con reintento JSON, feedback y solución modelo* |
 | | **PL-11** | UI: Bug Report Lab (escenario + formulario) | ✅ **Implementado y verificado** | [Guía PL-11](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-11.md) — *Rehidratación antes del envío y descarte posterior verificados* |
-| | **PL-12** | UI: API Testing Checklist | ✅ **Completado** | [Guía PL-12](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-12.md) — *4 archivos, localStorage versionado, 5 fixtures, zero HTTP, tsc+build OK* |
+| | **PL-12** | UI: API Testing Checklist | ✅ **Implementado y verificado** | [Guía PL-12](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-12.md) — *7/7; contrato FastAPI/OpenAPI/BFF/UI reconciliado* |
 | | **PL-13** | Integración Dashboard (métricas de práctica) | ✅ **Completado** | [Guía PL-13](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-13.md) — *practice_stats en DA-01 + PracticeProgressCard + tsc+build OK* |
 | | **PL-14** | Navegación + protección: agregar "Práctica" y migrar a `proxy.ts` | ✅ **Implementado y verificado** | [Guía PL-14](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PL-14.md) — *proxy.ts + MainNav/MobileNav con Práctica + tsc/build OK; la rehidratación pertenece a PL-11* |
 | **🤖 BLOQUE I: AI Settings & Usage Control** | **AI-01** | Schema: preferencias IA + tracking de uso/tokens | ✅ **Implementado y verificado** | [Guía AI-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/db/AI-01.md) — *Migracion desplegada, 20/20 checkpoints, 13 CHECK constraints, 3 indices, RLS + privilegios* |
 | | **AI-02** | Runtime server-side: resolver proveedor, modo y cuota | ✅ **Implementado y verificado** | [Guía AI-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/AI-02.md) — *RPC reserve_ai_quota + runtime.ts + allowlist + tsc+build OK* |
 | | **AI-03** | UI Settings: Demo / Managed / BYOK session-only | ✅ **Implementado y verificado** | [Guía AI-03](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/AI-03.md) — *14/14 checkpoints, tsc+build+fixture OK, inspector no facturable, BYOK session-only* |
 | | **AI-04** | UI/API: consumo de tokens, llamadas y límites | ✅ **Implementado y verificado** | [Guía AI-04](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/AI-04.md) — *Migración Local/Remote, cuota Managed separada de BYOK, finalización serializada, RPC UTC, UI/API, tsc+build+fixtures OK* |
-| | **AI-05** | Integración del runtime IA con sesiones y Practice Lab | ⏳ **Pendiente** | *Por iniciar* |
-| **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Tests E2E con Cypress | ⏳ **Pendiente** | *Por iniciar* |
-| **🚀 BLOQUE G: Prod** | **PR-01** | GitHub Actions: CI/CD frontend → Vercel | ⏳ **Pendiente** | [Guía PR-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PR-01.md) — *Guía generada, por implementar* |
-| | **PR-02** | GitHub Actions: CI/CD backend → DigitalOcean | ⏳ **Pendiente** | [Guía PR-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PR-02.md) — *Guía generada, por implementar* |
+| | **AI-05** | Integración del runtime IA con sesiones y Practice Lab | ✅ **Implementado y verificado** | [Guía AI-05](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/AI-05.md) — *20/20; leases de quiz cercados, fixtures remotos, tsc+lint+build* |
+| **🧪 BLOQUE QA: Testing** | **QA-01** a **QA-03** | Testing integral | ⏸️ **Pendiente de rediseñar** | *El borrador Cypress-only es insuficiente; no generar aún* |
+| **🚀 BLOQUE G: Prod** | **PR-01** | GitHub Actions: CI/CD frontend → Vercel | ⚠️ **Guía generada; implementación pendiente** | [Guía PR-01](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PR-01.md) — *3/8; lint local pasa, workflow/Vercel pendientes* |
+| | **PR-02** | CI/CD backend → Heroku | ⏸️ **Pendiente de redefinir** | [Guía PR-02](file:///c:/Users/jsife/OneDrive/Desktop/Repositorios/practica-testing/docs/guides/fe/PR-02.md) — *La guía DigitalOcean es histórica; no ejecutar* |
 | | **PR-03**, **PR-03A**, **PR-04**, **PR-05** | Variables, seguridad IA/costos, dominio y simulación | ⏳ **Pendiente** | *Por iniciar* |
 
 ---
@@ -93,9 +183,42 @@
 1. Completar una guía al 100% antes de abrir la siguiente
 2. Cada guía termina con un CHECKPOINT de verificación
 3. Si el checkpoint falla → no avanzar hasta resolverlo
-4. La IA usará el documento de arquitectura + guías anteriores
-   como contexto al generar cada guía nueva
+4. La IA usará este roadmap, el código real y las guías vigentes; el documento
+   de arquitectura v1.0 es solo un baseline histórico
 ```
+
+### Gate correctivo vigente antes de QA y producción
+
+- [x] Proteger FastAPI con autenticación BFF-to-backend, límite de archivo antes
+      de cargarlo completo, rate limit, CORS explícito y tests HTTP de
+      `200/400/401/413/422/429/500/503`.
+- [x] Normalizar `ErrorResponse` entre FastAPI, Next.js y PL-12; recuperar 7/7.
+- [x] Aplicar una migración nueva con ownership compuesto en relaciones core y
+      demostrar rechazo A/B en documentos, planes, sesiones y respuestas.
+- [x] Corregir plan Demo e invariantes/parser para 7, 15 y 30 días; UP-04 4/4.
+- [x] Probar el ejecutor/fallback con provider stub y recuperar AI-05 20/20.
+- [x] Recalcular quiz/evaluación desde datos server-only; no confiar en
+      `correct`, topic_code ni level_k enviados por el cliente.
+- [ ] Revalidar `/api/plan/save` con el mismo contrato estricto de generación.
+- [x] Comparar `level_k` con el tópico fuente en teoría, quiz y Practice Lab, y
+      alinear refuerzo cualitativo con la acción/score determinísticos.
+- [ ] Enlazar Bug Lab y API Testing desde el hub y retirar texto futuro obsoleto.
+- [x] Resolver lint global hasta 0 errores y revisar los 2 warnings.
+- [x] Convertir los scripts backend en tests recolectables o mantener gates
+      explícitos que fallen cuando se ejecuten 0 pruebas.
+- [ ] Revisar las 2 vulnerabilidades moderadas reportadas por `npm audit`.
+- [ ] Reconciliar `.env.example` con consumidores reales y retirar overrides
+      de modelo sin uso; no imprimir valores durante la verificación.
+- [ ] Desplegar el contrato FastAPI endurecido y configurar el mismo
+      `BFF_SHARED_SECRET` en frontend/backend; DigitalOcean aún ejecuta v0.1.0
+      sin `BFFBearer` y la configuración local de desarrollo no es productiva.
+- [ ] Revocar la sesión Supabase cuyo token se expuso durante la validación y
+      autenticarse de nuevo antes de compartir evidencia.
+- [ ] Rotar la `SUPABASE_SERVICE_ROLE_KEY` expuesta en BE-06, actualizar todos
+      los consumidores privados y sanear el historial Git/CI/clones; editar
+      únicamente HEAD no invalida una credencial comprometida.
+- [ ] Rediseñar y completar el módulo QA integral antes del siguiente deploy.
+- [ ] Auditar o regenerar PR-02 para Heroku cuando se retome hosting.
 
 ---
 
@@ -129,7 +252,7 @@ ISTQB Study Agent
 │   ├── [x] UP-01  UI: página de setup (upload PDF + config días/horarios) (Completado)
 │   ├── [x] UP-02  API Route /api/upload → Supabase Storage (Completado)
 │   ├── [x] UP-03  Llamada Next.js → FastAPI /extract-pdf-full (Completado)
-│   ├── [x] UP-04  Prompt de generación de plan + API Route (Completado — Gemini 2.5 Flash + GPT-5)
+│   ├── [x] UP-04  Prompt de generación de plan + API Route (Implementado y verificado — 4/4, test:plan 9/9)
 │   ├── [x] UP-05  Guardar plan en Supabase (Completado — study_plans + sessions + topic_progress)
 │   └── [x] UP-06  UI: visualización del plan generado (Completado — calendario dinámico + placeholder /session)
 │
@@ -162,7 +285,7 @@ ISTQB Study Agent
 │   ├── [x] PL-09  API Route /api/practice/evaluate (Skill: fe-guide-generator) (Implementado y verificado — lectura admin y ownership)
 │   ├── [x] PL-10  UI: Feedback de práctica + comparar con solución (Skill: fe-guide-generator) (Completado — generación/evaluación autenticadas con cascada LLM)
 │   ├── [x] PL-11  UI: Bug Report Lab — escenario + formulario (Skill: fe-guide-generator) (Implementado y verificado — rehidratación comprobada)
-│   ├── [x] PL-12  UI: API Testing Checklist (Skill: fe-guide-generator) (Completado — localStorage versionado + 4 archivos + zero HTTP + tsc+build OK)
+│   ├── [x] PL-12  UI: API Testing Checklist (Skill: fe-guide-generator) (Implementado y verificado — contrato HTTP reconciliado; 7/7)
 │   ├── [x] PL-13  Integración Dashboard — métricas de práctica (Skill: fe-guide-generator) (Completado — practice_stats en DA-01 + PracticeProgressCard + tsc+build OK)
 │   └── [x] PL-14  Navegación + protección con proxy.ts (Skill: fe-guide-generator) (Implementado y verificado — proxy.ts + MainNav/MobileNav + tsc/build OK)
 │
@@ -171,16 +294,14 @@ ISTQB Study Agent
 │   ├── [x] AI-02  Runtime server-side: resolver proveedor, modo y cuota (Skill: fe-guide-generator) (Implementado y verificado — RPC + runtime.ts + allowlist + tsc+build OK)
 │   ├── [x] AI-03  UI Settings: Demo / Managed / BYOK session-only (Skill: fe-guide-generator) (Implementado y verificado — 14/14 checkpoints, tsc+build+fixture OK)
 │   ├── [x] AI-04  UI/API: consumo de tokens, llamadas y límites (Skill: istqb-fe-guide-generator) (Implementado y verificado — BYOK separado de cuota Managed + finalización serializada + UI/API de consumo)
-│   └── [ ] AI-05  Integración del runtime IA con sesiones y Practice Lab (Skill: fe-guide-generator)
+│   └── [x] AI-05  Integración del runtime IA con sesiones y Practice Lab (Skill: istqb-fe-guide-generator) (Implementado y verificado — 20/20, test:ai05 9/9)
 │
-├── 🧪  BLOQUE QA — TESTING E2E
-│   ├── QA-01  Configurar Cypress + data-testid en componentes clave
-│   ├── QA-02  Tests de auth: login, register, logout, redirects
-│   └── QA-03  Tests de flujo completo: upload → plan → sesión → dashboard
+├── 🧪  BLOQUE QA — TESTING INTEGRAL
+│   └── [ ] QA-01...QA-03  Alcance pendiente de rediseñar; el borrador Cypress-only no es ejecutable
 │
 └── 🚀  BLOQUE G — PRODUCCIÓN
-    ├── [ ] PR-01  GitHub Actions: CI/CD frontend → Vercel (Guía generada)
-    ├── [ ] PR-02  GitHub Actions: CI/CD backend → DigitalOcean (Guía generada)
+    ├── [ ] PR-01  GitHub Actions: CI/CD frontend → Vercel (Guía generada; 3/8)
+    ├── [ ] PR-02  CI/CD backend → Heroku (guía DigitalOcean suspendida; redefinir después)
     ├── PR-03  Variables de entorno en producción
     ├── PR-03A Seguridad de IA: modos de uso, BYOK y límites de consumo
     ├── PR-04  Dominio custom (Name.com/Namecheap) → Vercel
@@ -623,13 +744,18 @@ DEPENDENCIAS: UP-02, BE-06
 
 CHECKPOINT ✅:
   - Subir el PDF del ISTQB → topics_json guardado en documents
-  - El JSON tiene los 40 tópicos con nivel K
+  - El JSON exacto vigente tiene 63 tópicos con nivel K
   - Si FastAPI falla → error descriptivo al usuario
   - Si la extracción retorna menos tópicos de los esperados → no se genera el plan automáticamente
 ```
 
 #### UP-04 — Prompt de generación de plan + API Route (+ Selector Multi-Modelo)
 ```
+NOTA DE VIGENCIA:
+  El selector por body, `lib/openai.ts` y el fallback entre proveedores descritos
+  debajo son históricos. Settings + AI-05 deciden proveedor/modelo; el fallback
+  solo recorre candidatos allowlisted del mismo proveedor y JSON inválido se detiene.
+
 OBJETIVO:
   La IA genera el plan intensivo basado en los tópicos y objective_days.
   El usuario puede elegir entre Gemini 2.5 Flash y GPT-5 desde la UI.
@@ -809,10 +935,13 @@ CUBRE:
 
 DEPENDENCIAS: SE-02
 
-ESTADO: ✅ Completado — 3 archivos, tsc limpio, 10/10 checkpoints (29 junio 2026)
+ESTADO: ✅ Implementado y verificado — cierre correctivo 20/07/2026: snapshot
+privado, cobertura de todos los tópicos autoritativos, máximo 12 por sesión y
+persistencia cercada por lease; `test:quiz` 13/13.
 
 CHECKPOINT ✅:
-  - Genera 10 preguntas con 4 opciones cada una
+  - Genera 10-12 preguntas con 4 opciones y cubre todos los tópicos de la sesión
+  - `correct` y `explanation` no salen del servidor antes de evaluar
   - La respuesta correcta varía (no siempre es "c")
   - Las preguntas de K3 incluyen un escenario descriptivo
 ```
@@ -833,7 +962,9 @@ CUBRE:
 
 DEPENDENCIAS: SE-04, FE-04
 
-ESTADO: ✅ Completado — 4 archivos + 1 modificado, tsc limpio, build OK, 11/11 checkpoints (29 junio 2026)
+ESTADO: ✅ Implementado y verificado — cierre correctivo 20/07/2026: el cliente
+solo recibe la proyección pública, reintenta claims `409` y rehidrata evaluación
+durable; `test:quiz` 13/13, tsc, lint y build pasan.
 
 CHECKPOINT ✅:
   - Se puede navegar entre preguntas libremente
@@ -849,16 +980,18 @@ OBJETIVO:
 
 CUBRE:
   - API Route: /api/sessions/[id]/evaluate
-  - Body: array completo de { question_id, user_answer, topic_code, level_k }
+  - Body: { attempt_id, answers: [{ question_id, user_answer }] }
   - Prompt de evaluación (ver documento de arquitectura)
   - El endpoint retorna: { score, action, failed_topics, error_patterns,
                       feedback_message, next_method, reinforcement_minutes }
-  - Guardar en tabla answers (una fila por respuesta)
-  - Actualizar sessions: score_percent, action_taken, completed_at
+  - Recuperar pregunta, answer key, topic_code y level_k desde `private`
+  - Guardar answers y actualizar sessions dentro del RPC autoritativo
 
 DEPENDENCIAS: SE-05, DB-02
 
-ESTADO: ✅ Completado — 3 archivos nuevos + 2 modificados, tsc limpio, build OK, /evaluate funcional, 6/6 checkpoints (29 junio 2026)
+ESTADO: ✅ Implementado y verificado — cierre correctivo 20/07/2026: grading y
+adaptación usan `finalize_quiz_and_adapt_claimed`; el token del lease se valida
+en la misma transacción que la escritura durable.
 
 CHECKPOINT ✅:
   - Responder 10 preguntas → /evaluate retorna el JSON completo
@@ -890,7 +1023,9 @@ CUBRE:
 
 DEPENDENCIAS: SE-06
 
-ESTADO: ✅ Completado — tsc limpio, build OK, 5/5 checkpoints, RESTRUCTURE verificado con 2 sesiones + end_date extendido (29 junio 2026)
+ESTADO: ✅ Implementado y verificado — cierre correctivo 20/07/2026:
+`apply_session_adaptation_v2` es exactly-once, serializa por sesión/plan, asigna
+attempts sin colisiones y comparte transacción con grading.
 
 CHECKPOINT ✅:
   - Score 80% → topic en 'mastered', plan sin cambios
@@ -915,7 +1050,8 @@ CUBRE:
 
 DEPENDENCIAS: SE-07, FE-04
 
-ESTADO: ✅ Completado (30 junio 2026)
+ESTADO: ✅ Implementado y verificado — cierre correctivo 20/07/2026: contrato
+runtime estricto, rehidratación de replay y refresh de métricas del plan.
 
 CHECKPOINT ✅:
   - El score y la decisión se muestran correctamente
@@ -1470,24 +1606,28 @@ CUBRE:
       api-testing/_components/endpoint-card.tsx
       api-testing/_components/validation-checklist.tsx
   - Endpoint de ejemplo: POST /extract-pdf-full
-  - Checklist interactiva de validaciones:
-      [ ] Archivo PDF válido → 200
-      [ ] Archivo vacío → 400
-      [ ] Archivo con extensión incorrecta → 400
-      [ ] PDF sin texto seleccionable → 422
-      [ ] Error controlado → estructura ErrorResponse
-      [ ] Respuesta con estructura FullExtractionResponse
+  - Checklist interactiva de validaciones (estado inicial del estudiante;
+    no representa el progreso de implementación del milestone):
+      - Archivo PDF válido → 200
+      - Archivo vacío → 400
+      - Bytes no PDF o content type incompatible → 400
+      - PDF sin texto seleccionable → 422
+      - Error controlado → estructura ErrorResponse
+      - Respuesta con estructura FullExtractionResponse
   - Cada ítem tiene: descripción, resultado esperado, campo para resultado real
   - Sin llamadas reales a la API (modo educativo/checklist)
   - Progreso guardado en localStorage inicialmente
 
 DEPENDENCIAS: PL-06, BE-05
 
-CHECKPOINT ✅:
+CHECKPOINT ✅ (7/7):
   - La checklist renderiza todos los ítems
   - Se pueden marcar/desmarcar ítems
   - El progreso se persiste entre recargas (localStorage)
-  - La documentación de cada validación es clara
+  - Auth bearer BFF-to-backend, límites, rate limit y CORS verificados
+  - ErrorResponse plano y status reconciliados entre FastAPI/OpenAPI/Next/UI
+  - Multipart ausente, MIME, magic bytes, cache y storage bloqueado probados
+  - test:extract 29/29, pytest HTTP 15/15, tsc, lint dirigido y build OK
 ```
 
 #### PL-13 — Integración Dashboard (métricas de práctica)
@@ -1765,7 +1905,8 @@ CHECKPOINT ✅:
 ```
 ESTADO:
   Implementado y verificado (19/07/2026).
-  AI-05 sigue en Por iniciar; no se generó ni se conectó durante AI-04.
+  Al cerrar AI-04, AI-05 todavía estaba por iniciar; el estado vigente es AI-05
+  implementada y verificada 20/20, endurecida nuevamente el 20/07/2026.
 
 OBJETIVO:
   Mostrar al usuario un informe claro de actividad de IA y, de forma separada,
@@ -1824,6 +1965,11 @@ CHECKPOINT ✅:
 
 #### AI-05 — Integración del runtime IA con sesiones y Practice Lab
 ```
+ESTADO:
+  Implementado y verificado. Recuperado 20/20 el 19/07/2026 y endurecido el
+  20/07/2026 con leases cercados para quiz/evaluate, contrato server-only,
+  densidad máxima de 12 tópicos por sesión y fixtures remotos desechables.
+
 OBJETIVO:
   Reemplazar llamadas LLM dispersas por el runtime seguro de AI-02 en los
   flujos reales de la aplicación.
@@ -1853,22 +1999,37 @@ CUBRE:
       evaluate puede retornar feedback simulado claramente marcado como demo
   - BYOK:
       aceptar key temporal solo en headers/body server-bound
-      limpiar cualquier referencia después de la request
+      el servidor descarta su referencia al terminar cada request
+      el cliente la conserva solo en memoria del layout autenticado para navegar
+      entre Settings y los consumidores; limpiar al recargar, cerrar sesión,
+      salir del dashboard o cambiar de modo/proveedor
   - No tocar FastAPI: el control de IA vive en Next.js API Routes
 
 DEPENDENCIAS: AI-02, AI-04, PL-09, SE-08, UP-04
 
-CHECKPOINT ✅:
+CHECKPOINT ✅ (20/20):
   - Todos los endpoints LLM usan el runtime centralizado
-  - Modo demo permite probar la app sin API keys reales
+  - Modo demo de plan pasa parser y Route Handler en 7, 15 y 30 días
+  - Provider stub invoca el ejecutor y demuestra fallback real con un evento
+    por candidato; AI_INVALID_RESPONSE no avanza
   - Modo managed respeta límites y registra consumo
   - Modo BYOK no persiste la key y registra consumo sin guardar secretos
+  - Fallback Gemini usa versión descendente y un evento por candidato
+  - AI_INVALID_RESPONSE no factura automáticamente otro modelo
   - No existe ninguna variable NEXT_PUBLIC_*AI* ni API key en bundle/logs
+  - Quiz/evaluate cercan llamadas concurrentes y la escritura durable valida el
+    token vigente dentro del mismo RPC
+  - `test:quiz` 13/13, `test:plan` 9/9, lint global, TypeScript y build pasan
 ```
 
 ---
 
-### 🧪 BLOQUE QA — TESTING E2E (Cypress)
+### 🧪 BLOQUE QA — TESTING INTEGRAL
+
+> **Estado v2.13:** pendiente de rediseñar con el usuario. QA-01..QA-03 son un
+> borrador histórico limitado a Cypress y no deben generarse ni implementarse
+> todavía. El alcance nuevo deberá partir desde fundamentos y cubrir las capas
+> de prueba necesarias, automatización, seguridad, datos, CI y evidencia.
 
 ---
 
@@ -1960,22 +2121,22 @@ CHECKPOINT ✅:
   - La URL de Vercel muestra la app correctamente
 ```
 
-#### PR-02 — GitHub Actions: CI/CD backend → DigitalOcean
+#### PR-02 — CI/CD backend → Heroku
 ```
+ESTADO:
+  Suspendida el 19/07/2026. El hosting objetivo cambió a Heroku.
+  El contenido DigitalOcean de la guía actual es histórico y no se ejecuta.
+
 OBJETIVO:
-  Cada push a main deploya el backend automáticamente.
+  Redefinir posteriormente un pipeline seguro para Heroku.
 
 CUBRE:
-  - .github/workflows/deploy-backend.yml
-  - Trigger: push a main (solo cambios en /backend)
-  - DigitalOcean App Platform detecta cambios del repo
-  - Verificar que el deploy no rompe el health check
+  - Pendiente de auditar según el producto, plan y hosting Heroku vigentes
 
-DEPENDENCIAS: BE-06
+DEPENDENCIAS: gate correctivo, módulo QA integral y PR-01
 
-CHECKPOINT ✅:
-  - Push con cambio en /backend → DO redeploya automáticamente
-  - Health check pasa después del deploy
+CHECKPOINT ⏸️:
+  - No implementar ni desplegar hasta generar y auditar el contrato Heroku
 ```
 
 #### PR-03 — Variables de entorno en producción
@@ -1986,21 +2147,24 @@ OBJETIVO:
 CUBRE:
   - Vercel: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
             SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY, OPENAI_API_KEY,
-            OPENAI_MODEL, GEMINI_OPENAI_BASE_URL, FASTAPI_URL,
-            AI_USAGE_MODE, AI_DAILY_LIMIT_PER_USER
-  - DigitalOcean: (variables del .env de FastAPI si las hubiera)
+            GEMINI_OPENAI_BASE_URL, FASTAPI_URL y BFF_SHARED_SECRET
+  - Settings/Supabase gobierna modo, proveedor, modelo y cuotas; no configurar
+    OPENAI_MODEL, AI_USAGE_MODE ni AI_DAILY_LIMIT_PER_USER como fallbacks env
+  - Heroku: BFF_SHARED_SECRET idéntico al de Vercel, CORS_ORIGINS y límites
+    de archivo/rate; nunca publicar la credencial ni usar prefijo NEXT_PUBLIC_
   - Verificar que ningún secret está en el código fuente
   - Verificar .gitignore incluye .env.local
   - Verificar que service_role, GEMINI_API_KEY y OPENAI_API_KEY solo existen
     en entornos servidor
-  - Revisar precios/modelos vigentes antes de fijar OPENAI_MODEL final
+  - Revisar precios/modelos vigentes antes de elegir una opción allowlisted en
+    Settings; no crear un fallback global fuera de ese contrato
 
 DEPENDENCIAS: PR-01, PR-02
 
 CHECKPOINT ✅:
   - La app en producción se conecta a Supabase correctamente
   - La app en producción se conecta al proveedor LLM elegido correctamente
-  - La app en producción se conecta a FastAPI en DO correctamente
+  - La app en producción se conecta a FastAPI en Heroku correctamente
   - No hay secrets expuestos en el repositorio de GitHub
   - No hay secrets expuestos en el bundle frontend de Vercel
 ```
@@ -2037,10 +2201,15 @@ CUBRE:
       /api/settings/ai/usage muestra consumo sin exponer secrets
       no existen variables NEXT_PUBLIC_*AI*
       no hay secrets en GitHub, Vercel bundle, logs ni documentación versionada
-      alertas de gasto activadas en OpenAI/Gemini/DigitalOcean cuando aplique
+      alertas de gasto activadas en OpenAI/Gemini/Heroku cuando aplique
       habilitar protección de contraseñas filtradas en Supabase Auth
       resolver los 28 warnings históricos auth_rls_initplan mediante una
       migración dedicada que use (select auth.uid()), sin mezclarla con AI-01
+      impedir referencias cruzadas entre tenants en las tablas core:
+      study_plans.document_id, sessions.study_plan_id, answers.session_id y
+      topic_progress.study_plan_id deben comprobar ownership del mismo usuario
+      mediante claves/constraints compuestos y policies RLS coherentes; una
+      policy que solo repita user_id no garantiza integridad referencial
 
 DEPENDENCIAS: PR-03, AI-05, PL-09
 
@@ -2050,6 +2219,8 @@ CHECKPOINT ✅:
   - Modo managed respeta cuota diaria por usuario
   - Modo BYOK no persiste la key en BD ni almacenamiento del navegador
   - Una búsqueda en el bundle/repo/logs no muestra API keys ni prefijos sensibles
+  - Una prueba remota con usuarios A/B rechaza todas las referencias cruzadas
+    de documentos, planes, sesiones y respuestas
 ```
 
 #### PR-04 — Dominio custom (Name.com/Namecheap) → Vercel
@@ -2154,7 +2325,7 @@ SEMANA 2 (upload + plan + auth)
   Día 6:  FE-02, FE-03
   Día 7:  FE-04, UP-01
   Día 8:  UP-02, UP-03
-  Día 9:  UP-04 (✅ completado), UP-05 (✅ completado)
+  Día 9:  UP-04 (✅ recuperado 4/4), UP-05 (✅ completado)
   Día 10: UP-06 (✅ completado)
 
 SEMANA 3 (sesión de estudio)
@@ -2173,23 +2344,25 @@ SEMANA 4 (dashboard + practice lab setup)
 SEMANA 5 (practice lab core)
   Día 20: PL-07, PL-08
   Día 21: PL-09 (✅ completado), PL-10 (✅ completado)
-  Día 22: PL-11, PL-12
+  Día 22: PL-11, PL-12 (✅ recuperada 7/7)
   Día 23: PL-13, PL-14
 
 SEMANA 6 (AI settings + control de consumo)
   Día 24: AI-01, AI-02
   Día 25: AI-03
-  Día 26: AI-04, AI-05
+  Día 26: AI-04, AI-05 (✅ recuperada 20/20)
 
-SEMANA 7 (testing E2E)
-  Día 27: QA-01
-  Día 28: QA-02
-  Día 29: QA-03
+GATE CORRECTIVO PRE-QA
+  Cerrados DB/quiz, Demo/fallback, autoridad K y lint. Pendientes: deploy BFF,
+  plan/save, navegación Practice Hub, audit/env, QA integral y producción.
+
+SEMANA 7 (testing integral; alcance pendiente de rediseñar)
+  No iniciar hasta cerrar el gate y acordar el nuevo módulo pedagógico QA
 
 SEMANA 8 (producción)
-  Día 30: PR-01, PR-02
+  Día 30: PR-01, redefinir PR-02 para Heroku
   Día 31: PR-03, PR-03A
-  Día 32: PR-04, PR-05 — ¡Go live! 🚀
+  Día 32: PR-04, PR-05 — go live solo si todos los gates están cerrados
 ```
 
 ---
@@ -2224,6 +2397,6 @@ REGLAS DE SEGURIDAD:
 
 ---
 
-*Árbol de guías v2.9 — Julio 2026*
-*Usar junto con: ISTQB_StudyAgent_ProjectDoc.md*
-*Bloque H agregado en v2.0; gate PR-03A agregado en v2.1; Bloque I agregado en v2.2; reconciliación de contratos y seguridad IA en v2.3; gates runtime/remotos cerrados y AI-01 implementada en v2.4; AI-02 auditada con reserva atómica e idempotente en v2.5; AI-02 implementada y verificada en v2.6; AI-03 implementada y verificada en v2.7; AI-04 generada con Addendum Correctivo Obligatorio de cuota BYOK/finalización serializada en v2.8; AI-04 implementada y verificada en v2.9*
+*Árbol de guías v2.18 — Julio 2026*
+*Fuente vigente junto con el código real; `ISTQB_StudyAgent_ProjectDoc.md` es histórico.*
+*Bloque H agregado en v2.0; gate PR-03A agregado en v2.1; Bloque I agregado en v2.2; reconciliación de contratos y seguridad IA en v2.3; gates runtime/remotos cerrados y AI-01 implementada en v2.4; AI-02 auditada con reserva atómica e idempotencia en v2.5; AI-02 implementada y verificada en v2.6; AI-03 implementada y verificada en v2.7; AI-04 generada con Addendum Correctivo Obligatorio de cuota BYOK/finalización serializada en v2.8; AI-04 implementada y verificada en v2.9; AI-05 generada y auditada en v2.10; AI-05 cerrada inicialmente con Managed real en v2.11; regresión Demo 7/15/30 detectada y cierre reabierto en v2.12; contrato HTTP, seguridad FastAPI, evidencia de fallback, QA integral y destino Heroku reconciliados en v2.13; UP-04 recuperada y AI-05 en 19/20 en v2.14; AI-05 recuperada 20/20 y deuda cross-layer registrada en v2.15; PL-12 recuperada 7/7 con contrato HTTP verificado en v2.16; integridad cross-tenant core cerrada y desplegada en v2.17; autoridad privada de quiz, adaptación atómica y leases cercados desplegados en v2.18.*

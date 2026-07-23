@@ -19,6 +19,10 @@
 - Comprobar símbolos nuevos contra el repositorio para evitar declaraciones paralelas.
 - Tratar la guía completa como un solo delta: todos los pasos deben concordar entre sí.
 - Para dashboards, revisar juntos `frontend/types/dashboard.ts`, `frontend/app/api/dashboard/metrics/route.ts` y la composición real de la página. Preferir extender el DTO/fetch existente.
+- Distinguir response DTO, persistencia y UI destino. Un campo presente en una
+  respuesta no cuenta como persistido ni visible después de un redirect.
+- Buscar estados y snippets históricos contradictorios después de cerrar una
+  implementación; el encabezado, checklist, resumen y roadmap deben coincidir.
 
 ## Runtime y Next.js
 
@@ -41,6 +45,20 @@
 - Mantener auth, RLS, idempotencia, runtime, timeout y cascada de modelos salvo que el milestone posea explícitamente ese cambio.
 - Si `Relationships: []`, preferir consultas separadas tipadas antes que joins inferidos.
 - Incluir fixtures deterministas válidas e inválidas sin llamadas LLM.
+- Validar aritmética e invariantes del prompt para todo el dominio admitido. Una
+  instrucción imposible que obliga a duplicar, omitir o dejar slots vacíos es
+  un error bloqueante aunque haya funcionado con un caso histórico.
+- En reglas de orden, declarar el ámbito exacto: global, por capítulo, por día o
+  por colección. El validador debe comprobar la misma interpretación.
+- Para cascadas LLM, Settings conserva la autoridad del proveedor; los modelos
+  se recorren en el orden allowlisted del repositorio y nunca cruzan provider.
+  `maxRetries` ocultos están prohibidos.
+- Cada llamada facturable de fallback requiere evento/reserva/finalización
+  propios. `AI_INVALID_RESPONSE` detiene por defecto; solo disponibilidad/API
+  puede avanzar si la política y la cuota lo permiten.
+- Comparar la reserva de peor caso con límites diarios/mensuales reales. No
+  resolver JSON inválido duplicando outputs máximos si eso bloquea el caso
+  normal antes de contactar al proveedor.
 
 ## Código pedagógico
 
@@ -70,6 +88,8 @@
 - No implementar lógica de milestones futuros.
 - No crear endpoints paralelos si existe un contrato canónico extensible.
 - No modificar código fuente al generar o auditar la guía.
+- No reutilizar en documentación cookies/tokens pegados por el usuario, ni
+  siquiera en ejemplos sanitizados parcialmente.
 - No convertir errores de APIs protegidas en redirects HTML desde Proxy. Las páginas pueden redirigir; cada Route Handler debe conservar autorización propia, status `401`/`403` y JSON.
 
 ## Verificación
@@ -84,6 +104,15 @@
 - Cuando sea viable, typecheckear snippets completos mediante un overlay o compilación virtual contra el `tsconfig` real sin editar `frontend/`.
 - Probar por separado una ruta UI anónima y una API anónima cuando Proxy participe: exigir redirect UI y respuesta JSON de API.
 - `git diff` y `git diff --check` omiten archivos untracked. Revisar su contenido, whitespace y compilabilidad explícitamente antes de cerrar.
+- En integraciones LLM, combinar fixtures no facturables con una prueba real
+  controlada antes del cierre. Registrar status, modelo público, tokens
+  agregados y evento finalizado; nunca key, cookie, prompt o respuesta completa.
+- Marcar checkpoints con fecha y evidencia. Una guía `Implementado y
+  verificado` no puede conservar casillas vacías ni texto de “implementación
+  pendiente”, salvo dentro de una subsección histórica explícita.
+- Si se consulta catálogo de modelos, usar un endpoint no generativo y mostrar
+  solo identificadores públicos. La allowlist del repositorio, no el catálogo
+  remoto por sí solo, decide qué puede llegar al SDK.
 
 ## Gate final
 
@@ -92,6 +121,10 @@ Antes de persistir, aprobar todos estos puntos:
 - **Exactitud:** paths, anchors, endpoints y árbol coinciden con el workspace.
 - **Compilabilidad:** snippets estrictos, completos, legibles y sin símbolos duplicados.
 - **Contrato:** productor, validador, persistencia/API y consumidor comparten shape, discriminantes, nullabilidad y errores.
+- **Factibilidad:** cantidades, slots, orden y cuotas funcionan en límites
+  mínimo/medio/máximo sin contradicciones.
+- **Costo LLM:** provider/modelo inicial, fallback, reservas y eventos son
+  explícitos; no existen retries facturables invisibles.
 - **Runtime:** decisiones justificadas por Next.js instalado y sus docs locales.
 - **Pedagogía:** la guía explica por qué, incluye analogía y pasos ejecutables sin inferencia.
 - **Comentarios:** la pedagogía extensa queda fuera de los snippets y el código conserva solo decisiones, invariantes, riesgos o restricciones no evidentes.
@@ -100,5 +133,7 @@ Antes de persistir, aprobar todos estos puntos:
 - **Seguridad:** cero secretos o patrones inseguros.
 - **Verificabilidad:** fixtures, comandos, outputs, edge cases y warnings reales.
 - **Reconciliación:** roadmap, estado declarado, guía e implementación no se contradicen.
+- **Cierre:** checklist, evidencia, tiempos verbales y siguiente milestone
+  representan el estado actual, no la sesión histórica de generación.
 
 Si falla un punto, corregir antes de guardar. Si la corrección exige modificar código existente, mantener bloqueada la guía dependiente y emitir el addendum; no improvisar un workaround downstream.

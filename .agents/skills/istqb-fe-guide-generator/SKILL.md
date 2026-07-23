@@ -23,6 +23,10 @@ No depender de copias del skill situadas en configuraciones de OpenCode, Gemini 
 2. Si pide revisar, auditar, corregir o sincronizar una guía, ejecutar el flujo de auditoría y no crear la siguiente.
 3. Si proporciona un ID, trabajar únicamente con ese ID tras validar dependencias.
 4. Si no proporciona un ID, detectar automáticamente el primer milestone realmente incompleto. No preguntar salvo contradicción material que no pueda resolverse inspeccionando el repositorio.
+5. Si el usuario limita explícitamente el alcance a actualizar Markdown o dice
+   “no crear ninguna guía”, tratarlo como auditoría documental: editar solo los
+   archivos nombrados y las referencias canónicas necesarias. No detectar,
+   proponer ni generar el siguiente milestone.
 
 Antes de redactar o auditar, leer por completo:
 
@@ -37,6 +41,10 @@ Antes de redactar o auditar, leer por completo:
 - Hacer una única segunda pasada adversarial, separada de la redacción pero dentro de la misma tarea. No usar subagentes por defecto; reservarlos para petición explícita del usuario o una contradicción material de alto riesgo que no pueda resolverse con evidencia local.
 - Si el usuario pide `modo eficiente` o `sin subagentes`, respetarlo sin reducir los gates de exactitud, compilabilidad, seguridad o reconciliación.
 - Preferir una edición documental coherente y una corrección final concentrada; evitar rondas cosméticas que no cambien un gate.
+- Reutilizar evidencia ejecutada en la misma sesión o evidencia reproducible ya
+  registrada. Si no cambió código, no reiniciar servidores ni repetir builds
+  solo para editar checkboxes; sí comprobar que la evidencia citada existe y
+  corresponde al estado actual.
 
 ## Flujo de generación
 
@@ -49,6 +57,12 @@ Leer roadmap, guías existentes, código real y Git. Clasificar cada milestone r
 - `Implementado y verificado`: existen entregables y pasan sus checks obligatorios.
 
 El roadmap no es evidencia suficiente por sí solo. Si contradice el código, detener la generación, reconciliar primero la documentación y explicar la evidencia. No marcar un milestone como completado solo porque existen archivos: ejecutar los checks aplicables.
+
+Un checkpoint marcado debe incluir fecha y evidencia trazable. Al cerrar una
+implementación, sincronizar en la misma auditoría el estado del encabezado de
+la guía, su checklist, la fila y el bloque detallado del roadmap. No dejar una
+guía en futuro o con casillas vacías si el roadmap dice `Implementado y
+verificado`.
 
 No saltar un milestone cuya guía ya existe pero aún no está implementada.
 
@@ -69,6 +83,37 @@ No saltar un milestone cuya guía ya existe pero aún no está implementada.
 - Verificar `params`, `searchParams`, `useSearchParams`, Suspense/dynamic rendering, límites Server/Client y deprecaciones para la versión instalada.
 - Revisar tipos DB y `Relationships`. Si son `[]`, evitar joins tipados inferidos y enseñar consultas planas compatibles.
 - Para datos estructurados, construir antes de redactar la matriz productor → tipo de dominio → validador/normalizador runtime → persistencia/API → consumidor.
+- Distinguir explícitamente datos devueltos, datos persistidos y datos visibles
+  después de navegar. Que una respuesta incluya `model_used` no demuestra que
+  `study_plans` lo guarde ni que la página destino pueda mostrarlo.
+
+### 3.1 Reglas obligatorias para prompts y runtime LLM
+
+- Probar la factibilidad matemática del prompt en los límites mínimo, medio y
+  máximo admitidos. Si se distribuyen elementos entre slots, derivar
+  `floor(total/slots)` y `ceil(total/slots)`; no enseñar mínimos fijos que
+  obliguen a duplicar datos o crear colecciones vacías.
+- Resolver reglas potencialmente incompatibles. Por ejemplo, “orden global
+  K1 → K2 → K3” y “mantener capítulos juntos” requieren declarar si el orden K
+  reinicia dentro de cada capítulo y validar exactamente esa semántica.
+- Para Gemini, la política del proyecto es candidatos allowlisted del mismo
+  proveedor en versión descendente. Leer el orden real desde
+  `frontend/lib/ai/model-cascade.ts` y contrastar disponibilidad con un catálogo
+  no generativo; no copiar nombres desde memoria ni desde otro repositorio.
+- Settings elige proveedor y modelo inicial. El body de una feature no puede
+  sustituirlos. El fallback nunca cruza de proveedor.
+- `maxRetries` del SDK permanece en cero. Cada candidato facturable necesita su
+  propio `eventId`, reserva, finalización, modelo y tokens. Solo errores de
+  disponibilidad explícitamente clasificados avanzan al siguiente candidato;
+  `AI_INVALID_RESPONSE` no factura automáticamente otro modelo.
+- Calcular la reserva de peor caso contra los límites DB reales antes de enseñar
+  retries. Una guía es inválida si una operación normal queda bloqueada antes
+  de llamar al proveedor por sumar prompts u outputs máximos incompatibles con
+  la cuota predeterminada.
+- Exigir una prueba Managed real controlada para cerrar una integración LLM,
+  además de fixtures no facturables. Verificar status HTTP, shape, persistencia,
+  evento finalizado y aritmética prompt + completion = total, sin imprimir
+  secretos ni respuesta cruda completa en documentación.
 
 ### 4. Reconciliar contratos incompatibles
 
@@ -83,6 +128,12 @@ Si un productor implementado tiene un contrato obsoleto o incompatible, no ense�
 7. gate explícito que mantenga bloqueada la guía dependiente.
 
 Evitar interfaces, exports, validadores o rutas paralelas duplicadas. Un cast no cuenta como validación runtime.
+
+Un addendum no debe convivir con snippets anteriores que sigan siendo
+copiables pero incorrectos. Actualizar también el snippet original o marcarlo
+inequívocamente como histórico/sustituido. En la pasada adversarial buscar
+frases obsoletas como `implementación pendiente`, casillas vacías y políticas
+anteriores de fallback.
 
 ### 5. Redactar y persistir
 
@@ -104,10 +155,15 @@ Releer la guía una vez como un patch único y buscar activamente rutas fantasma
 5. No editar código fuente durante la auditoría.
 6. Actualizar el roadmap solo con evidencia ejecutada en esta sesión o evidencia reproducible ya registrada.
 7. Informar comandos, resultados, advertencias no bloqueantes y archivos modificados.
+8. Si el alcance dice “solo Markdown”, confirmar al final que no se creó ninguna
+   guía ni se modificaron `frontend/`, `backend/` o `supabase/`.
 
 ## Límites de seguridad
 
 - Nunca mostrar valores de `.env*`, cookies, tokens, BYOK, claves de proveedor o service-role.
+- Si el usuario pega una cookie o token, no copiarlo a guías, trazas, comandos
+  ni reportes. Referirse únicamente al status/body sanitizado y recomendar
+  rotar la sesión fuera de la documentación.
 - No colocar secretos en Client Components, `NEXT_PUBLIC_*`, localStorage, sessionStorage, cookies, capturas, logs ni ejemplos Markdown.
 - Usar PowerShell y `npm`; preferir comandos desde la raíz.
 - Usar `-LiteralPath` para rutas con `(grupo)` o `[param]`.
