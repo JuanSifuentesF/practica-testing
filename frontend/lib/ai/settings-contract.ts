@@ -27,7 +27,7 @@ type AiSettingsDefaults = Pick<
 // `Pick` es intencional. UserAiSettingsRow tiene un index signature generado
 // por la base de datos; Omit sobre ese tipo pierde las claves concretas.
 export const AI_SETTINGS_DEFAULTS = {
-  mode: "demo",
+  mode: "byok",
   provider: "gemini",
   model_name: null,
   daily_request_limit: 2_000_000_000,
