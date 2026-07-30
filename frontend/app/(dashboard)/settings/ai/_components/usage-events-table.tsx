@@ -45,16 +45,16 @@ function formatEventTime(timestamp: string) {
 
 export function UsageEventsTable({ events }: UsageEventsTableProps) {
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-      <h3 className="text-base font-medium text-slate-100">Últimos eventos</h3>
-      <p className="mt-1 text-sm text-slate-400">
+    <section className="rounded-2xl border border-border bg-card p-5">
+      <h3 className="text-base font-medium text-foreground">Últimos eventos</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
         Se muestran como máximo 20 registros propios; las horas están en UTC.
       </p>
 
       {events.length === 0 ? (
-        <p className="mt-4 rounded-md border border-slate-800 bg-slate-950/40 p-4 text-sm text-slate-400">
-          Aún no hay eventos registrados. AI-05 conectará las rutas que producen
-          llamadas reales; este estado vacío es esperado por ahora.
+        <p className="mt-4 rounded-md border border-border bg-muted p-4 text-sm text-muted-foreground">
+          Aún no hay eventos registrados. El historial de consumo se actualizará
+          cuando realices tus primeras solicitudes de teoría o práctica.
         </p>
       ) : (
         <div className="mt-4 overflow-x-auto">
@@ -62,7 +62,7 @@ export function UsageEventsTable({ events }: UsageEventsTableProps) {
             <caption className="sr-only">
               Últimos eventos de consumo de IA
             </caption>
-            <thead className="border-b border-slate-800 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 font-medium">Fecha UTC</th>
                 <th className="px-3 py-2 font-medium">Función</th>
@@ -74,7 +74,7 @@ export function UsageEventsTable({ events }: UsageEventsTableProps) {
                 <th className="px-3 py-2 text-right font-medium">Tokens</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800 text-slate-300">
+            <tbody className="divide-y divide-border text-foreground">
               {events.map((event) => (
                 <tr key={event.id}>
                   <td className="whitespace-nowrap px-3 py-3">

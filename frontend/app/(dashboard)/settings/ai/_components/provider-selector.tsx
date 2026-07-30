@@ -47,9 +47,9 @@ export function ProviderSelector({
   }
 
   return (
-    <Card className="border-slate-800 bg-slate-900/50">
+    <Card className="border-border bg-card">
       <CardHeader>
-        <CardTitle className="text-lg text-slate-100">
+        <CardTitle className="text-lg text-foreground">
           Proveedor de IA
         </CardTitle>
       </CardHeader>
@@ -68,22 +68,22 @@ export function ProviderSelector({
                 className={
                   selected
                     ? "flex items-start gap-3 rounded-lg border border-emerald-700 bg-emerald-950/30 p-4"
-                    : "flex items-start gap-3 rounded-lg border border-slate-800 bg-slate-950/50 p-4 hover:border-slate-700"
+                    : "flex items-start gap-3 rounded-lg border border-border bg-card p-4 hover:border-border"
                 }
               >
                 <RadioGroupItem
                   value={option.value}
                   id={`provider-${option.value}`}
-                  className="mt-1 border-slate-600 text-emerald-400"
+                  className="mt-1 border-border text-emerald-400"
                 />
                 <Label
                   htmlFor={`provider-${option.value}`}
                   className="cursor-pointer"
                 >
-                  <span className="font-medium text-slate-100">
+                  <span className="font-medium text-foreground">
                     {option.label}
                   </span>
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {option.description}
                   </p>
                 </Label>
@@ -91,7 +91,7 @@ export function ProviderSelector({
             );
           })}
         </RadioGroup>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           El modelo se resuelve en el servidor mediante la allowlist de AI-02;
           no se guarda un nombre de modelo libre desde esta pantalla.
         </p>

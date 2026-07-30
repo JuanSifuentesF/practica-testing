@@ -143,7 +143,7 @@ Responde ÚNICAMENTE con un objeto JSON válido con esta estructura EXACTA:
         "d": "Cuarta opción"
       },
       "correct": "b",
-      "explanation": "La opción b es correcta porque [razón]. La opción a es incorrecta porque [razón]. La opción c confunde X con Y. La opción d describe Z, no W.",
+      "explanation": "Explicación concisa de por qué la opción correcta es válida según el syllabus ISTQB y la clave del concepto.",
       "topic_code": "FL-1.1.1",
       "level_k": "K2"
     }
@@ -158,7 +158,7 @@ Responde ÚNICAMENTE con un objeto JSON válido con esta estructura EXACTA:
 4. **level_k exacto**: Cada pregunta debe tener el level_k correcto del tópico al que pertenece.
 5. **correct válido**: SOLO los valores "a", "b", "c", o "d" son válidos para el campo correct.
 6. **4 opciones exactas**: Cada pregunta DEBE tener exactamente 4 opciones: a, b, c, y d.
-7. **Explicación completa**: La explicación debe decir por qué CADA opción es correcta o incorrecta.`;
+7. **Explicación concisa**: La explicación debe ser directa y concisa (máximo 40 palabras) justificando por qué la opción correcta es válida según el syllabus ISTQB.`;
 }
 
 // ──────────────────────────────────────────────────────────────

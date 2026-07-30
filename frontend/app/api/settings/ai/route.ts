@@ -10,6 +10,7 @@ import {
   parseAiUsageMode,
   type AiSettingsPreferencesUpdate,
 } from "@/lib/ai/settings-contract";
+import { isAllowedModel } from "@/lib/ai/model-cascade";
 import type { UserAiSettingsUpdateDB } from "@/types";
 
 const SETTINGS_COLUMNS =
@@ -63,10 +64,18 @@ export async function PATCH(request: NextRequest) {
 
   // Rechazar campos silenciosamente ignorados hace visible un contrato roto.
   for (const key of Object.keys(body)) {
-    if (key !== "mode" && key !== "provider") {
+    if (key !== "mode" && key !== "provider" && key !== "model_name") {
       return invalidJson("UNKNOWN_FIELD");
     }
   }
+
+  const { data: existingSettings } = await supabase
+    .from("user_ai_settings")
+    .select("provider")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const currentProvider = existingSettings?.provider || "gemini";
 
   const update: AiSettingsPreferencesUpdate = {};
   if (Object.prototype.hasOwnProperty.call(body, "mode")) {
@@ -91,14 +100,31 @@ export async function PATCH(request: NextRequest) {
     update.provider = provider;
   }
 
+  if (Object.prototype.hasOwnProperty.call(body, "model_name")) {
+    const modelName = body["model_name"];
+    if (modelName !== null) {
+      if (typeof modelName !== "string") {
+        return invalidJson("INVALID_MODEL");
+      }
+      const provider = update.provider || currentProvider;
+      if (!isAllowedModel(provider, modelName)) {
+        return invalidJson("INVALID_MODEL");
+      }
+    }
+    update.model_name = modelName;
+  }
+
   if (Object.keys(update).length === 0)
     return invalidJson("NO_FIELDS_TO_UPDATE");
 
-  // AI-03 no deja elegir modelos arbitrarios. Al cambiar proveedor, limpiar
-  // una preferencia legacy evita arrastrar un modelo Gemini a OpenAI o viceversa.
-  const storageUpdate: UserAiSettingsUpdateDB = update.provider
-    ? { mode: update.mode, provider: update.provider, model_name: null }
-    : { mode: update.mode, provider: update.provider };
+  const storageUpdate: UserAiSettingsUpdateDB = {};
+  if (update.mode !== undefined) storageUpdate.mode = update.mode;
+  if (update.provider !== undefined) storageUpdate.provider = update.provider;
+  if (Object.prototype.hasOwnProperty.call(body, "model_name")) {
+    storageUpdate.model_name = body["model_name"] as string | null;
+  } else if (update.provider !== undefined) {
+    storageUpdate.model_name = null;
+  }
 
   const updateExisting = () =>
     supabase

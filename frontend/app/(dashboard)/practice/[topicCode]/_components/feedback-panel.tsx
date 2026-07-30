@@ -58,16 +58,16 @@ export function FeedbackPanel({ score, feedback }: FeedbackPanelProps) {
   const total = criteriaResults.length;
 
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/10">
+    <section className="rounded-xl border border-border bg-card/60 p-5 shadow-lg shadow-black/10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2">
             <ListChecks className="size-4 text-brand-400" />
-            <h2 className="text-base font-semibold text-white">
+            <h2 className="text-base font-semibold text-foreground">
               Resultado de la evaluacion
             </h2>
           </div>
-          <p className="max-w-3xl text-sm leading-relaxed text-slate-300">
+          <p className="max-w-3xl text-sm leading-relaxed text-foreground">
             {feedback.feedback_summary ||
               "La evaluacion no incluyo un resumen textual."}
           </p>
@@ -75,8 +75,8 @@ export function FeedbackPanel({ score, feedback }: FeedbackPanelProps) {
         <ScoreBadge score={score} />
       </div>
 
-      <div className="mt-5 rounded-lg border border-slate-800 bg-slate-950/40 p-4">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <div className="mt-5 rounded-lg border border-border bg-card/40 p-4">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Criterios evaluados ({passed}/{total})
         </h3>
 
@@ -104,7 +104,7 @@ export function FeedbackPanel({ score, feedback }: FeedbackPanelProps) {
                   >
                     {criterion.criterion}
                   </p>
-                  <p className="mt-1 leading-relaxed text-slate-400">
+                  <p className="mt-1 leading-relaxed text-muted-foreground">
                     {criterion.detail}
                   </p>
                 </div>
@@ -112,7 +112,7 @@ export function FeedbackPanel({ score, feedback }: FeedbackPanelProps) {
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             La API no devolvio criterios individuales. Revisa la respuesta en
             DevTools antes de ajustar el prompt.
           </p>
@@ -162,10 +162,10 @@ function FeedbackList({
   markerClassName,
 }: FeedbackListProps) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-950/30 p-4">
+    <div className="rounded-lg border border-border bg-card/30 p-4">
       <div className="mb-3 flex items-center gap-2">
         {icon}
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
           {title}
         </h3>
       </div>
@@ -175,7 +175,7 @@ function FeedbackList({
           {items.map((item, index) => (
             <li
               key={`${title}-${index}`}
-              className="flex items-start gap-2 text-sm text-slate-300"
+              className="flex items-start gap-2 text-sm text-foreground"
             >
               <span className={`mt-1 ${markerClassName}`}>•</span>
               <span className="leading-relaxed">{item}</span>
@@ -183,7 +183,7 @@ function FeedbackList({
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-slate-500">{emptyText}</p>
+        <p className="text-sm text-muted-foreground">{emptyText}</p>
       )}
     </div>
   );

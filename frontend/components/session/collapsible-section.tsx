@@ -44,28 +44,28 @@ export function CollapsibleSection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden">
+    <div className="rounded-xl border border-border bg-card/40 overflow-hidden">
       {/* ── Header clicable ──────────────────────────────────── */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-800/50"
+        className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-muted/50"
         // aria-expanded es importante para lectores de pantalla.
         // Indica si la sección está expandida o colapsada.
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-2.5">
-          <Icon className="h-4 w-4 text-emerald-400 shrink-0" />
-          <span className="text-sm font-semibold text-slate-100">{title}</span>
+          <Icon className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span className="text-sm font-semibold text-foreground">{title}</span>
           {badge && (
-            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
               {badge}
             </span>
           )}
         </div>
         {/* ── Chevron con rotación animada ─────────────────── */}
         <ChevronDown
-          className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${
+          className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
             isOpen ? "rotate-180" : "rotate-0"
           }`}
         />

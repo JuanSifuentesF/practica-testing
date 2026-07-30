@@ -33,12 +33,12 @@ export default async function AiSettingsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-slate-100">
-          Configuración de IA
+        <h1 className="text-2xl font-bold text-foreground">
+          Configuración de IA (BYOK)
         </h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Elige el modo y proveedor. Tus preferencias se guardan
-          automáticamente; las claves BYOK nunca se persisten.
+        <p className="mt-1 text-sm text-muted-foreground">
+          Configura tu proveedor y modelo preferido aportando tu clave API temporal. 
+          Tus preferencias se guardan automáticamente; las claves BYOK nunca se persisten en el servidor.
         </p>
       </header>
       <AiSettingsClient initialSettings={settings} />

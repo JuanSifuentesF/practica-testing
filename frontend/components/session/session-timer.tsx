@@ -128,8 +128,8 @@ export function SessionTimer({
   let bgGlow = "";
 
   if (hasFinished) {
-    colorClass = "text-slate-500";
-    barColor = "bg-slate-600";
+    colorClass = "text-muted-foreground";
+    barColor = "bg-muted";
   } else if (secondsLeft < 60) {
     colorClass = "text-red-400";
     barColor = "bg-red-500";
@@ -144,7 +144,7 @@ export function SessionTimer({
   // El timer real empieza solo después de useEffect.
   if (!isReady) {
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3">
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3">
         <Clock className="h-5 w-5 text-emerald-400" />
         <span className="font-mono text-2xl font-bold text-emerald-400 tabular-nums">
           {String(durationMinutes).padStart(2, "0")}:00
@@ -155,12 +155,12 @@ export function SessionTimer({
 
   return (
     <div
-      className={`rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3 transition-shadow duration-500 ${bgGlow}`}
+      className={`rounded-xl border border-border bg-card/60 px-4 py-3 transition-shadow duration-500 ${bgGlow}`}
     >
       <div className="flex items-center gap-3">
         {/* ── Ícono de estado ──────────────────────────────── */}
         {hasFinished ? (
-          <AlertTriangle className="h-5 w-5 text-slate-500 shrink-0" />
+          <AlertTriangle className="h-5 w-5 text-muted-foreground shrink-0" />
         ) : (
           <Clock className={`h-5 w-5 ${colorClass} shrink-0`} />
         )}
@@ -177,7 +177,7 @@ export function SessionTimer({
           <button
             type="button"
             onClick={toggleTimer}
-            className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-300 transition-colors hover:bg-slate-700 hover:text-white"
+            className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted text-foreground transition-colors hover:bg-muted hover:text-white"
             aria-label={isRunning ? "Pausar timer" : "Reanudar timer"}
           >
             {isRunning ? (
@@ -190,14 +190,14 @@ export function SessionTimer({
 
         {/* ── Label de estado ─────────────────────────────── */}
         {hasFinished && (
-          <span className="ml-auto text-xs text-slate-500">
+          <span className="ml-auto text-xs text-muted-foreground">
             Tiempo agotado — puedes seguir leyendo
           </span>
         )}
       </div>
 
       {/* ── Barra de progreso ─────────────────────────────── */}
-      <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-slate-800">
+      <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
         <div
           className={`h-full rounded-full ${barColor} transition-all duration-1000 ease-linear`}
           style={{ width: `${progressPercent}%` }}

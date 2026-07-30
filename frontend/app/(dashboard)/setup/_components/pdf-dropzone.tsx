@@ -56,8 +56,9 @@ export function PdfDropzone({
   // Centralizar la validación evita duplicar lógica entre
   // el handler de drop y el handler del input file.
   const validateFile = useCallback((file: File): string | null => {
-    // Verificar tipo MIME
-    if (!ACCEPTED_FILE_TYPES.includes(file.type)) {
+    // Verificar tipo MIME o extensión .pdf
+    const hasPdfExtension = file.name.toLowerCase().endsWith(".pdf");
+    if (!ACCEPTED_FILE_TYPES.includes(file.type) && !hasPdfExtension) {
       return (
         "Solo se aceptan archivos PDF. El archivo seleccionado es de tipo: " +
         file.type
@@ -222,7 +223,7 @@ export function PdfDropzone({
           ${
             isDragOver
               ? "border-emerald-400 bg-emerald-400/5 scale-[1.01]"
-              : "border-slate-700 bg-slate-900/30 hover:border-slate-500 hover:bg-slate-900/50"
+              : "border-border bg-card text-card-foreground hover:border-emerald-500 hover:bg-emerald-500/5"
           }
           ${disabled ? "opacity-50 cursor-not-allowed" : ""}
         `}
@@ -238,7 +239,7 @@ export function PdfDropzone({
             ${
               isDragOver
                 ? "bg-emerald-400/10 text-emerald-400"
-                : "bg-slate-800 text-slate-400"
+                : "bg-muted text-muted-foreground"
             }
           `}
         >
@@ -262,12 +263,12 @@ export function PdfDropzone({
 
         {/* ─── Texto principal ─── */}
         <div className="flex flex-col gap-1">
-          <p className="text-sm font-medium text-slate-200">
+          <p className="text-sm font-medium text-foreground">
             {isDragOver
               ? "Suelta el archivo aquí"
               : "Arrastra tu PDF aquí o haz clic para seleccionar"}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Solo archivos PDF — Máximo 20 MB
           </p>
         </div>

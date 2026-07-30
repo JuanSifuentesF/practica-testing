@@ -54,17 +54,17 @@ const LEVEL_COLORS: Record<LevelK, { active: string; inactive: string }> = {
   K1: {
     active: "bg-sky-500/30 text-sky-300 border-sky-500/50",
     inactive:
-      "bg-slate-800/50 text-slate-400 border-slate-700 hover:bg-sky-500/10 hover:text-sky-400 hover:border-sky-500/30",
+      "bg-muted/50 text-muted-foreground border-border hover:bg-sky-500/10 hover:text-sky-400 hover:border-sky-500/30",
   },
   K2: {
     active: "bg-amber-500/30 text-amber-300 border-amber-500/50",
     inactive:
-      "bg-slate-800/50 text-slate-400 border-slate-700 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/30",
+      "bg-muted/50 text-muted-foreground border-border hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/30",
   },
   K3: {
     active: "bg-rose-500/30 text-rose-300 border-rose-500/50",
     inactive:
-      "bg-slate-800/50 text-slate-400 border-slate-700 hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30",
+      "bg-muted/50 text-muted-foreground border-border hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30",
   },
 };
 
@@ -109,10 +109,10 @@ export function PracticeFilter({
   }
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+    <div className="rounded-xl border border-border bg-card p-4">
       {/* ─── Encabezado ─── */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
+        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <Filter className="size-4" />
           <span>Filtros</span>
         </div>
@@ -120,8 +120,8 @@ export function PracticeFilter({
           <button
             onClick={handleClearAll}
             className="
-              flex items-center gap-1 text-xs text-slate-500
-              hover:text-slate-300 transition-colors cursor-pointer
+              flex items-center gap-1 text-xs text-muted-foreground
+              hover:text-foreground transition-colors cursor-pointer
             "
           >
             <X className="size-3" />
@@ -132,7 +132,7 @@ export function PracticeFilter({
 
       {/* ─── Filtro por capítulo ─── */}
       <div className="mb-3">
-        <p className="text-xs text-slate-500 mb-2">Capítulo</p>
+        <p className="text-xs text-muted-foreground mb-2">Capítulo</p>
         <div className="flex flex-wrap gap-2">
           {/* Pill "Todos" */}
           <button
@@ -143,7 +143,7 @@ export function PracticeFilter({
               ${
                 selectedChapter === null
                   ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50"
-                  : "bg-slate-800/50 text-slate-400 border-slate-700 hover:bg-slate-700/50 hover:text-slate-300"
+                  : "bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
               }
             `}
           >
@@ -164,7 +164,7 @@ export function PracticeFilter({
                 ${
                   selectedChapter === ch
                     ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50"
-                    : "bg-slate-800/50 text-slate-400 border-slate-700 hover:bg-slate-700/50 hover:text-slate-300"
+                    : "bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
                 }
               `}
             >
@@ -176,7 +176,7 @@ export function PracticeFilter({
 
       {/* ─── Filtro por nivel K ─── */}
       <div>
-        <p className="text-xs text-slate-500 mb-2">Nivel Cognitivo</p>
+        <p className="text-xs text-muted-foreground mb-2">Nivel Cognitivo</p>
         <div className="flex gap-2">
           {ALL_LEVELS.map((level) => {
             const isActive =

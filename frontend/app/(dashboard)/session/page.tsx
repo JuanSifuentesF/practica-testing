@@ -400,12 +400,12 @@ export default async function SessionPage({ searchParams }: SessionPageProps) {
               <p className="text-sm font-medium uppercase tracking-wide text-emerald-300">
                 ¡Plan completado!
               </p>
-              <h1 className="text-2xl font-bold tracking-tight text-white">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
                 Todas las sesiones finalizadas
               </h1>
             </div>
           </div>
-          <p className="mt-4 text-sm leading-6 text-slate-300">
+          <p className="mt-4 text-sm leading-6 text-foreground">
             {errorMessage}
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -437,18 +437,18 @@ export default async function SessionPage({ searchParams }: SessionPageProps) {
               <p className="text-sm font-medium uppercase tracking-wide text-amber-300">
                 No se pudo cargar la sesión
               </p>
-              <h1 className="text-2xl font-bold tracking-tight text-white">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
                 Sesión no disponible
               </h1>
             </div>
           </div>
-          <p className="mt-4 text-sm leading-6 text-slate-300">
+          <p className="mt-4 text-sm leading-6 text-foreground">
             {errorMessage || "No se encontraron datos de sesión."}
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Link
               href="/plan"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-800"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
             >
               <ArrowLeft className="h-4 w-4" />
               Volver al plan

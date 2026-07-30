@@ -230,12 +230,12 @@ export function PlanCalendar({
   // Estado vacío: si no hay sesiones en absoluto
   if (sessions.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-8 text-center">
-        <CalendarDays className="mx-auto h-12 w-12 text-slate-600" />
-        <h3 className="mt-4 text-lg font-semibold text-white">
+      <div className="rounded-xl border border-border bg-card/50 p-8 text-center">
+        <CalendarDays className="mx-auto h-12 w-12 text-muted-foreground" />
+        <h3 className="mt-4 text-lg font-semibold text-foreground">
           No hay sesiones programadas
         </h3>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-muted-foreground">
           Este plan no tiene sesiones. Intenta generar un nuevo plan desde la
           página de configuración.
         </p>
@@ -249,11 +249,11 @@ export function PlanCalendar({
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <CalendarDays className="h-5 w-5 text-emerald-400" />
-          <h2 className="text-xl font-semibold text-white">
+          <h2 className="text-xl font-semibold text-foreground">
             Calendario de Estudio
           </h2>
         </div>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           {sessions.length} sesiones · {totalDays} días
         </p>
       </div>
@@ -275,13 +275,13 @@ export function PlanCalendar({
 
         return (
           <div className="flex items-center gap-3">
-            <div className="h-2 flex-1 rounded-full bg-slate-800">
+            <div className="h-2 flex-1 rounded-full bg-muted">
               <div
                 className="h-2 rounded-full bg-emerald-500 transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <span className="text-xs font-medium text-slate-400">
+            <span className="text-xs font-medium text-muted-foreground">
               {completed}/{sessions.length} completadas
             </span>
           </div>

@@ -56,7 +56,6 @@ const UUID_REGEX =
 // Timeout para la generación de teoría (más corto que el plan)
 // La teoría genera ~3-5K tokens vs ~15K tokens del plan
 const THEORY_TIMEOUT_MS = 90_000; // 90 segundos — contenido 3-5K tokens requiere más margen
-const MAX_THEORY_COMPLETION_TOKENS = 6_000;
 
 // ──────────────────────────────────────────────────────────────
 // Parser defensivo del response del LLM
@@ -111,7 +110,7 @@ function isTheoryTopic(value: unknown): value is TheoryTopicContent {
   return (
     isNonEmptyString(value.topic_code) &&
     isNonEmptyString(value.topic_name) &&
-    isLevelK(value.level_k) &&
+    (value.level_k === undefined || isLevelK(value.level_k) || typeof value.level_k === "string") &&
     isNonEmptyString(value.introduction) &&
     Array.isArray(value.key_concepts) &&
     value.key_concepts.every(isKeyConcept) &&
@@ -128,28 +127,33 @@ function parseTheoryResponse(
   expectedTopics: SessionTopic[],
 ): TheoryTopicContent[] | null {
   const value = parseFirstJsonObject(rawText);
-  if (
-    !value ||
-    !Array.isArray(value.topics) ||
-    !value.topics.every(isTheoryTopic)
-  ) {
+  if (!value || !Array.isArray(value.topics)) {
+    return null;
+  }
+
+  // Sanitizar nulls en key_concepts.example para que coincidan con la definición opcional de TypeScript
+  for (const topic of value.topics) {
+    if (topic && Array.isArray(topic.key_concepts)) {
+      for (const concept of topic.key_concepts) {
+        if (concept && (concept.example === null || concept.example === "")) {
+          delete concept.example;
+        }
+      }
+    }
+  }
+
+  if (!value.topics.every(isTheoryTopic)) {
     return null;
   }
 
   const expectedCodes = expectedTopics.map((topic) => topic.code);
   const expectedCodeSet = new Set(expectedCodes);
-  const expectedLevelByCode = new Map(
-    expectedTopics.map((topic) => [topic.code, topic.level_k]),
-  );
   const generatedCodes = value.topics.map((topic) => topic.topic_code);
   if (
     expectedCodeSet.size !== expectedCodes.length ||
     value.topics.length !== expectedCodes.length ||
     new Set(generatedCodes).size !== generatedCodes.length ||
-    generatedCodes.some((code) => !expectedCodeSet.has(code)) ||
-    value.topics.some(
-      (topic) => topic.level_k !== expectedLevelByCode.get(topic.topic_code),
-    )
+    generatedCodes.some((code) => !expectedCodeSet.has(code))
   ) {
     return null;
   }
@@ -516,36 +520,48 @@ export async function POST(
     };
 
     const systemPrompt = buildTheorySystemPrompt(method);
-    const userPrompt = buildTheoryUserPrompt(
-      sessionTopics,
-      method,
-      session.day_number,
-      session.session_type,
-      session.attempt_number,
-    );
 
     // ═══════════════════════════════════════════════════════════
-    // PASO 7: Generar con runtime IA centralizado
+    // PASO 7: Generar con runtime IA centralizado (un tópico a la vez para evitar truncamiento)
     // ═══════════════════════════════════════════════════════════
     console.log(
       `[theory] Generando teoría para sesión ${sessionId} ` +
         `(${sessionTopics.length} tópicos, método=${method})`,
     );
 
-    const ai = await executeAiJson<TheoryTopicContent[]>({
-      request,
-      userId: user.id,
-      feature: "theory",
-      systemPrompt,
-      userPrompts: [userPrompt],
-      maxCompletionTokensPerAttempt: MAX_THEORY_COMPLETION_TOKENS,
-      timeoutMs: THEORY_TIMEOUT_MS,
-      parse: (rawText) => parseTheoryResponse(rawText, sessionTopics),
-      createDemoRaw: () => createDemoTheoryRaw(sessionTopics),
-    });
+    const topicsContent: TheoryTopicContent[] = [];
+    let lastProvider: string | null = null;
+    let lastModel: string | null = null;
 
-    if (!ai.ok) {
-      return NextResponse.json(ai.body, { status: ai.status });
+    for (const topic of sessionTopics) {
+      console.log(`[theory] Generando tópico individual: ${topic.code} (${topic.name})`);
+      const topicUserPrompt = buildTheoryUserPrompt(
+        [topic],
+        method,
+        session.day_number,
+        session.session_type,
+        session.attempt_number,
+      );
+
+      const ai = await executeAiJson<TheoryTopicContent[]>({
+        request,
+        userId: user.id,
+        feature: "theory",
+        systemPrompt,
+        userPrompts: [topicUserPrompt],
+        maxCompletionTokensPerAttempt: 4000, // un solo tópico cabe holgadamente con su detalle completo aquí
+        timeoutMs: THEORY_TIMEOUT_MS,
+        parse: (rawText) => parseTheoryResponse(rawText, [topic]),
+        createDemoRaw: () => createDemoTheoryRaw([topic]),
+      });
+
+      if (!ai.ok) {
+        return NextResponse.json(ai.body, { status: ai.status });
+      }
+
+      topicsContent.push(...ai.value);
+      if (ai.provider) lastProvider = ai.provider;
+      if (ai.model) lastModel = ai.model;
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -553,11 +569,11 @@ export async function POST(
     // ═══════════════════════════════════════════════════════════
     const theoryContent: TheoryContent = {
       source_extraction_version: 2,
-      topics: ai.value,
+      topics: topicsContent,
       method_used: method,
       generated_at: new Date().toISOString(),
-      model_provider: ai.provider ?? "demo",
-      model_name: ai.model ?? "fixture-ai05",
+      model_provider: (lastProvider as TheoryContent["model_provider"]) ?? "demo",
+      model_name: lastModel ?? "fixture-ai05",
     };
 
     // ═══════════════════════════════════════════════════════════

@@ -52,7 +52,7 @@ const TONE_CLASSES: Record<Tone, string> = {
   amber: "border-amber-500/20 bg-amber-500/10 text-amber-300",
   rose: "border-rose-500/20 bg-rose-500/10 text-rose-300",
   violet: "border-violet-500/20 bg-violet-500/10 text-violet-300",
-  slate: "border-slate-700 bg-slate-800/40 text-slate-300",
+  slate: "border-border bg-muted/50 text-foreground",
 };
 
 // Clases para el valor numérico de las StatCards
@@ -62,7 +62,7 @@ const TONE_TEXT_CLASSES: Record<Tone, string> = {
   amber: "text-amber-300",
   rose: "text-rose-300",
   violet: "text-violet-300",
-  slate: "text-slate-300",
+  slate: "text-foreground",
 };
 
 // ──────────────────────────────────────────────────────────────
@@ -187,14 +187,14 @@ function getProgressTone(percent: number): Tone {
 
 function StatCard({ label, value, helper, tone }: StatCardProps) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5 shadow-xl shadow-black/10">
-      <p className="text-sm font-medium text-slate-400">{label}</p>
+    <div className="rounded-xl border border-border bg-card p-5 shadow-xl shadow-black/10">
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
 
       <p className={`mt-2 text-3xl font-bold ${TONE_TEXT_CLASSES[tone]}`}>
         {value}
       </p>
 
-      <p className="mt-2 text-xs leading-relaxed text-slate-500">{helper}</p>
+      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{helper}</p>
     </div>
   );
 }
@@ -231,7 +231,7 @@ export function DashboardSummaryCards({ metrics }: DashboardSummaryCardsProps) {
     PLAN_STATUS_LABELS[metrics.plan_status] ?? "Desconocido";
 
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-950/40 p-5 shadow-2xl shadow-black/20">
+    <section className="rounded-2xl border border-border bg-card p-5 shadow-2xl shadow-black/20">
       <div className="grid gap-5 lg:grid-cols-[1.2fr_2fr]">
         <div
           className={`rounded-2xl border p-6 ${TONE_CLASSES[countdownTone]}`}
@@ -240,7 +240,7 @@ export function DashboardSummaryCards({ metrics }: DashboardSummaryCardsProps) {
             Fecha estimada de examen
           </p>
 
-          <p className="mt-4 text-4xl font-black tracking-tight text-white">
+          <p className="mt-4 text-4xl font-black tracking-tight text-foreground">
             {formatDateEsMx(metrics.estimated_end_date)}
           </p>
 
@@ -250,21 +250,21 @@ export function DashboardSummaryCards({ metrics }: DashboardSummaryCardsProps) {
 
           <div className="mt-6 rounded-xl border border-white/10 bg-black/20 p-4">
             <div className="flex items-center justify-between gap-4 text-sm">
-              <span className="text-slate-300">Inicio del plan</span>
-              <span className="font-semibold text-white">
+              <span className="text-foreground">Inicio del plan</span>
+              <span className="font-semibold text-foreground">
                 {formatDateEsMx(metrics.start_date)}
               </span>
             </div>
 
             <div className="mt-3 flex items-center justify-between gap-4 text-sm">
-              <span className="text-slate-300">Duración objetivo</span>
-              <span className="font-semibold text-white">
+              <span className="text-foreground">Duración objetivo</span>
+              <span className="font-semibold text-foreground">
                 {safeNumber(metrics.objective_days)} días
               </span>
             </div>
 
             <div className="mt-3 flex items-center justify-between gap-4 text-sm">
-              <span className="text-slate-300">Estado</span>
+              <span className="text-foreground">Estado</span>
               <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-white">
                 {planStatusLabel}
               </span>
@@ -307,7 +307,7 @@ export function DashboardSummaryCards({ metrics }: DashboardSummaryCardsProps) {
         </div>
       </div>
 
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-800">
+      <div className="mt-5 h-2 overflow-hidden rounded-full bg-muted">
         <div
           className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-sky-400 to-violet-400 transition-[width] duration-700"
           style={{ width: `${completionPercent}%` }}

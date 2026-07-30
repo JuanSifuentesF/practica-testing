@@ -37,6 +37,8 @@ export interface TopicForDisplay {
   topicName: string;
   levelK: LevelK;
   exerciseCount: number;
+  isUnlocked?: boolean;
+  unlockedDay?: number;
 }
 
 export interface TopicPracticeListProps {
@@ -105,12 +107,12 @@ export function TopicPracticeList({
   // ─── Estado vacío ───────────────────────────────────────
   if (topics.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-8 text-center">
+      <div className="rounded-xl border border-border bg-card p-8 text-center">
         <div className="text-4xl mb-3">🔍</div>
-        <h3 className="text-base font-semibold text-slate-300 mb-1">
+        <h3 className="text-base font-semibold text-foreground mb-1">
           No se encontraron tópicos
         </h3>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Prueba ajustando los filtros o verifica que tu documento tiene tópicos
           ISTQB extraídos correctamente.
         </p>
@@ -128,13 +130,13 @@ export function TopicPracticeList({
           {/* ─── Header del capítulo ─── */}
           <div className="flex items-center gap-2 mb-3">
             <BookOpen className="size-4 text-emerald-400" />
-            <h3 className="text-sm font-semibold text-slate-200">
+            <h3 className="text-sm font-semibold text-foreground">
               Capítulo {chapterNum}
-              <span className="text-slate-500 font-normal ml-1">
+              <span className="text-muted-foreground font-normal ml-1">
                 — {CHAPTER_NAMES[chapterNum] ?? `Capítulo ${chapterNum}`}
               </span>
             </h3>
-            <span className="text-xs text-slate-600 ml-auto">
+            <span className="text-xs text-muted-foreground ml-auto">
               {chapterTopics.length}{" "}
               {chapterTopics.length === 1 ? "tópico" : "tópicos"}
             </span>
@@ -150,6 +152,8 @@ export function TopicPracticeList({
                 levelK={topic.levelK}
                 exerciseCount={topic.exerciseCount}
                 documentId={documentId}
+                isUnlocked={topic.isUnlocked}
+                unlockedDay={topic.unlockedDay}
               />
             ))}
           </div>

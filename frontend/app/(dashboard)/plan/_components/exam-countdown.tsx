@@ -119,8 +119,8 @@ export function ExamCountdown({ estimatedEndDate }: ExamCountdownProps) {
   // Primer render estable: evita HTML dinámico antes de hidratar.
   if (!countdown) {
     return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-        <p className="text-sm font-medium text-slate-300">
+      <div className="rounded-xl border border-border bg-card/50 p-6">
+        <p className="text-sm font-medium text-foreground">
           Calculando cuenta regresiva...
         </p>
       </div>
@@ -132,8 +132,8 @@ export function ExamCountdown({ estimatedEndDate }: ExamCountdownProps) {
 
   return (
     <div
-      className="relative overflow-hidden rounded-xl border border-slate-800
-                  bg-gradient-to-r from-slate-900 via-slate-900/95 to-emerald-950/30
+      className="relative overflow-hidden rounded-xl border border-border
+                  bg-gradient-to-r from-card via-card/95 to-emerald-950/30
                   p-6"
     >
       {/* ── Decoración de fondo ──────────────────────────────── */}
@@ -162,13 +162,13 @@ export function ExamCountdown({ estimatedEndDate }: ExamCountdownProps) {
           >
             {daysLeft}
           </span>
-          <span className="mt-1 text-sm font-medium text-slate-400">
+          <span className="mt-1 text-sm font-medium text-muted-foreground">
             {daysLeft === 1 ? "día restante" : "días restantes"}
           </span>
         </div>
 
         {/* ── Separador vertical (solo desktop) ──────────────── */}
-        <div className="hidden h-16 w-px bg-slate-700 md:block" />
+        <div className="hidden h-16 w-px bg-border md:block" />
 
         {/* ── Mensaje motivacional ─────────────────────────── */}
         <div className="flex items-start gap-3 text-center md:text-left">
@@ -176,10 +176,10 @@ export function ExamCountdown({ estimatedEndDate }: ExamCountdownProps) {
             className={`mt-0.5 h-5 w-5 shrink-0 ${motivational.accentColor}`}
           />
           <div>
-            <p className="text-sm font-semibold text-white">
+            <p className="text-sm font-semibold text-foreground">
               Cuenta regresiva al examen
             </p>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-muted-foreground">
               {motivational.message}
             </p>
           </div>

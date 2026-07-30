@@ -36,8 +36,8 @@ export function FilePreview({
       className="
         flex items-center justify-between
         rounded-lg
-        border border-slate-700
-        bg-slate-800/50
+        border border-border
+        bg-card
         p-4
       "
     >
@@ -63,11 +63,11 @@ export function FilePreview({
         <div className="flex flex-col">
           {/* Nombre del archivo — truncamos si es muy largo para evitar
               que rompa el layout. max-w-[200px] en mobile, más ancho en desktop. */}
-          <span className="text-sm font-medium text-slate-200 truncate max-w-[200px] sm:max-w-[300px]">
+          <span className="text-sm font-medium text-foreground truncate max-w-[200px] sm:max-w-[300px]">
             {file.name}
           </span>
           {/* Tamaño formateado — usando nuestra utilidad de lib/format.ts */}
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-muted-foreground">
             {formatFileSize(file.size)}
           </span>
         </div>
@@ -83,9 +83,9 @@ export function FilePreview({
         className="
           flex h-8 w-8 items-center justify-center
           rounded-md
-          text-slate-400
+          text-muted-foreground
           transition-colors
-          hover:bg-slate-700 hover:text-slate-200
+          hover:bg-muted hover:text-foreground
           disabled:opacity-50 disabled:cursor-not-allowed
         "
         aria-label="Eliminar archivo seleccionado"

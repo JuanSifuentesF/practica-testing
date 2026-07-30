@@ -141,7 +141,7 @@ Responde ÚNICAMENTE con un objeto JSON válido con esta estructura EXACTA:
    - K1 (Recordar): Enfócate en definiciones y listas de términos
    - K2 (Entender): Explica el "por qué" y las diferencias entre conceptos
    - K3 (Aplicar): Incluye escenarios donde el estudiante debe tomar decisiones
-5. **Longitud**: Cada introducción debe tener al menos 150 palabras. Cada summary al menos 80 palabras.
+5. **Longitud**: Cada introducción debe tener al menos 100 palabras para explicar adecuadamente el contexto y su importancia. Cada summary al menos 60 palabras. Las definiciones y ejemplos de conceptos clave deben ser detallados y pedagógicamente completos para asegurar un aprendizaje profundo de la materia.
 6. **Calidad ISTQB**: El contenido debe ser correcto según el syllabus ISTQB CTFL v4.0.`;
 }
 

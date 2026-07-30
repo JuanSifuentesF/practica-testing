@@ -105,7 +105,7 @@ interface State {
 export default function BugLabPage() {
   return (
     <Suspense
-      fallback={<div className="h-40 animate-pulse rounded-xl bg-slate-900" />}
+      fallback={<div className="h-40 animate-pulse rounded-xl bg-muted" />}
     >
       <BugLabContent />
     </Suspense>
@@ -267,14 +267,14 @@ function BugLabContent() {
   }
 
   if (state.loading)
-    return <div className="h-48 animate-pulse rounded-xl bg-slate-900" />;
+    return <div className="h-48 animate-pulse rounded-xl bg-muted" />;
   if (state.error && !state.topic) return <ErrorState message={state.error} />;
   const scenario = state.exercise?.scenario;
   return (
     <div className="flex flex-col gap-6">
       <Link
         href="/practice"
-        className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
         Volver al hub
@@ -283,7 +283,7 @@ function BugLabContent() {
         <p className="text-sm text-amber-300">
           {state.topic?.code} - {state.topic?.name}
         </p>
-        <h1 className="text-2xl font-bold text-white">Bug Report Lab</h1>
+        <h1 className="text-2xl font-bold text-foreground">Bug Report Lab</h1>
       </div>
       {!state.exercise && (
         <button

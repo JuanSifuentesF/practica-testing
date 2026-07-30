@@ -186,6 +186,47 @@ async function loadPracticeData(): Promise<PracticeHubState> {
     // No es crítico — continuamos con conteos en 0
   }
 
+  // ─── 3b. Obtener sesiones del plan para desbloqueo ───────
+  const { data: planSessions } = await supabase
+    .from("sessions")
+    .select("topic_codes, day_number, status")
+    .eq("study_plan_id", plan.id)
+    .order("day_number", { ascending: true });
+
+  const unlockedTopicCodes = new Set<string>();
+  const topicDayMap = new Map<string, number>();
+
+  if (planSessions) {
+    for (const session of planSessions) {
+      const topicCodes = (session.topic_codes as string[]) || [];
+      const isSessionActiveOrCompleted =
+        session.status === "active" || session.status === "completed";
+
+      for (const code of topicCodes) {
+        if (!topicDayMap.has(code)) {
+          topicDayMap.set(code, session.day_number);
+        }
+        if (isSessionActiveOrCompleted) {
+          unlockedTopicCodes.add(code);
+        }
+      }
+    }
+  }
+
+  // También incluir tópicos registrados en topic_progress
+  const { data: progressRows } = await supabase
+    .from("topic_progress")
+    .select("topic_code, status")
+    .eq("study_plan_id", plan.id);
+
+  if (progressRows) {
+    for (const row of progressRows) {
+      if (row.status === "mastered" || row.status === "in_progress") {
+        unlockedTopicCodes.add(row.topic_code);
+      }
+    }
+  }
+
   // ─── 4. Procesar datos ─────────────────────────────────
 
   // 4a. Parsear topics_json a TopicForDisplay[]
@@ -221,6 +262,8 @@ async function loadPracticeData(): Promise<PracticeHubState> {
       topicName: data.name || code,
       levelK: (data.level_k || "K1") as LevelK,
       exerciseCount: exercisesByTopic.get(code) ?? 0,
+      isUnlocked: unlockedTopicCodes.has(code),
+      unlockedDay: topicDayMap.get(code),
     }))
     // Ordenar por código de tópico (FL-1.1.1 < FL-1.2.1 < FL-2.1.1)
     .sort((a, b) => a.topicCode.localeCompare(b.topicCode));
@@ -308,7 +351,6 @@ export default function PracticePage() {
         }
       },
     );
-
     return () => {
       ignore = true;
     };
@@ -350,61 +392,22 @@ export default function PracticePage() {
   if (state.isLoading) {
     return (
       <div className="flex flex-col gap-6">
-        {/* Encabezado */}
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             🔬 Practice Lab
           </h1>
-          <p className="text-slate-400">Cargando tus tópicos de práctica...</p>
+          <p className="text-muted-foreground">Cargando tus tópicos de práctica...</p>
         </div>
 
-        {/* Skeleton de summary cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="rounded-xl border border-slate-800 bg-slate-900/50 p-5"
+              className="rounded-xl border border-border bg-card p-5"
             >
-              <div className="h-10 w-10 bg-slate-800 rounded-lg animate-pulse mb-3" />
-              <div className="h-4 w-20 bg-slate-800 rounded animate-pulse mb-2" />
-              <div className="h-6 w-12 bg-slate-800 rounded animate-pulse" />
-            </div>
-          ))}
-        </div>
-
-        {/* Skeleton del filtro */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-          <div className="h-4 w-24 bg-slate-800 rounded animate-pulse mb-3" />
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="h-8 w-16 bg-slate-800 rounded-lg animate-pulse"
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Skeleton de la lista de tópicos */}
-        <div className="space-y-4">
-          {[1, 2, 3].map((section) => (
-            <div key={section}>
-              <div className="h-4 w-48 bg-slate-800 rounded animate-pulse mb-3" />
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {[1, 2, 3].map((card) => (
-                  <div
-                    key={card}
-                    className="rounded-xl border border-slate-800 bg-slate-900/50 p-4"
-                  >
-                    <div className="flex gap-2 mb-2">
-                      <div className="h-5 w-16 bg-slate-800 rounded animate-pulse" />
-                      <div className="h-5 w-8 bg-slate-800 rounded animate-pulse" />
-                    </div>
-                    <div className="h-4 w-full bg-slate-800 rounded animate-pulse mb-1" />
-                    <div className="h-4 w-2/3 bg-slate-800 rounded animate-pulse" />
-                  </div>
-                ))}
-              </div>
+              <div className="h-10 w-10 bg-muted rounded-lg animate-pulse mb-3" />
+              <div className="h-4 w-20 bg-muted rounded animate-pulse mb-2" />
+              <div className="h-6 w-12 bg-muted rounded animate-pulse" />
             </div>
           ))}
         </div>
@@ -420,7 +423,7 @@ export default function PracticePage() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             🔬 Practice Lab
           </h1>
         </div>
@@ -454,20 +457,21 @@ export default function PracticePage() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             🔬 Practice Lab
           </h1>
-          <p className="text-slate-400">
+          <p className="text-muted-foreground">
             Practica con ejercicios de QA generados por IA.
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-8 text-center">
+        {/* Call to action para crear plan */}
+        <div className="rounded-xl border border-border bg-card text-card-foreground p-8 text-center shadow-sm">
           <div className="text-5xl mb-4">📚</div>
-          <h2 className="text-xl font-semibold text-white mb-2">
+          <h2 className="text-xl font-semibold mb-2">
             Necesitas un plan de estudio activo
           </h2>
-          <p className="text-slate-400 text-sm max-w-md mx-auto mb-6">
+          <p className="text-muted-foreground text-sm max-w-md mx-auto mb-6">
             El Practice Lab usa los tópicos de tu syllabus ISTQB para generar
             ejercicios personalizados. Sube tu PDF y crea un plan de estudio
             primero.
@@ -496,16 +500,16 @@ export default function PracticePage() {
     <div className="flex flex-col gap-6">
       {/* ─── Encabezado ─── */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight text-white">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
           🔬 Practice Lab
         </h1>
-        <p className="text-slate-400">
+        <p className="text-muted-foreground">
           Practica con ejercicios de QA generados por IA.
           {state.fileName && (
-            <span className="text-slate-500">
+            <span className="text-muted-foreground/80">
               {" "}
               · Basado en{" "}
-              <span className="text-slate-400 font-medium">
+              <span className="font-medium text-foreground">
                 {state.fileName}
               </span>
             </span>
@@ -521,27 +525,20 @@ export default function PracticePage() {
             <div
               key={exType.type}
               className={`
-                rounded-xl border bg-gradient-to-br p-5
+                rounded-xl border bg-card text-card-foreground p-5 shadow-sm
                 ${exType.colorClass}
               `}
             >
-              {/* Ícono grande */}
               <div className="text-3xl mb-3">{exType.icon}</div>
-
-              {/* Label */}
-              <h3 className="text-sm font-semibold text-slate-200 mb-0.5">
+              <h3 className="text-sm font-semibold text-foreground mb-0.5">
                 {exType.label}
               </h3>
-
-              {/* Descripción */}
-              <p className="text-xs text-slate-400 mb-3 leading-relaxed">
+              <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
                 {exType.description}
               </p>
-
-              {/* Contador */}
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-white">{count}</span>
-                <span className="text-xs text-slate-500">
+                <span className="text-2xl font-bold text-foreground">{count}</span>
+                <span className="text-xs text-muted-foreground">
                   {count === 1 ? "ejercicio" : "ejercicios"}
                 </span>
               </div>
@@ -551,24 +548,24 @@ export default function PracticePage() {
       </div>
 
       {/* ─── Barra de estadísticas ─── */}
-      <div className="flex items-center gap-4 text-sm text-slate-400">
+      <div className="flex items-center gap-4 text-sm text-muted-foreground">
         <span>
-          <span className="text-white font-semibold">
+          <span className="text-foreground font-semibold">
             {state.topics.length}
           </span>{" "}
           tópicos disponibles
         </span>
-        <span className="text-slate-700">·</span>
+        <span className="text-muted-foreground/40">·</span>
         <span>
-          <span className="text-white font-semibold">
+          <span className="text-foreground font-semibold">
             {state.totalExercises}
           </span>{" "}
           ejercicios generados
         </span>
         {selectedChapter !== null || selectedLevels.length > 0 ? (
           <>
-            <span className="text-slate-700">·</span>
-            <span className="text-emerald-400">
+            <span className="text-muted-foreground/40">·</span>
+            <span className="text-emerald-500">
               {filteredTopics.length} mostrados
             </span>
           </>

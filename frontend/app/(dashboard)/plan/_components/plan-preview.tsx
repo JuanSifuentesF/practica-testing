@@ -242,12 +242,13 @@ export async function PlanPreview({ planId, documentId }: PlanPreviewProps) {
         K3: plan.plan_json?.topics_per_level?.K3 ?? 0,
       };
 
-  // ── Primera sesión pendiente ────────────────────────────
-  // Buscar la primera sesión con status "pending" para el botón "Empezar".
-  // Las sesiones ya están ordenadas por day_number + session_type,
-  // así que .find() retorna la primera en orden cronológico.
-  const firstPendingSession = sessions.find((s) => s.status === "pending");
-  const firstPendingSessionId = firstPendingSession?.id ?? null;
+  // ── Primera sesión activa o pendiente ────────────────────
+  // Buscar la primera sesión en progreso ("active") o la primera "pending" para el botón principal.
+  // Priorizar "active" asegura que si el estudiante dejó una sesión a medias, pueda reanudarla.
+  const activeOrPendingSession =
+    sessions.find((s) => s.status === "active") ||
+    sessions.find((s) => s.status === "pending");
+  const firstPendingSessionId = activeOrPendingSession?.id ?? null;
 
   // Metadata del plan_json (difficulty, title por sesión)
   const planJsonSessions = plan.plan_json?.sessions || [];
@@ -302,16 +303,16 @@ export async function PlanPreview({ planId, documentId }: PlanPreviewProps) {
 
 function EmptyState({ title, message }: { title: string; message: string }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-      <h1 className="text-2xl font-bold tracking-tight text-white">{title}</h1>
-      <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+    <div className="rounded-xl border border-border bg-card text-card-foreground p-6 shadow-sm">
+      <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
+      <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
         {message}
       </p>
       <Link
         href="/setup"
         className="mt-6 inline-flex h-10 items-center justify-center rounded-lg
-                   bg-emerald-500 px-4 text-sm font-medium text-slate-950
-                   transition-colors hover:bg-emerald-400"
+                   bg-emerald-600 px-4 text-sm font-medium text-white
+                   transition-colors hover:bg-emerald-500"
       >
         Volver a configuración
       </Link>

@@ -34,7 +34,7 @@ import Link from "next/link";
  */
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 p-4">
+    <div className="relative isolate flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
       {/* ════════════════════════════════════════════════════════ */}
       {/* FONDO DECORATIVO — Gradiente radial sutil                */}
       {/* ════════════════════════════════════════════════════════ */}
@@ -49,7 +49,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             - rgba(16,185,129,0.15): color emerald con 15% de opacidad
             - rgba(255,255,255,0): se desvanece a transparente
       */}
-      <div className="absolute top-0 -z-10 h-full w-full bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(255,255,255,0))]"></div>
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.16),rgba(255,255,255,0))]"></div>
 
       {/* ════════════════════════════════════════════════════════ */}
       {/* CONTENEDOR PRINCIPAL — Ancho máximo para formularios     */}
@@ -71,11 +71,11 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           */}
           <Link
             href="/"
-            className="inline-block text-2xl font-bold tracking-tight text-white hover:opacity-80 transition-opacity"
+            className="inline-block text-2xl font-bold tracking-tight text-foreground transition-opacity hover:opacity-80"
           >
             {/* El nombre de la app con "Agent" en color emerald
                 para mantener consistencia con el branding de FE-01 */}
-            ISTQB <span className="text-emerald-400">Agent</span>
+            ISTQB <span className="text-emerald-600">Agent</span>
           </Link>
         </div>
 
@@ -88,7 +88,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             backdrop-blur-sm: efecto de desenfoque en el fondo
               (funciona porque el bg tiene opacidad parcial)
         */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-8 shadow-2xl backdrop-blur-sm">
+        <div className="rounded-2xl border border-border bg-card/95 p-8 shadow-xl shadow-slate-900/10 backdrop-blur-sm">
           {/* {children} renderiza el contenido específico de la
               página actual: si estamos en /login, renderiza
               LoginPage; si estamos en /register, renderiza

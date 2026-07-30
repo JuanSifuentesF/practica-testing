@@ -77,26 +77,26 @@ const ACTION_CONFIGS: Record<string, ActionConfig> = {
   advance: {
     label: "Resultado aprobado",
     emoji: "✅",
-    badgeClass: "border-emerald-600 bg-emerald-950/60 text-emerald-300",
+    badgeClass: "border-emerald-500 bg-emerald-50 text-emerald-800 dark:border-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300",
     ringClass: "ring-emerald-500/30",
-    scoreColor: "text-emerald-400",
+    scoreColor: "text-emerald-600 dark:text-emerald-400",
     description: "Has demostrado dominio sobre los conceptos evaluados.",
   },
   reinforce: {
     label: "Refuerzo recomendado",
     emoji: "⚠️",
-    badgeClass: "border-amber-600 bg-amber-950/60 text-amber-300",
+    badgeClass: "border-amber-500 bg-amber-50 text-amber-800 dark:border-amber-600 dark:bg-amber-950/60 dark:text-amber-300",
     ringClass: "ring-amber-500/30",
-    scoreColor: "text-amber-400",
+    scoreColor: "text-amber-600 dark:text-amber-400",
     description:
       "Estás cerca del umbral. Una sesión corta de refuerzo te ayudará.",
   },
   restructure: {
     label: "Reestructuración requerida",
     emoji: "🔄",
-    badgeClass: "border-orange-600 bg-orange-950/60 text-orange-300",
+    badgeClass: "border-orange-500 bg-orange-50 text-orange-800 dark:border-orange-600 dark:bg-orange-950/60 dark:text-orange-300",
     ringClass: "ring-orange-500/30",
-    scoreColor: "text-orange-400",
+    scoreColor: "text-orange-600 dark:text-orange-400",
     description:
       "Algunos conceptos necesitan más trabajo con un enfoque diferente.",
   },

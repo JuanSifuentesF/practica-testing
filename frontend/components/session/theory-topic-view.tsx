@@ -37,11 +37,11 @@ interface TheoryTopicViewProps {
 // ─── Mapeo de level_k a colores de badge ────────────────────
 function getLevelBadgeStyle(level: string): string {
   const map: Record<string, string> = {
-    K1: "border-sky-700 bg-sky-950/40 text-sky-300",
-    K2: "border-amber-700 bg-amber-950/40 text-amber-300",
-    K3: "border-rose-700 bg-rose-950/40 text-rose-300",
+    K1: "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
+    K2: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+    K3: "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
   };
-  return map[level] || "border-slate-700 bg-slate-800 text-slate-300";
+  return map[level] || "border-border bg-muted text-foreground";
 }
 
 export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
@@ -49,13 +49,13 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
     <div className="space-y-3">
       {/* ── Header del tópico ─────────────────────────────── */}
       <div className="flex items-center gap-3 px-1">
-        <span className="font-mono text-sm font-semibold text-emerald-400">
+        <span className="font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">
           {topic.topic_code}
         </span>
         <Badge variant="outline" className={getLevelBadgeStyle(topic.level_k)}>
           {topic.level_k}
         </Badge>
-        <span className="text-sm text-slate-300 truncate">
+        <span className="text-sm text-foreground truncate">
           {topic.topic_name}
         </span>
       </div>
@@ -66,7 +66,7 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
         icon={BookOpen}
         defaultOpen={true}
       >
-        <div className="prose-sm text-sm leading-relaxed text-slate-300 whitespace-pre-line">
+        <div className="prose-sm text-sm leading-relaxed text-foreground whitespace-pre-line">
           {topic.introduction}
         </div>
       </CollapsibleSection>
@@ -82,19 +82,19 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
           {topic.key_concepts.map((concept, index) => (
             <div
               key={`concept-${index}`}
-              className="rounded-lg border border-slate-800/60 bg-slate-950/30 p-3"
+              className="rounded-lg border border-border/60 bg-muted/30 p-3"
             >
               {/* Término en negrita + color acento */}
-              <h4 className="text-sm font-semibold text-emerald-300">
+              <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                 {concept.term}
               </h4>
               {/* Definición */}
-              <p className="mt-1 text-sm leading-relaxed text-slate-300">
+              <p className="mt-1 text-sm leading-relaxed text-foreground">
                 {concept.definition}
               </p>
               {/* Ejemplo del concepto (si existe) */}
               {concept.example && (
-                <p className="mt-2 border-l-2 border-emerald-800 pl-3 text-xs leading-5 text-slate-400 italic">
+                <p className="mt-2 border-l-2 border-emerald-500/50 dark:border-emerald-800 pl-3 text-xs leading-5 text-muted-foreground italic">
                   💡 {concept.example}
                 </p>
               )}
@@ -114,15 +114,15 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
             {topic.examples.map((example, index) => (
               <div
                 key={`example-${index}`}
-                className="rounded-lg border border-slate-800/60 bg-slate-950/30 p-3"
+                className="rounded-lg border border-border/60 bg-muted/30 p-3"
               >
-                <h4 className="text-sm font-semibold text-sky-300">
+                <h4 className="text-sm font-semibold text-sky-700 dark:text-sky-300">
                   {example.title}
                 </h4>
-                <p className="mt-1 text-sm leading-relaxed text-slate-300">
+                <p className="mt-1 text-sm leading-relaxed text-foreground">
                   {example.description}
                 </p>
-                <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-400/80">
+                <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-800 dark:text-amber-400/80">
                   <span className="shrink-0 mt-0.5">📌</span>
                   <span className="leading-5">{example.lesson}</span>
                 </p>
@@ -145,10 +145,10 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
                 key={`conn-${index}`}
                 className="flex items-start gap-2 text-sm"
               >
-                <span className="shrink-0 font-mono text-xs text-purple-400 mt-0.5">
+                <span className="shrink-0 font-mono text-xs text-purple-700 dark:text-purple-400 mt-0.5">
                   {conn.related_topic_code}
                 </span>
-                <span className="text-slate-400 leading-relaxed">
+                <span className="text-muted-foreground leading-relaxed">
                   {conn.relationship}
                 </span>
               </div>
@@ -159,8 +159,8 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
 
       {/* ── Sección 5: Resumen ────────────────────────────── */}
       <CollapsibleSection title="Resumen" icon={FileText}>
-        <div className="rounded-lg border border-emerald-900/30 bg-emerald-950/10 p-3">
-          <p className="text-sm leading-relaxed text-slate-300 whitespace-pre-line">
+        <div className="rounded-lg border border-emerald-300/50 bg-emerald-500/10 dark:border-emerald-900/30 dark:bg-emerald-950/10 p-3">
+          <p className="text-sm leading-relaxed text-foreground whitespace-pre-line">
             {topic.summary}
           </p>
         </div>

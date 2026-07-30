@@ -144,12 +144,12 @@ export function TestCaseEditor({
   ).length;
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 overflow-hidden">
+    <div className="rounded-xl border border-border bg-card/50 overflow-hidden">
       {/* ─── Header ─── */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-800">
+      <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center gap-2">
           <Pencil className="size-4 text-brand-400" />
-          <h2 className="text-sm font-semibold text-white">
+          <h2 className="text-sm font-semibold text-foreground">
             Tus Casos de Prueba
           </h2>
         </div>
@@ -186,23 +186,23 @@ export function TestCaseEditor({
         <table className="w-full text-sm">
           {/* Encabezado */}
           <thead>
-            <tr className="border-b border-slate-800 bg-slate-900/80">
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider w-20">
+            <tr className="border-b border-border bg-card/80">
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-20">
                 ID
               </th>
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Escenario
               </th>
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Dato de Prueba
               </th>
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Resultado Esperado
               </th>
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider w-28">
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-28">
                 Tipo
               </th>
-              <th className="px-3 py-2.5 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider w-12">
+              <th className="px-3 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">
                 {/* Columna para botón eliminar */}
               </th>
             </tr>
@@ -214,7 +214,7 @@ export function TestCaseEditor({
               <tr>
                 <td
                   colSpan={6}
-                  className="px-3 py-8 text-center text-sm text-slate-500"
+                  className="px-3 py-8 text-center text-sm text-muted-foreground"
                 >
                   No hay filas. Haz click en{" "}
                   <span className="text-brand-400 font-medium">
@@ -228,14 +228,14 @@ export function TestCaseEditor({
                 <tr
                   key={row.id + "-" + index}
                   className="
-                    border-b border-slate-800/50
-                    hover:bg-slate-800/30 transition-colors
+                    border-b border-border/50
+                    hover:bg-muted/30 transition-colors
                     group
                   "
                 >
                   {/* ID (solo lectura) */}
                   <td className="px-3 py-1.5">
-                    <span className="text-xs font-mono text-slate-500">
+                    <span className="text-xs font-mono text-muted-foreground">
                       {row.id}
                     </span>
                   </td>
@@ -252,7 +252,7 @@ export function TestCaseEditor({
                       placeholder="Descripción del escenario..."
                       className="
                         w-full bg-transparent border-0 outline-none
-                        text-sm text-slate-200 placeholder-slate-600
+                        text-sm text-foreground placeholder:text-muted-foreground
                         focus:ring-1 focus:ring-brand-500/50 rounded px-1.5 py-1
                         disabled:opacity-50
                       "
@@ -271,7 +271,7 @@ export function TestCaseEditor({
                       placeholder="Valor de entrada..."
                       className="
                         w-full bg-transparent border-0 outline-none
-                        text-sm text-slate-200 placeholder-slate-600
+                        text-sm text-foreground placeholder:text-muted-foreground
                         focus:ring-1 focus:ring-brand-500/50 rounded px-1.5 py-1
                         disabled:opacity-50
                       "
@@ -294,7 +294,7 @@ export function TestCaseEditor({
                       placeholder="Resultado esperado..."
                       className="
                         w-full bg-transparent border-0 outline-none
-                        text-sm text-slate-200 placeholder-slate-600
+                        text-sm text-foreground placeholder:text-muted-foreground
                         focus:ring-1 focus:ring-brand-500/50 rounded px-1.5 py-1
                         disabled:opacity-50
                       "
@@ -314,11 +314,11 @@ export function TestCaseEditor({
                       }
                       disabled={disabled}
                       className={`
-                        w-full bg-slate-800 border border-slate-700
+                        w-full bg-muted border border-border
                         rounded px-2 py-1 text-xs font-medium
                         outline-none focus:ring-1 focus:ring-brand-500/50
                         disabled:opacity-50 cursor-pointer
-                        ${TYPE_OPTIONS.find((o) => o.value === row.type)?.color ?? "text-slate-400"}
+                        ${TYPE_OPTIONS.find((o) => o.value === row.type)?.color ?? "text-muted-foreground"}
                       `}
                     >
                       {TYPE_OPTIONS.map((option) => (
@@ -337,7 +337,7 @@ export function TestCaseEditor({
                       title="Eliminar fila"
                       className="
                         opacity-0 group-hover:opacity-100
-                        p-1 rounded text-slate-600
+                        p-1 rounded text-muted-foreground
                         hover:text-red-400 hover:bg-red-500/10
                         disabled:opacity-50 disabled:cursor-not-allowed
                         transition-all cursor-pointer
@@ -355,7 +355,7 @@ export function TestCaseEditor({
 
       {/* ─── Footer con validación ─── */}
       {rows.length > 0 && !isValid && (
-        <div className="px-4 py-2.5 border-t border-slate-800 bg-amber-950/20">
+        <div className="px-4 py-2.5 border-t border-border bg-amber-950/20">
           <p className="text-xs text-amber-400">
             ⚠️ Necesitas al menos {minRows} filas con escenario y resultado
             completados. Actualmente tienes {completedCount}.

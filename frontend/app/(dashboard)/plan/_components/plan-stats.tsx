@@ -99,16 +99,16 @@ function MetricCard({
   detail: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+    <div className="rounded-xl border border-border bg-card/50 p-5">
       {/* Fila superior: ícono + etiqueta */}
       <div className="flex items-center gap-2">
         <Icon className="h-4 w-4 text-emerald-400" />
-        <p className="text-sm font-medium text-slate-400">{label}</p>
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
       </div>
       {/* Valor principal grande */}
-      <p className="mt-2 text-2xl font-bold text-white">{value}</p>
+      <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
       {/* Detalle secundario */}
-      <p className="mt-1 text-xs text-slate-500">{detail}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
     </div>
   );
 }

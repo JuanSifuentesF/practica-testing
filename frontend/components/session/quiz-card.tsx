@@ -125,12 +125,12 @@ function getSessionTypeLabel(type: string): string {
 
 function getSessionTypeColor(type: string): string {
   const map: Record<string, string> = {
-    morning: "text-amber-300",
-    night: "text-indigo-300",
-    reinforcement: "text-orange-300",
-    mock_exam: "text-purple-300",
+    morning: "text-amber-600 dark:text-amber-300",
+    night: "text-indigo-600 dark:text-indigo-300",
+    reinforcement: "text-orange-600 dark:text-orange-300",
+    mock_exam: "text-purple-600 dark:text-purple-300",
   };
-  return map[type] || "text-slate-300";
+  return map[type] || "text-foreground";
 }
 
 // ─── Componente principal ───────────────────────────────────
@@ -419,12 +419,12 @@ export function QuizCard({ sessionData }: QuizCardProps) {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* HEADER: Info de la sesión + Timer                      */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <section className="rounded-2xl border border-border bg-card/60 p-5">
         {/* ── Fila superior: tipo + número + timer ──────────── */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           {/* Info de la sesión */}
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-800">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted">
               <SessionIcon className={`h-5 w-5 ${sessionColor}`} />
             </div>
             <div>
@@ -454,14 +454,14 @@ export function QuizCard({ sessionData }: QuizCardProps) {
 
         {/* ── Barra de progreso del plan ───────────────────── */}
         <div className="mt-4">
-          <div className="flex items-center justify-between text-xs text-slate-400">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Progreso del plan</span>
             <span>
               {sessionData.plan_context.completed_sessions} /{" "}
               {sessionData.plan_context.total_sessions} sesiones
             </span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-emerald-500 transition-all duration-500"
               style={{ width: `${progressPercent}%` }}
@@ -471,7 +471,7 @@ export function QuizCard({ sessionData }: QuizCardProps) {
 
         {/* ── Indicador de progreso del quiz ───────────────── */}
         {quizContent && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <ClipboardList className="h-3.5 w-3.5" />
             <span>
               {answeredCount} de {totalQuestions} respondidas
@@ -492,17 +492,17 @@ export function QuizCard({ sessionData }: QuizCardProps) {
       {/* ESTADO: Loading                                        */}
       {/* ═══════════════════════════════════════════════════════ */}
       {loading && (
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8">
+        <section className="rounded-2xl border border-border bg-card/60 p-8">
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="relative">
-              <div className="h-16 w-16 rounded-full border-2 border-slate-700 border-t-emerald-400 animate-spin" />
+              <div className="h-16 w-16 rounded-full border-2 border-border border-t-emerald-400 animate-spin" />
               <Sparkles className="absolute top-1/2 left-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 text-emerald-400" />
             </div>
             <div>
               <p className="text-lg font-semibold text-white">
                 Generando quiz...
               </p>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Gemini está creando preguntas estilo ISTQB para{" "}
                 {sessionData.topics.length} tópico
                 {sessionData.topics.length > 1 ? "s" : ""}. Esto puede tomar
@@ -545,7 +545,7 @@ export function QuizCard({ sessionData }: QuizCardProps) {
       {quizContent && !evaluationResult && !showSummary && currentQuestion && (
         <>
           {/* ── Vista de la pregunta ─────────────────────────── */}
-          <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <section className="rounded-2xl border border-border bg-card/60 p-5">
             <QuizQuestionView
               question={currentQuestion}
               selectedAnswer={answers[currentQuestion.question_id] ?? null}
@@ -556,7 +556,7 @@ export function QuizCard({ sessionData }: QuizCardProps) {
           </section>
 
           {/* ── Navegación entre preguntas ───────────────────── */}
-          <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <section className="rounded-2xl border border-border bg-card/60 p-4">
             <QuizNavigation
               currentIndex={currentQuestionIndex}
               totalQuestions={totalQuestions}
@@ -571,7 +571,7 @@ export function QuizCard({ sessionData }: QuizCardProps) {
       {/* CONTENIDO: Resumen pre-envío                           */}
       {/* ═══════════════════════════════════════════════════════ */}
       {quizContent && !evaluationResult && showSummary && (
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <section className="rounded-2xl border border-border bg-card/60 p-5">
           <QuizSummary
             questions={quizContent.questions}
             answers={answers}
@@ -598,9 +598,9 @@ export function QuizCard({ sessionData }: QuizCardProps) {
       {/* ACCIONES: Ver resumen + Volver a teoría                */}
       {/* ═══════════════════════════════════════════════════════ */}
       {quizContent && !evaluationResult && !showSummary && (
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <section className="rounded-2xl border border-border bg-card/60 p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted-foreground">
               {allAnswered
                 ? "¡Has respondido todas las preguntas! Revisa el resumen antes de enviar."
                 : `Faltan ${totalQuestions - answeredCount} pregunta${
@@ -614,7 +614,7 @@ export function QuizCard({ sessionData }: QuizCardProps) {
                 onClick={() =>
                   router.push(`/session?session_id=${sessionData.id}`)
                 }
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-700 px-5 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-800"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
               >
                 <BookOpen className="h-4 w-4" />
                 Teoría
@@ -636,7 +636,7 @@ export function QuizCard({ sessionData }: QuizCardProps) {
 
       {/* ── Metadatos de generación ──────────────────────────── */}
       {quizContent && (
-        <p className="text-center text-xs text-slate-600">
+        <p className="text-center text-xs text-muted-foreground">
           Generado por {quizContent.model_name} ({quizContent.model_provider}) ·{" "}
           {new Date(quizContent.generated_at).toLocaleDateString("es-MX", {
             day: "numeric",

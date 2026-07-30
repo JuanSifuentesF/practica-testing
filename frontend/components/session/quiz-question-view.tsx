@@ -77,13 +77,13 @@ export function QuizQuestionView({
     <div className="space-y-6">
       {/* ── Header: número + tópico + nivel K ──────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <span className="text-xs font-medium text-slate-400">
+        <span className="text-xs font-medium text-muted-foreground">
           Pregunta {questionNumber} de {totalQuestions}
         </span>
         <div className="flex items-center gap-2">
           <Badge
             variant="outline"
-            className="border-slate-700 text-slate-400 text-xs"
+            className="border-border text-muted-foreground text-xs"
           >
             {question.topic_code}
           </Badge>
@@ -120,7 +120,7 @@ export function QuizQuestionView({
               className={`group flex items-start gap-3 rounded-xl border p-4 text-left transition-all duration-200 ${
                 isSelected
                   ? "border-emerald-500/50 bg-emerald-500/10 shadow-lg shadow-emerald-500/5"
-                  : "border-slate-700/50 bg-slate-800/30 hover:border-slate-600 hover:bg-slate-800/60"
+                  : "border-border/50 bg-muted/30 hover:border-border hover:bg-muted/60"
               }`}
             >
               {/* Círculo con la letra de la opción */}
@@ -128,7 +128,7 @@ export function QuizQuestionView({
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold transition-colors duration-200 ${
                   isSelected
                     ? "bg-emerald-500 text-slate-950"
-                    : "bg-slate-700/50 text-slate-300 group-hover:bg-slate-700 group-hover:text-white"
+                    : "bg-muted/50 text-foreground group-hover:bg-muted group-hover:text-foreground"
                 }`}
               >
                 {OPTION_LABELS[key]}
@@ -139,7 +139,7 @@ export function QuizQuestionView({
                 className={`text-sm leading-relaxed pt-1 transition-colors duration-200 ${
                   isSelected
                     ? "text-emerald-100"
-                    : "text-slate-300 group-hover:text-slate-200"
+                    : "text-foreground group-hover:text-foreground"
                 }`}
               >
                 {text}

@@ -11,13 +11,13 @@ export function EndpointCard({ endpoint }: { endpoint: EndpointDefinition }) {
           <p className="text-xs font-semibold uppercase tracking-wider text-blue-300">
             Caso de estudio BE-05
           </p>
-          <h1 className="mt-1 text-xl font-bold text-white">
+          <h1 className="mt-1 text-xl font-bold text-foreground">
             <span className="mr-2 rounded bg-emerald-500/20 px-2 py-1 font-mono text-sm text-emerald-300">
               {endpoint.method}
             </span>
             <code>{endpoint.path}</code>
           </h1>
-          <p className="mt-2 text-sm text-slate-300">
+          <p className="mt-2 text-sm text-foreground">
             Checklist educativa: no enviara archivos ni hara llamadas HTTP.
           </p>
         </div>
@@ -58,14 +58,14 @@ function ContractItem({
   value: string;
 }) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-950/30 p-4">
+    <div className="rounded-lg border border-border bg-card/30 p-4">
       <div className="flex items-center gap-2">
         {icon}
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {label}
         </p>
       </div>
-      <p className="mt-2 break-words font-mono text-xs text-slate-200">
+      <p className="mt-2 break-words font-mono text-xs text-foreground">
         {value}
       </p>
     </div>

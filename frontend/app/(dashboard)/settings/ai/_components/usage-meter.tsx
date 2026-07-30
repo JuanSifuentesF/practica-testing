@@ -21,10 +21,10 @@ export function UsageMeter({ label, unitLabel, meter }: UsageMeterProps) {
   const description = `${meter.used.toLocaleString("es-PE")} de ${meter.limit.toLocaleString("es-PE")} ${unitLabel}`;
 
   return (
-    <div className="space-y-2 rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+    <div className="space-y-2 rounded-lg border border-border bg-muted p-4">
       <div className="flex items-baseline justify-between gap-4">
-        <p className="font-medium text-slate-200">{label}</p>
-        <p className="text-sm text-slate-400">{meter.percentage}%</p>
+        <p className="font-medium text-foreground">{label}</p>
+        <p className="text-sm text-muted-foreground">{meter.percentage}%</p>
       </div>
       <div
         role="progressbar"
@@ -33,14 +33,14 @@ export function UsageMeter({ label, unitLabel, meter }: UsageMeterProps) {
         aria-valuemax={ariaMaximum}
         aria-valuenow={ariaCurrent}
         aria-valuetext={description}
-        className="h-2 overflow-hidden rounded-full bg-slate-800"
+        className="h-2 overflow-hidden rounded-full bg-muted"
       >
         <div
           className={`h-full rounded-full transition-[width] ${METER_COLORS[meter.level]}`}
           style={{ width: `${meter.percentage}%` }}
         />
       </div>
-      <p className="text-sm text-slate-400">{description}</p>
+      <p className="text-sm text-muted-foreground">{description}</p>
     </div>
   );
 }

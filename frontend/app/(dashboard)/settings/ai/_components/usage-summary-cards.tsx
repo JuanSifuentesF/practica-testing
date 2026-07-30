@@ -57,83 +57,83 @@ export function UsageSummaryCards({ report }: UsageSummaryCardsProps) {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="border-slate-800 bg-slate-900/50">
+        <Card className="border-border bg-card text-card-foreground">
           <CardHeader>
-            <CardTitle className="text-base text-slate-100">
+            <CardTitle className="text-base text-foreground">
               Actividad registrada
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm text-slate-400">
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>
               Hoy:{" "}
-              <span className="font-medium text-slate-200">
+              <span className="font-medium text-foreground">
                 {report.activity.today.requests}
               </span>{" "}
               solicitudes ·{" "}
-              <span className="font-medium text-slate-200">
+              <span className="font-medium text-foreground">
                 {report.activity.today.tokens.toLocaleString("es-PE")}
               </span>{" "}
               tokens
             </p>
             <p>
               Mes:{" "}
-              <span className="font-medium text-slate-200">
+              <span className="font-medium text-foreground">
                 {report.activity.month.requests}
               </span>{" "}
               solicitudes ·{" "}
-              <span className="font-medium text-slate-200">
+              <span className="font-medium text-foreground">
                 {report.activity.month.tokens.toLocaleString("es-PE")}
               </span>{" "}
               tokens
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Incluye eventos Demo, Managed y BYOK para auditoría. Los bloqueos
               no consumen solicitudes ni tokens.
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-800 bg-slate-900/50">
+        <Card className="border-border bg-card text-card-foreground">
           <CardHeader>
-            <CardTitle className="text-base text-slate-100">
+            <CardTitle className="text-base text-foreground">
               Estado del registro
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm text-slate-400">
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>
               Bloqueos hoy / mes:{" "}
-              <span className="font-medium text-slate-200">
+              <span className="font-medium text-foreground">
                 {report.activity.blockedToday} / {report.activity.blockedMonth}
               </span>
             </p>
             <p>
               Reservas pendientes de finalizar:{" "}
-              <span className="font-medium text-slate-200">
+              <span className="font-medium text-foreground">
                 {report.activity.pendingFinalizations}
               </span>
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Lectura generada: {formatUtc(report.generatedAt)} UTC.
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="border-slate-800 bg-slate-900/50">
+      <Card className="border-border bg-card text-card-foreground">
         <CardHeader>
-          <CardTitle className="text-base text-slate-100">
+          <CardTitle className="text-base text-foreground">
             Cuota de plataforma Managed
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {report.quota.enforcementActive ? (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted-foreground">
               En esta lectura, Managed estaba activo. Estos límites se aplican a
               llamadas Managed; la actividad BYOK se audita arriba, pero no
               consume este presupuesto.
             </p>
           ) : (
-            <p className="rounded-md border border-blue-900/70 bg-blue-950/30 p-3 text-sm text-blue-200">
+            <p className="rounded-md border border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900/70 dark:bg-blue-950/30 dark:text-blue-200 p-3 text-sm">
               En esta lectura, el modo no era Managed. Los medidores muestran el
               consumo histórico de la cuota de plataforma; actualiza esta
               sección después de cambiar de modo para obtener otro snapshot.

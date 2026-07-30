@@ -4,28 +4,6 @@
 // app/(dashboard)/practice/[topicCode]/page.tsx
 // Página de práctica individual por tópico ISTQB
 // ============================================================
-// TIPO: Client Component ('use client')
-//
-// RESPONSABILIDADES:
-//   1. Leer topicCode de la URL (useParams)
-//   2. Leer document_id de searchParams (useSearchParams)
-//   3. Cargar el tópico del documento (topics_json de Supabase)
-//   4. Generar ejercicio bajo demanda (POST /api/practice/generate)
-//   5. Renderizar la secuencia: teoría → ejercicio → editor
-//   6. Gestionar el estado del TestCaseEditor (filas de test cases)
-//   7. Preparar la submission para envío (PL-09)
-//
-// URL: /practice/FL-4.2.1?document_id=UUID
-//
-// NEXT.JS 16:
-//   En Client Components, useParams() retorna un objeto síncrono
-//   con los parámetros de la ruta. Para searchParams usamos
-//   useSearchParams() del hook de Next.js.
-//
-// PATRÓN: Container + fetch-on-demand
-//   Los datos del tópico se cargan al montar (useEffect).
-//   El ejercicio se genera solo al click (no al montar).
-// ============================================================
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
@@ -41,12 +19,20 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import type { LevelK } from "@/types/database";
 import type {
+  BugReportData,
   PracticeEvaluateRequest,
   PracticeEvaluateResponse,
   PracticeExercise,
+  PracticeExerciseType,
   SubmissionContent,
   TestCaseRow,
 } from "@/types/practice";
+import { BugReportForm } from "../bug-lab/_components/bug-report-form";
+import { ExploratoryForm } from "../_components/exploratory-form";
+import {
+  EXERCISE_MODALITIES,
+  getRecommendedModalities,
+} from "@/lib/practice/modalities";
 import { FeedbackPanel } from "./_components/feedback-panel";
 import { SolutionCompare } from "./_components/solution-compare";
 import { TheoryBrief } from "./_components/theory-brief";
@@ -86,20 +72,12 @@ interface PageState {
   evaluateResult: PracticeEvaluateResponse | null;
 }
 
-// ──────────────────────────────────────────────────────────────
-// Constantes
-// ──────────────────────────────────────────────────────────────
-
-/**
- * Extrae el número mínimo de filas del array de constraints.
- * Busca patrones como "Mínimo 6 test cases" o "Al menos 5 casos".
- */
 function extractMinRows(constraints: string[]): number {
   for (const c of constraints) {
     const match = c.match(/(?:mínimo|al menos|minimum)\s*(\d+)/i);
     if (match) return parseInt(match[1], 10);
   }
-  return 3; // Default razonable
+  return 3;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -111,11 +89,9 @@ export default function PracticeTopicPage() {
   const searchParams = useSearchParams();
   const { aiFetch } = useAiSession();
 
-  // ─── Extraer parámetros de la URL ─────────────────────
   const topicCode = decodeURIComponent(params.topicCode ?? "");
   const documentId = searchParams.get("document_id") ?? "";
 
-  // ─── Estado de la página ──────────────────────────────
   const [state, setState] = useState<PageState>({
     isLoadingTopic: true,
     topicError: null,
@@ -130,9 +106,10 @@ export default function PracticeTopicPage() {
     evaluateResult: null,
   });
 
-  // ═══════════════════════════════════════════════════════════
-  // FETCH: Cargar datos del tópico al montar
-  // ═══════════════════════════════════════════════════════════
+  const recommendedModalities = getRecommendedModalities(topicCode);
+  const [selectedModality, setSelectedModality] = useState<PracticeExerciseType>(
+    recommendedModalities[0] ?? "test_cases"
+  );
 
   const loadTopicData = useCallback(async () => {
     if (!topicCode || !documentId) {
@@ -165,7 +142,7 @@ export default function PracticeTopicPage() {
 
       if (!topicEntry) {
         throw new Error(
-          `El tópico "${topicCode}" no existe en el documento. Verifica la URL.`,
+          `El tópico "${topicCode}" no existe en el documento. Verifica la URL.`
         );
       }
 
@@ -195,12 +172,9 @@ export default function PracticeTopicPage() {
     loadTopicData();
   }, [loadTopicData]);
 
-  // ═══════════════════════════════════════════════════════════
-  // FETCH: Generar ejercicio (on-demand)
-  // ═══════════════════════════════════════════════════════════
-
-  async function handleGenerateExercise() {
+  async function handleGenerateExercise(targetModality?: PracticeExerciseType) {
     if (!state.topic) return;
+    const modalityToUse = targetModality ?? selectedModality;
 
     setState((prev) => ({
       ...prev,
@@ -221,7 +195,7 @@ export default function PracticeTopicPage() {
           document_id: state.topic.documentId,
           topic_code: state.topic.topicCode,
           level_k: state.topic.levelK,
-          exercise_type: "test_cases",
+          exercise_type: modalityToUse,
         }),
       });
 
@@ -230,7 +204,7 @@ export default function PracticeTopicPage() {
           .json()
           .catch(() => ({ error: "Error desconocido" }));
         throw new Error(
-          errorData.error ?? `Error ${response.status}: ${response.statusText}`,
+          errorData.error ?? `Error ${response.status}: ${response.statusText}`
         );
       }
 
@@ -263,10 +237,6 @@ export default function PracticeTopicPage() {
       }));
     }
   }
-
-  // ═══════════════════════════════════════════════════════════
-  // HANDLER: Enviar respuesta a la API de evaluacion
-  // ═══════════════════════════════════════════════════════════
 
   async function handleSubmit() {
     if (!state.exercise || state.testCaseRows.length === 0) return;
@@ -302,16 +272,14 @@ export default function PracticeTopicPage() {
         throw new Error(
           typeof errorData.error === "string"
             ? errorData.error
-            : `Error ${response.status}: ${response.statusText}`,
+            : `Error ${response.status}: ${response.statusText}`
         );
       }
 
       const data = (await response.json()) as PracticeEvaluateResponse;
 
       if (!data.submission.feedback) {
-        throw new Error(
-          "La API devolvio una evaluacion sin feedback. Revisa PL-09.",
-        );
+        throw new Error("La API devolvió una evaluación sin feedback.");
       }
 
       setState((prev) => ({
@@ -331,21 +299,140 @@ export default function PracticeTopicPage() {
         submitted: false,
         submitError: message,
       }));
-
-      console.error("[practice/evaluate] Error:", err);
     }
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // COMPUTED
-  // ═══════════════════════════════════════════════════════════
+  async function handleSubmitBugReport(reportData: BugReportData) {
+    if (!state.exercise) return;
+
+    setState((prev) => ({
+      ...prev,
+      isSubmitting: true,
+      submitError: null,
+    }));
+
+    const submissionContent: SubmissionContent = {
+      type: "bug_report",
+      bug_report: reportData,
+    };
+
+    try {
+      const response = await aiFetch("/api/practice/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          exercise_id: state.exercise.id,
+          submission: submissionContent,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Error al evaluar." }));
+
+        throw new Error(
+          typeof errorData.error === "string"
+            ? errorData.error
+            : `Error ${response.status}: ${response.statusText}`
+        );
+      }
+
+      const data = (await response.json()) as PracticeEvaluateResponse;
+
+      if (!data.submission.feedback) {
+        throw new Error("La API devolvió una evaluación sin feedback.");
+      }
+
+      setState((prev) => ({
+        ...prev,
+        isSubmitting: false,
+        submitted: true,
+        submitError: null,
+        evaluateResult: data,
+      }));
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Error al evaluar la respuesta.";
+
+      setState((prev) => ({
+        ...prev,
+        isSubmitting: false,
+        submitted: false,
+        submitError: message,
+      }));
+    }
+  }
+
+  async function handleSubmitExploratory(data: { notes: string; findings: string[] }) {
+    if (!state.exercise) return;
+
+    setState((prev) => ({
+      ...prev,
+      isSubmitting: true,
+      submitError: null,
+    }));
+
+    const submissionContent: SubmissionContent = {
+      type: "exploratory",
+      notes: data.notes,
+      findings: data.findings,
+    };
+
+    try {
+      const response = await aiFetch("/api/practice/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          exercise_id: state.exercise.id,
+          submission: submissionContent,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Error al evaluar." }));
+
+        throw new Error(
+          typeof errorData.error === "string"
+            ? errorData.error
+            : `Error ${response.status}: ${response.statusText}`
+        );
+      }
+
+      const evalData = (await response.json()) as PracticeEvaluateResponse;
+
+      if (!evalData.submission.feedback) {
+        throw new Error("La API devolvió una evaluación sin feedback.");
+      }
+
+      setState((prev) => ({
+        ...prev,
+        isSubmitting: false,
+        submitted: true,
+        submitError: null,
+        evaluateResult: evalData,
+      }));
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Error al evaluar la respuesta.";
+
+      setState((prev) => ({
+        ...prev,
+        isSubmitting: false,
+        submitted: false,
+        submitError: message,
+      }));
+    }
+  }
 
   const minRows = state.exercise
     ? extractMinRows(state.exercise.scenario.constraints)
     : 3;
 
   const completedRows = state.testCaseRows.filter(
-    (r) => r.scenario.trim() !== "" && r.expected_result.trim() !== "",
+    (r) => r.scenario.trim() !== "" && r.expected_result.trim() !== ""
   ).length;
 
   const canSubmit =
@@ -354,37 +441,29 @@ export default function PracticeTopicPage() {
     state.exercise !== null &&
     completedRows >= minRows;
 
-  // ═══════════════════════════════════════════════════════════
-  // RENDER: Cargando tópico
-  // ═══════════════════════════════════════════════════════════
-
   if (state.isLoadingTopic) {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-3">
           <Link
             href="/practice"
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="size-5" />
           </Link>
           <div>
-            <div className="h-6 w-48 bg-slate-800 rounded animate-pulse mb-1" />
-            <div className="h-4 w-32 bg-slate-800 rounded animate-pulse" />
+            <div className="h-6 w-48 bg-muted rounded animate-pulse mb-1" />
+            <div className="h-4 w-32 bg-muted rounded animate-pulse" />
           </div>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <div className="h-4 w-full bg-slate-800 rounded animate-pulse mb-3" />
-          <div className="h-4 w-3/4 bg-slate-800 rounded animate-pulse mb-3" />
-          <div className="h-4 w-1/2 bg-slate-800 rounded animate-pulse" />
+        <div className="rounded-xl border border-border bg-card/50 p-6">
+          <div className="h-4 w-full bg-muted rounded animate-pulse mb-3" />
+          <div className="h-4 w-3/4 bg-muted rounded animate-pulse mb-3" />
+          <div className="h-4 w-1/2 bg-muted rounded animate-pulse" />
         </div>
       </div>
     );
   }
-
-  // ═══════════════════════════════════════════════════════════
-  // RENDER: Error al cargar tópico
-  // ═══════════════════════════════════════════════════════════
 
   if (state.topicError || !state.topic) {
     return (
@@ -392,11 +471,11 @@ export default function PracticeTopicPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/practice"
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="size-5" />
           </Link>
-          <h1 className="text-2xl font-bold text-white">Práctica</h1>
+          <h1 className="text-2xl font-bold text-foreground">Práctica</h1>
         </div>
 
         <div className="rounded-xl border border-red-900/50 bg-red-950/30 p-6">
@@ -423,26 +502,7 @@ export default function PracticeTopicPage() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // RENDER: Página completa
-  // ═══════════════════════════════════════════════════════════
-
   const { topic } = state;
-  const kLevelPracticeTitle: Record<LevelK, string> = {
-    K1: "Laboratorio K1: Identificación de conceptos",
-    K2: "Laboratorio K2: Análisis de escenarios",
-    K3: "Laboratorio K3: Diseño de casos de prueba",
-  };
-  const kLevelPracticeDesc: Record<LevelK, string> = {
-    K1: "Identifica y clasifica conceptos de testing a partir del escenario. El ejercicio está adaptado a un nivel de reconocimiento.",
-    K2: "Analiza el escenario presentado e identifica errores, omisiones o técnicas aplicables.",
-    K3: "Aplica técnicas de diseño de pruebas para crear casos desde cero a partir del escenario.",
-  };
-  const kLevelPracticeAction: Record<LevelK, string> = {
-    K1: "Generar practica guiada",
-    K2: "Generar practica de analisis",
-    K3: "Generar casos de prueba",
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -450,15 +510,15 @@ export default function PracticeTopicPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/practice"
-          className="text-slate-400 hover:text-white transition-colors"
+          className="text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="size-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-foreground">
             Práctica: {topic.topicCode}
           </h1>
-          <p className="text-sm text-slate-400">{topic.topicName}</p>
+          <p className="text-sm text-muted-foreground">{topic.topicName}</p>
         </div>
       </div>
 
@@ -470,26 +530,69 @@ export default function PracticeTopicPage() {
         syllabusText={topic.syllabusText}
       />
 
-      {/* ─── Sección 2: Generar ejercicio ─── */}
+      {/* ─── Sección 2: Selección de Modalidad y Generación ─── */}
       {!state.exercise && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-          <>
-            <h2 className="text-sm font-semibold text-slate-300">
-              {kLevelPracticeTitle[topic.levelK]}
+        <div className="rounded-xl border border-border bg-card/50 p-5 space-y-4">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">
+              Selecciona el tipo de ejercicio a practicar
             </h2>
-            <p className="mt-1 max-w-2xl text-sm text-slate-400">
-              {kLevelPracticeDesc[topic.levelK]}
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Modalidades recomendadas para la experticia pedagógica del capítulo de este tópico:
             </p>
-            <p className="mt-3 text-xs text-slate-500">
-              Bug Report y API Testing tendrán rutas propias cuando se
-              implementen PL-11 y PL-12.
-            </p>
+          </div>
 
+          {/* Grid de modalidades recomendadas */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {recommendedModalities.map((modType) => {
+              const modInfo = EXERCISE_MODALITIES[modType];
+              const isSelected = selectedModality === modType;
+              return (
+                <button
+                  key={modType}
+                  type="button"
+                  onClick={() => setSelectedModality(modType)}
+                  className={`
+                    flex flex-col text-left p-4 rounded-xl border transition-all cursor-pointer
+                    ${
+                      isSelected
+                        ? "border-emerald-500 bg-emerald-950/20 shadow-md shadow-emerald-500/10"
+                        : "border-border bg-card/40 hover:border-border hover:bg-card/60"
+                    }
+                  `}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xl">{modInfo.icon}</span>
+                    <span
+                      className={`
+                        text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border
+                        ${
+                          isSelected
+                            ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                            : "bg-muted text-muted-foreground border-border"
+                        }
+                      `}
+                    >
+                      {isSelected ? "Seleccionado" : "Disponible"}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {modInfo.label}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    {modInfo.description}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="pt-2 flex justify-start">
             <button
-              onClick={handleGenerateExercise}
+              onClick={() => handleGenerateExercise(selectedModality)}
               disabled={state.isGenerating}
               className="
-                mt-4 flex items-center gap-2 px-5 py-2.5
+                flex items-center gap-2 px-5 py-2.5
                 text-sm font-semibold rounded-lg
                 bg-emerald-600 text-white
                 hover:bg-emerald-500
@@ -500,18 +603,17 @@ export default function PracticeTopicPage() {
               {state.isGenerating ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Generando ejercicio...
+                  Generando escenario con IA...
                 </>
               ) : (
                 <>
                   <Sparkles className="size-4" />
-                  {kLevelPracticeAction[topic.levelK]}
+                  Generar ejercicio ({EXERCISE_MODALITIES[selectedModality].shortLabel})
                 </>
               )}
             </button>
-          </>
+          </div>
 
-          {/* Error de generación */}
           {state.generateError && (
             <div className="mt-3 rounded-lg bg-red-950/30 border border-red-900/50 p-3">
               <p className="text-xs text-red-400">{state.generateError}</p>
@@ -525,7 +627,7 @@ export default function PracticeTopicPage() {
         <>
           <ExercisePrompt scenario={state.exercise.scenario} />
 
-          {/* ─── Sección 4: TestCaseEditor (solo para test_cases) ─── */}
+          {/* Editor para test_cases */}
           {state.exercise.exercise_type === "test_cases" && (
             <>
               <TestCaseEditor
@@ -537,17 +639,15 @@ export default function PracticeTopicPage() {
                 disabled={state.isSubmitting || state.submitted}
               />
 
-              {/* ─── Botones de acción ─── */}
               <div className="flex items-center justify-between">
-                {/* Botón generar otro */}
                 <button
-                  onClick={handleGenerateExercise}
+                  onClick={() => handleGenerateExercise()}
                   disabled={state.isGenerating || state.isSubmitting}
                   className="
                     flex items-center gap-2 px-4 py-2
                     text-xs font-medium rounded-lg
-                    bg-slate-800 text-slate-400
-                    hover:bg-slate-700 hover:text-slate-300
+                    bg-muted text-muted-foreground
+                    hover:bg-muted hover:text-foreground
                     disabled:opacity-50 disabled:cursor-not-allowed
                     transition-colors cursor-pointer
                   "
@@ -556,7 +656,6 @@ export default function PracticeTopicPage() {
                   Generar otro ejercicio
                 </button>
 
-                {/* Botón enviar */}
                 {state.submitted ? (
                   <div className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-emerald-400">
                     <CheckCircle2 className="size-4" />
@@ -590,8 +689,6 @@ export default function PracticeTopicPage() {
                 )}
               </div>
 
-              {/* Nota sobre PL-09 */}
-              {/* Error de evaluacion */}
               {state.submitError && (
                 <div className="rounded-lg border border-red-900/50 bg-red-950/30 p-4">
                   <div className="flex items-start gap-2">
@@ -608,7 +705,6 @@ export default function PracticeTopicPage() {
                 </div>
               )}
 
-              {/* Feedback post-evaluacion */}
               {state.evaluateResult?.submission.feedback && (
                 <>
                   <FeedbackPanel
@@ -622,15 +718,15 @@ export default function PracticeTopicPage() {
 
                   <div className="flex justify-center pt-2">
                     <button
-                      onClick={handleGenerateExercise}
+                      onClick={() => handleGenerateExercise()}
                       disabled={state.isGenerating || state.isSubmitting}
                       className="
-          flex items-center gap-2 rounded-lg px-5 py-2.5
-          bg-slate-800 text-sm font-semibold text-slate-300
-          transition-colors hover:bg-slate-700 hover:text-white
-          disabled:cursor-not-allowed disabled:opacity-50
-          cursor-pointer
-        "
+                        flex items-center gap-2 rounded-lg px-5 py-2.5
+                        bg-slate-800 text-sm font-semibold text-slate-300
+                        transition-colors hover:bg-slate-700 hover:text-white
+                        disabled:cursor-not-allowed disabled:opacity-50
+                        cursor-pointer
+                      "
                     >
                       <Sparkles className="size-4" />
                       Practicar de nuevo
@@ -641,20 +737,138 @@ export default function PracticeTopicPage() {
             </>
           )}
 
-          {/* ─── Para otros tipos de ejercicio (placeholder) ─── */}
-          {state.exercise.exercise_type !== "test_cases" && (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 text-center">
-              <div className="text-4xl mb-3">🚧</div>
-              <h3 className="text-base font-semibold text-slate-300 mb-1">
-                Editor para &quot;{state.exercise.exercise_type}&quot; en
-                construcción
-              </h3>
-              <p className="text-sm text-slate-500 max-w-md mx-auto">
-                El editor para este tipo de ejercicio se implementará en guías
-                futuras (PL-11 para Bug Reports, PL-12 para API Testing).
-              </p>
-            </div>
+          {/* Editor para bug_report */}
+          {state.exercise.exercise_type === "bug_report" && (
+            <>
+              <BugReportForm
+                disabled={state.isSubmitting || state.submitted}
+                onSubmit={handleSubmitBugReport}
+              />
+
+              {state.submitError && (
+                <div className="rounded-lg border border-red-900/50 bg-red-950/30 p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-400" />
+                    <div>
+                      <p className="text-sm font-medium text-red-300">
+                        No se pudo evaluar tu reporte de defecto
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-red-200/80">
+                        {state.submitError}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {state.evaluateResult?.submission.feedback && (
+                <>
+                  <FeedbackPanel
+                    score={state.evaluateResult.submission.score_percent ?? 0}
+                    feedback={state.evaluateResult.submission.feedback}
+                  />
+                  <SolutionCompare
+                    solution={state.evaluateResult.solution}
+                    submission={state.evaluateResult.submission.content}
+                  />
+
+                  <div className="flex justify-center pt-2">
+                    <button
+                      onClick={() => handleGenerateExercise()}
+                      disabled={state.isGenerating || state.isSubmitting}
+                      className="
+                        flex items-center gap-2 rounded-lg px-5 py-2.5
+                        bg-slate-800 text-sm font-semibold text-slate-300
+                        transition-colors hover:bg-slate-700 hover:text-white
+                        disabled:cursor-not-allowed disabled:opacity-50
+                        cursor-pointer
+                      "
+                    >
+                      <Sparkles className="size-4" />
+                      Practicar de nuevo
+                    </button>
+                  </div>
+                </>
+              )}
+            </>
           )}
+
+          {/* Editor para exploratory */}
+          {state.exercise.exercise_type === "exploratory" && (
+            <>
+              <ExploratoryForm
+                disabled={state.isSubmitting || state.submitted}
+                onSubmit={handleSubmitExploratory}
+              />
+
+              {state.submitError && (
+                <div className="rounded-lg border border-red-900/50 bg-red-950/30 p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-400" />
+                    <div>
+                      <p className="text-sm font-medium text-red-300">
+                        No se pudo evaluar tu bitácora exploratoria
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-red-200/80">
+                        {state.submitError}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {state.evaluateResult?.submission.feedback && (
+                <>
+                  <FeedbackPanel
+                    score={state.evaluateResult.submission.score_percent ?? 0}
+                    feedback={state.evaluateResult.submission.feedback}
+                  />
+                  <SolutionCompare
+                    solution={state.evaluateResult.solution}
+                    submission={state.evaluateResult.submission.content}
+                  />
+
+                  <div className="flex justify-center pt-2">
+                    <button
+                      onClick={() => handleGenerateExercise()}
+                      disabled={state.isGenerating || state.isSubmitting}
+                      className="
+                        flex items-center gap-2 rounded-lg px-5 py-2.5
+                        bg-slate-800 text-sm font-semibold text-slate-300
+                        transition-colors hover:bg-slate-700 hover:text-white
+                        disabled:cursor-not-allowed disabled:opacity-50
+                        cursor-pointer
+                      "
+                    >
+                      <Sparkles className="size-4" />
+                      Practicar de nuevo
+                    </button>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Placeholder para otras modalidades (API Testing) */}
+          {state.exercise.exercise_type !== "test_cases" &&
+            state.exercise.exercise_type !== "bug_report" &&
+            state.exercise.exercise_type !== "exploratory" && (
+              <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 text-center">
+                <div className="text-4xl mb-3">🚧</div>
+                <h3 className="text-base font-semibold text-slate-300 mb-1">
+                  Editor para &quot;{state.exercise.exercise_type}&quot; en construcción
+                </h3>
+                <p className="text-sm text-slate-500 max-w-md mx-auto mb-4">
+                  El motor de generación con la IA ha creado correctamente el escenario de tipo &quot;{state.exercise.exercise_type}&quot;. Puedes practicarlo también desde su hub dedicado.
+                </p>
+                <button
+                  onClick={() => setState((prev) => ({ ...prev, exercise: null }))}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
+                >
+                  Volver a seleccionar modalidad
+                </button>
+              </div>
+            )}
         </>
       )}
     </div>

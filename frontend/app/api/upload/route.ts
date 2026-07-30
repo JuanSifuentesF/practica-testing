@@ -110,7 +110,8 @@ export async function POST(request: Request) {
     // Reutilizamos la constante ACCEPTED_FILE_TYPES de lib/format.ts
     // para mantener consistencia entre la validación del frontend
     // (PdfDropzone) y la del backend (este Route Handler).
-    if (!ACCEPTED_FILE_TYPES.includes(file.type)) {
+    const hasPdfExtension = file.name.toLowerCase().endsWith(".pdf");
+    if (!ACCEPTED_FILE_TYPES.includes(file.type) && !hasPdfExtension) {
       return NextResponse.json(
         {
           error: `Tipo de archivo no válido: "${file.type}". Solo se aceptan archivos PDF.`,

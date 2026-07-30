@@ -33,17 +33,17 @@ export function ExercisePrompt({ scenario }: ExercisePromptProps) {
       {/* ─── Header ─── */}
       <div className="flex items-center gap-2">
         <Target className="size-5 text-brand-400" />
-        <h2 className="text-base font-semibold text-white">
+        <h2 className="text-base font-semibold text-foreground">
           Ejercicio Práctico
         </h2>
       </div>
 
       {/* ─── Escenario (sistema bajo prueba) ─── */}
       <div>
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
           Escenario
         </h3>
-        <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-line">
+        <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
           {scenario.scenario}
         </p>
       </div>
@@ -56,7 +56,7 @@ export function ExercisePrompt({ scenario }: ExercisePromptProps) {
             Tu Tarea
           </h3>
         </div>
-        <p className="text-sm text-slate-200 leading-relaxed">
+        <p className="text-sm text-foreground leading-relaxed">
           {scenario.task_description}
         </p>
       </div>

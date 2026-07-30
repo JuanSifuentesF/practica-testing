@@ -72,7 +72,7 @@ export default function ApiTestingPage() {
     <div className="flex flex-col gap-6">
       <Link
         href="/practice"
-        className="inline-flex w-fit items-center gap-2 text-sm text-slate-400 hover:text-white"
+        className="inline-flex w-fit items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
         Volver al Practice Lab
@@ -82,10 +82,10 @@ export default function ApiTestingPage() {
           <p className="text-sm text-blue-300">
             Laboratorio educativo de contrato HTTP
           </p>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-foreground">
             API Testing Checklist
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-muted-foreground">
             {completed}/{EXTRACT_PDF_FULL_CHECKLIST.length} validaciones
             marcadas
           </p>
@@ -93,7 +93,7 @@ export default function ApiTestingPage() {
         <button
           type="button"
           onClick={resetProgress}
-          className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
+          className="inline-flex w-fit items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-muted"
         >
           <RotateCcw className="size-4" />
           Restablecer progreso
@@ -117,7 +117,7 @@ export default function ApiTestingPage() {
           onItemChange={updateItem}
         />
       ) : (
-        <div className="h-96 animate-pulse rounded-xl bg-slate-900" />
+        <div className="h-96 animate-pulse rounded-xl bg-muted" />
       )}
     </div>
   );

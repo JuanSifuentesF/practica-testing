@@ -68,7 +68,7 @@ export function QuizSummary({
       {/* ── Título ────────────────────────────────────────── */}
       <div className="text-center">
         <h2 className="text-xl font-bold text-white">Resumen del Quiz</h2>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-muted-foreground">
           Revisa tus respuestas antes de enviar
         </p>
       </div>
@@ -83,19 +83,19 @@ export function QuizSummary({
           className={`rounded-xl border p-4 text-center ${
             unansweredCount > 0
               ? "border-amber-500/20 bg-amber-950/20"
-              : "border-slate-700 bg-slate-800/30"
+              : "border-border bg-muted/30"
           }`}
         >
           <p
             className={`text-2xl font-bold ${
-              unansweredCount > 0 ? "text-amber-400" : "text-slate-500"
+              unansweredCount > 0 ? "text-amber-400" : "text-muted-foreground"
             }`}
           >
             {unansweredCount}
           </p>
           <p
             className={`text-xs ${
-              unansweredCount > 0 ? "text-amber-300/70" : "text-slate-500"
+              unansweredCount > 0 ? "text-amber-300/70" : "text-muted-foreground"
             }`}
           >
             Pendientes
@@ -117,7 +117,7 @@ export function QuizSummary({
               onClick={() => onNavigateToQuestion(index)}
               className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                 isAnswered
-                  ? "border-slate-700/50 bg-slate-800/20 hover:bg-slate-800/40"
+                  ? "border-border/50 bg-muted/20 hover:bg-muted/40"
                   : "border-amber-500/30 bg-amber-950/10 hover:bg-amber-950/20"
               }`}
             >
@@ -129,7 +129,7 @@ export function QuizSummary({
               )}
 
               {/* Texto truncado de la pregunta */}
-              <span className="flex-1 truncate text-sm text-slate-300">
+              <span className="flex-1 truncate text-sm text-foreground">
                 {index + 1}.{" "}
                 {q.question.length > 80
                   ? q.question.slice(0, 80) + "..."
@@ -163,7 +163,7 @@ export function QuizSummary({
         <button
           type="button"
           onClick={onBack}
-          className="flex-1 inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-700 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800"
+          className="flex-1 inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border text-sm font-medium text-foreground transition-colors hover:bg-muted"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver al quiz

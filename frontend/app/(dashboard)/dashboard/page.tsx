@@ -23,6 +23,31 @@
 // FETCH CON COOKIES:
 //   Al hacer fetch('/api/dashboard/metrics') desde un Client
 //   Component, el navegador envía automáticamente las cookies
+"use client";
+
+// ============================================================
+// app/(dashboard)/dashboard/page.tsx — Dashboard de Progreso
+// ============================================================
+// TIPO: Client Component ('use client')
+//
+// CAMBIO RESPECTO AL PLACEHOLDER (FE-04):
+//   Antes era un Server Component con tarjetas estáticas.
+//   Ahora es un Client Component que hace fetch al endpoint
+//   de métricas (DA-01) y renderiza la gráfica de scores.
+//
+// ¿POR QUÉ CLIENT COMPONENT?
+//   1. Necesita useState para manejar loading/error/datos
+//   2. Necesita useEffect para el fetch al montar
+//   3. ScoreChart (Recharts) requiere Client Component
+//
+// PATRÓN: Container Component
+//   Esta página es el "container" que obtiene los datos y
+//   los pasa a componentes de presentación (ScoreChart, etc.)
+//   Los componentes hijos son "puros" — solo reciben props.
+//
+// FETCH CON COOKIES:
+//   Al hacer fetch('/api/dashboard/metrics') desde un Client
+//   Component, el navegador envía automáticamente las cookies
 //   de sesión. El endpoint usa esas cookies para autenticar
 //   al usuario via Supabase. No necesitamos pasar tokens
 //   manualmente.
@@ -31,14 +56,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { DashboardMetrics } from "@/types/dashboard";
-import { DashboardSummaryCards } from "@/components/dashboard/dashboard-summary-cards";
 import { ScoreChart } from "@/components/dashboard/score-chart";
 import { TimeComparisonChart } from "@/components/dashboard/time-comparison-chart";
 import { TopicHeatmap } from "@/components/dashboard/topic-heatmap";
 import { PracticeProgressCard } from "@/components/dashboard/practice-progress-card";
-
-// ──────────────────────────────────────────────────────────────
-// Tipos internos para el estado del componente
+import { useAiSession } from "@/components/ai/ai-session-provider";
 // ──────────────────────────────────────────────────────────────
 
 interface DashboardState {
@@ -93,6 +115,9 @@ async function loadDashboardState(): Promise<DashboardState> {
 
 // ──────────────────────────────────────────────────────────────
 // Componente principal
+
+// ──────────────────────────────────────────────────────────────
+// Componente principal
 // ──────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -105,6 +130,29 @@ export default function DashboardPage() {
     isLoading: true,
     error: null,
   });
+
+  const { byokApiKey } = useAiSession();
+
+  // Banner direccional de onboarding si no hay clave de IA configurada
+  const aiKeyWarningBanner = byokApiKey === "" ? (
+    <div className="flex flex-col gap-4 rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 sm:flex-row sm:items-center sm:justify-between light:border-amber-200 light:bg-amber-50">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl mt-0.5" role="img" aria-label="api key warning">🔑</span>
+        <div>
+          <h3 className="font-semibold text-amber-400 light:text-amber-800">Configuración de IA Requerida</h3>
+          <p className="mt-0.5 text-xs leading-relaxed text-amber-200/80 light:text-amber-700">
+            Para poder interactuar con la IA, generar planes o rendir cuestionarios, primero necesitas ingresar tu API Key temporal (BYOK).
+          </p>
+        </div>
+      </div>
+      <Link
+        href="/settings/ai"
+        className="inline-flex shrink-0 items-center justify-center rounded-xl bg-amber-600 px-4 py-2 text-center text-xs font-semibold text-white shadow-sm transition-all hover:-translate-y-px hover:bg-amber-500 light:hover:bg-amber-700 cursor-pointer"
+      >
+        Configurar API Key →
+      </Link>
+    </div>
+  ) : null;
 
   // ─── Reintento iniciado por el usuario ───────────────────
   function fetchMetrics() {
@@ -140,16 +188,16 @@ export default function DashboardPage() {
       <div className="flex flex-col gap-6">
         {/* Encabezado */}
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Tu Dashboard
           </h1>
-          <p className="text-slate-400">Cargando tus métricas de estudio...</p>
+          <p className="text-muted-foreground">Cargando tus métricas de estudio...</p>
         </div>
 
         {/* Skeleton de la gráfica */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <div className="h-5 w-48 bg-slate-800 rounded animate-pulse mb-4" />
-          <div className="h-[300px] bg-slate-800/50 rounded-lg animate-pulse" />
+        <div className="rounded-xl border border-border bg-card p-6">
+          <div className="h-5 w-48 bg-muted rounded animate-pulse mb-4" />
+          <div className="h-[300px] bg-muted/50 rounded-lg animate-pulse" />
         </div>
 
         {/* Skeleton de tarjetas */}
@@ -157,10 +205,10 @@ export default function DashboardPage() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="rounded-xl border border-slate-800 bg-slate-900/50 p-6"
+              className="rounded-xl border border-border bg-card p-6"
             >
-              <div className="h-4 w-32 bg-slate-800 rounded animate-pulse mb-3" />
-              <div className="h-8 w-20 bg-slate-800 rounded animate-pulse" />
+              <div className="h-4 w-32 bg-muted rounded animate-pulse mb-3" />
+              <div className="h-8 w-20 bg-muted rounded animate-pulse" />
             </div>
           ))}
         </div>
@@ -176,22 +224,23 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Tu Dashboard
           </h1>
         </div>
 
-        <div className="rounded-xl border border-red-900/50 bg-red-950/30 p-6">
-          <h3 className="text-lg font-semibold text-red-400 mb-2">
+        <div className="rounded-xl border border-red-900/50 bg-red-950/30 p-6 light:border-red-200 light:bg-red-50">
+          <h3 className="mb-2 text-lg font-semibold text-red-400 light:text-red-800">
             ⚠️ Error al cargar las métricas
           </h3>
-          <p className="text-sm text-red-300/80 mb-4">{state.error}</p>
+          <p className="mb-4 text-sm text-red-300/80 light:text-red-700">{state.error}</p>
           <button
             onClick={fetchMetrics}
             className="
               px-4 py-2 text-sm font-medium rounded-lg
               bg-red-500/20 text-red-400
               hover:bg-red-500/30 transition-colors
+              light:bg-red-100 light:text-red-800 light:hover:bg-red-200
               cursor-pointer
             "
           >
@@ -210,21 +259,23 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Tu Dashboard
           </h1>
-          <p className="text-slate-400">
+          <p className="text-muted-foreground">
             {state.message ?? "No tienes un plan de estudio activo."}
           </p>
         </div>
 
+        {aiKeyWarningBanner}
+
         {/* Call to action para crear plan */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-8 text-center">
+        <div data-tour="plan-card" className="rounded-xl border border-border bg-card text-card-foreground p-8 text-center shadow-sm">
           <div className="text-5xl mb-4">📚</div>
-          <h2 className="text-xl font-semibold text-white mb-2">
+          <h2 className="text-xl font-semibold mb-2">
             ¡Comienza tu preparación!
           </h2>
-          <p className="text-slate-400 text-sm max-w-md mx-auto mb-6">
+          <p className="text-muted-foreground text-sm max-w-md mx-auto mb-6">
             Sube tu PDF del syllabus ISTQB, configura tu plan de estudio, y la
             IA generará un plan personalizado adaptado a tu ritmo.
           </p>
@@ -251,19 +302,19 @@ export default function DashboardPage() {
   const { metrics } = state;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" data-tour="plan-card">
       {/* ─── Encabezado ─── */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight text-white">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
           Tu Dashboard
         </h1>
-        <p className="text-slate-400">
+        <p className="text-muted-foreground">
           Resumen de tu progreso en el plan de estudio ISTQB.
         </p>
       </div>
 
-      {/* ─── Resumen ejecutivo DA-05 ─── */}
-      <DashboardSummaryCards metrics={metrics} />
+      {aiKeyWarningBanner}
+
 
       <PracticeProgressCard stats={metrics.practice_stats} />
 

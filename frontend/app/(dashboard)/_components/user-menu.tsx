@@ -98,12 +98,12 @@ export function UserMenu({ email, name }: UserMenuProps) {
           Al hacer click en este avatar, se abre el menú.
           focus:outline-none evita el anillo de focus azul por defecto
           del browser, ya que Radix maneja su propio estilo de focus. */}
-      <DropdownMenuTrigger className="focus:outline-none">
+      <DropdownMenuTrigger data-tour="user-profile" className="focus:outline-none">
         <Avatar
           className="
             h-9 w-9              
-            border border-slate-700
-            bg-slate-800         
+            border border-border
+            bg-muted         
             transition-opacity   
             hover:opacity-80     
             cursor-pointer       
@@ -112,7 +112,7 @@ export function UserMenu({ email, name }: UserMenuProps) {
           {/* AvatarFallback muestra las iniciales.
               En el futuro, podrías agregar AvatarImage para
               mostrar una foto de perfil si el usuario sube una. */}
-          <AvatarFallback className="bg-slate-800 text-slate-300 text-xs font-medium">
+          <AvatarFallback className="bg-muted text-foreground text-xs font-medium">
             {initials}
           </AvatarFallback>
         </Avatar>
@@ -124,22 +124,22 @@ export function UserMenu({ email, name }: UserMenuProps) {
           Las clases de fondo y borde mantienen la coherencia visual. */}
       <DropdownMenuContent
         align="end"
-        className="w-56 bg-slate-900 border-slate-800 text-slate-300"
+        className="w-56 bg-card border-border text-foreground"
       >
         {/* ─── Sección de información del usuario ─── */}
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             {/* Nombre en blanco (más prominente) */}
-            <p className="text-sm font-medium leading-none text-white">
+            <p className="text-sm font-medium leading-none text-foreground">
               {name}
             </p>
             {/* Email en gris (secundario) */}
-            <p className="text-xs leading-none text-slate-500">{email}</p>
+            <p className="text-xs leading-none text-muted-foreground">{email}</p>
           </div>
         </DropdownMenuLabel>
 
         {/* ─── Separador visual ─── */}
-        <DropdownMenuSeparator className="bg-slate-800" />
+        <DropdownMenuSeparator className="bg-border" />
 
         {/* ─── Opción de Cerrar Sesión ───
             El color rojo (red-400) indica una acción destructiva.
@@ -147,7 +147,7 @@ export function UserMenu({ email, name }: UserMenuProps) {
             cursor-pointer → indica que es clickeable. */}
         <DropdownMenuItem
           onClick={handleLogout}
-          className="text-red-400 focus:bg-red-950/50 focus:text-red-300 cursor-pointer"
+          className="text-red-400 focus:bg-red-950/50 focus:text-red-300 cursor-pointer light:text-red-700 light:focus:bg-red-50 light:focus:text-red-800"
         >
           Cerrar Sesión
         </DropdownMenuItem>

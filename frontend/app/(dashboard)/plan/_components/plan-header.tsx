@@ -70,7 +70,7 @@ function getStatusDisplay(status: string) {
     default:
       return {
         label: status,
-        className: "bg-slate-500/20 text-slate-300 border-slate-500/30",
+        className: "bg-muted text-muted-foreground border-border",
       };
   }
 }
@@ -116,7 +116,7 @@ export function PlanHeader({ status, planId, summary }: PlanHeaderProps) {
           </div>
 
           {/* ── Título principal ────────────────────────── */}
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Tu plan ISTQB está listo
           </h1>
 
@@ -126,7 +126,7 @@ export function PlanHeader({ status, planId, summary }: PlanHeaderProps) {
             Solo es útil para soporte técnico o debugging.
             En producción podrías ocultarlo detrás de un toggle.
           */}
-          <p className="text-xs font-mono text-slate-500">Plan ID: {planId}</p>
+          <p className="text-xs font-mono text-muted-foreground">Plan ID: {planId}</p>
         </div>
 
         {/* ── Botón "Generar otro plan" ───────────────────── */}
@@ -138,9 +138,9 @@ export function PlanHeader({ status, planId, summary }: PlanHeaderProps) {
         <Link
           href="/setup"
           className="inline-flex h-10 items-center justify-center gap-2
-                     rounded-lg border border-slate-700 px-4 text-sm
-                     font-medium text-slate-200 transition-colors
-                     hover:bg-slate-800 hover:text-white"
+                     rounded-lg border border-border px-4 text-sm
+                     font-medium text-foreground transition-colors
+                     hover:bg-muted hover:text-foreground"
         >
           <RefreshCw className="h-4 w-4" />
           Generar otro plan
@@ -154,9 +154,9 @@ export function PlanHeader({ status, planId, summary }: PlanHeaderProps) {
         React no renderiza nada.
       */}
       {summary ? (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <h2 className="text-lg font-semibold text-white">Resumen</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-400">{summary}</p>
+        <div className="rounded-xl border border-border bg-card/50 p-6">
+          <h2 className="text-lg font-semibold text-foreground">Resumen</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{summary}</p>
         </div>
       ) : null}
     </section>

@@ -116,10 +116,10 @@ export function StudyConfig({
     <div className="flex flex-col gap-6">
       {/* ─── Título de la sección ─── */}
       <div className="flex flex-col gap-1">
-        <h3 className="text-lg font-semibold text-slate-200">
+        <h3 className="text-lg font-semibold text-foreground">
           ⚙️ Configuración del Plan
         </h3>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Ajusta estos parámetros según tu disponibilidad. El agente generará un
           plan personalizado basado en tus preferencias.
         </p>
@@ -134,7 +134,7 @@ export function StudyConfig({
         <div className="flex flex-col gap-2">
           <Label
             htmlFor="objective-days"
-            className="text-sm font-medium text-slate-300"
+            className="text-sm font-medium text-foreground"
           >
             📅 Días para estudiar
           </Label>
@@ -147,12 +147,12 @@ export function StudyConfig({
             onChange={handleDaysChange}
             disabled={disabled}
             className="
-              bg-slate-800/50 border-slate-700
-              text-slate-200 placeholder:text-slate-600
+              bg-background border-border
+              text-foreground placeholder:text-muted-foreground
               focus:border-emerald-500 focus:ring-emerald-500/20
             "
           />
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Rango: 1-30 días. Default: 7 días (intensivo ISTQB)
           </p>
         </div>
@@ -161,7 +161,7 @@ export function StudyConfig({
         <div className="flex flex-col gap-2">
           <Label
             htmlFor="morning-time"
-            className="text-sm font-medium text-slate-300"
+            className="text-sm font-medium text-foreground"
           >
             🌅 Sesión mañana
           </Label>
@@ -174,9 +174,9 @@ export function StudyConfig({
             onChange={handleMorningChange}
             disabled={disabled}
             className="
-              flex h-9 w-full rounded-md border border-slate-700
-              bg-slate-800/50 px-3 py-1
-              text-sm text-slate-200
+              flex h-9 w-full rounded-md border border-border
+              bg-background px-3 py-1
+              text-sm text-foreground
               transition-colors
               focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20
               disabled:cursor-not-allowed disabled:opacity-50
@@ -188,7 +188,7 @@ export function StudyConfig({
               </option>
             ))}
           </select>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Hora preferida para la sesión matutina
           </p>
         </div>
@@ -197,7 +197,7 @@ export function StudyConfig({
         <div className="flex flex-col gap-2">
           <Label
             htmlFor="night-time"
-            className="text-sm font-medium text-slate-300"
+            className="text-sm font-medium text-foreground"
           >
             🌙 Sesión noche
           </Label>
@@ -207,9 +207,9 @@ export function StudyConfig({
             onChange={handleNightChange}
             disabled={disabled}
             className="
-              flex h-9 w-full rounded-md border border-slate-700
-              bg-slate-800/50 px-3 py-1
-              text-sm text-slate-200
+              flex h-9 w-full rounded-md border border-border
+              bg-background px-3 py-1
+              text-sm text-foreground
               transition-colors
               focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20
               disabled:cursor-not-allowed disabled:opacity-50
@@ -221,7 +221,7 @@ export function StudyConfig({
               </option>
             ))}
           </select>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Hora preferida para la sesión nocturna
           </p>
         </div>
@@ -230,12 +230,12 @@ export function StudyConfig({
       {/* ─── Resumen del plan ───
           Muestra un cálculo rápido de lo que el usuario obtendrá.
           Esto da feedback inmediato y reduce la ansiedad de "¿qué pasará?". */}
-      <div className="rounded-lg border border-slate-700/50 bg-slate-800/30 p-4">
-        <p className="text-sm text-slate-400">
+      <div className="rounded-lg border border-border bg-muted/40 p-4">
+        <p className="text-sm text-muted-foreground">
           📊{" "}
-          <span className="text-slate-200 font-medium">Resumen estimado:</span>{" "}
+          <span className="text-foreground font-medium">Resumen estimado:</span>{" "}
           {config.objectiveDays} días × 2 sesiones ={" "}
-          <span className="text-emerald-400 font-semibold">
+          <span className="text-emerald-500 font-semibold">
             {config.objectiveDays * 2} sesiones
           </span>{" "}
           de ~90 minutos cada una ({config.morningTime.replace(":00", "")}h y{" "}

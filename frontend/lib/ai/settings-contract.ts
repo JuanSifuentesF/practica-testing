@@ -39,9 +39,7 @@ export const AI_SETTINGS_DEFAULTS = {
 export interface AiSettingsPreferencesUpdate {
   mode?: AiUsageMode;
   provider?: AiProvider;
-  // Es un detalle interno del servidor: se limpia al cambiar proveedor para
-  // descartar una preferencia legacy. El body público no acepta este campo.
-  model_name?: null;
+  model_name?: string | null;
 }
 
 export function createDefaultAiSettings(userId: string): UserAiSettingsRow {

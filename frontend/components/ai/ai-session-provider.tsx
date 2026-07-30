@@ -25,18 +25,41 @@ interface AiSessionContextValue {
 
 const AiSessionContext = createContext<AiSessionContextValue | null>(null);
 
+const BYOK_STORAGE_KEY = "istqb_byok_api_key";
+
 export function AiSessionProvider({ children }: { children: ReactNode }) {
-  const [byokApiKey, setByokApiKeyState] = useState("");
+  const [byokApiKey, setByokApiKeyState] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return window.sessionStorage.getItem(BYOK_STORAGE_KEY) || "";
+      } catch {}
+    }
+    return "";
+  });
 
   const setByokApiKey = useCallback((value: string) => {
     const sanitized = value
       .replace(/[\r\n]/g, "")
       .slice(0, MAX_BYOK_API_KEY_LENGTH);
     setByokApiKeyState(sanitized);
+    if (typeof window !== "undefined") {
+      try {
+        if (sanitized) {
+          window.sessionStorage.setItem(BYOK_STORAGE_KEY, sanitized);
+        } else {
+          window.sessionStorage.removeItem(BYOK_STORAGE_KEY);
+        }
+      } catch {}
+    }
   }, []);
 
   const clearByokApiKey = useCallback(() => {
     setByokApiKeyState("");
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.removeItem(BYOK_STORAGE_KEY);
+      } catch {}
+    }
   }, []);
 
   const aiFetch = useCallback<AiFetch>(

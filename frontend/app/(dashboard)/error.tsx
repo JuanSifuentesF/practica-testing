@@ -64,7 +64,7 @@ export default function DashboardError({
 
         {/* Descripción genérica (no mostramos error.message al usuario
             porque podría contener información técnica confusa o sensible) */}
-        <p className="text-slate-400 max-w-md">
+        <p className="text-muted-foreground max-w-md">
           Ha ocurrido un error inesperado al cargar esta página de la
           aplicación. Puedes intentar recargarla.
         </p>
@@ -74,7 +74,7 @@ export default function DashboardError({
             correlacionar errores del servidor con los del cliente.
             Útil para debugging pero no para el usuario final. */}
         {error.digest && (
-          <p className="mt-2 text-xs text-slate-600">
+          <p className="mt-2 text-xs text-muted-foreground">
             Referencia: {error.digest}
           </p>
         )}
@@ -88,7 +88,7 @@ export default function DashboardError({
           la app (el layout y el header permanecen intactos). */}
       <Button
         onClick={() => reset()}
-        className="bg-slate-800 text-white hover:bg-slate-700"
+        className="bg-muted text-foreground hover:bg-muted/80"
       >
         Intentar de nuevo
       </Button>

@@ -122,8 +122,8 @@ export default function RegisterPage() {
   return (
     <>
       {/* ──── Título y subtítulo ──── */}
-      <h1 className="mb-2 text-2xl font-semibold text-white">Crear Cuenta</h1>
-      <p className="mb-6 text-sm text-slate-400">
+      <h1 className="mb-2 text-2xl font-semibold text-foreground">Crear Cuenta</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
         Comienza tu viaje hacia la certificación ISTQB.
       </p>
 
@@ -135,7 +135,7 @@ export default function RegisterPage() {
             y el trigger de DB-05 lo captura para user_profiles.
         */}
         <div className="space-y-2">
-          <Label htmlFor="fullName" className="text-slate-300">
+          <Label htmlFor="fullName" className="text-foreground">
             Nombre Completo
           </Label>
           <Input
@@ -145,13 +145,13 @@ export default function RegisterPage() {
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             required
-            className="bg-slate-950 border-slate-700 text-white"
+            className="border-input bg-card text-foreground"
           />
         </div>
 
         {/* Campo: Email */}
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-slate-300">
+          <Label htmlFor="email" className="text-foreground">
             Correo Electrónico
           </Label>
           <Input
@@ -161,7 +161,7 @@ export default function RegisterPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="bg-slate-950 border-slate-700 text-white"
+            className="border-input bg-card text-foreground"
           />
         </div>
 
@@ -172,7 +172,7 @@ export default function RegisterPage() {
             "Password should be at least 6 characters"
         */}
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-slate-300">
+          <Label htmlFor="password" className="text-foreground">
             Contraseña (Mín. 6 caracteres)
           </Label>
           <Input
@@ -181,13 +181,13 @@ export default function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="bg-slate-950 border-slate-700 text-white"
+            className="border-input bg-card text-foreground"
           />
         </div>
 
         {/* ──── Mensaje de error ──── */}
         {error && (
-          <div className="rounded-md bg-red-900/30 p-3 border border-red-800 text-sm text-red-400">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             {error}
           </div>
         )}
@@ -200,16 +200,16 @@ export default function RegisterPage() {
         <Button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-500 text-white"
+          className="w-full rounded-xl bg-blue-600 text-white shadow-sm hover:bg-blue-700"
         >
           {loading ? "Creando cuenta..." : "Registrarse"}
         </Button>
       </form>
 
       {/* ──── Link al login ──── */}
-      <div className="mt-6 text-center text-sm text-slate-400">
+      <div className="mt-6 text-center text-sm text-muted-foreground">
         ¿Ya tienes cuenta?{" "}
-        <Link href="/login" className="text-blue-400 hover:underline">
+        <Link href="/login" className="font-semibold text-blue-700 underline-offset-4 hover:text-blue-800 hover:underline">
           Inicia sesión
         </Link>
       </div>

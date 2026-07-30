@@ -1,17 +1,24 @@
 # Variables de entorno secretas (locales)
 .env*.local
+.env.local
 .env
+backend/.env
 
 # Documentacion local de trabajo
 docs/
 
 # Dependencias de Node.js
 node_modules/
+**/node_modules/
+
+# Compilación de Next.js
 .next/
-.next/
+**/.next/
 out/
 build/
-frontend/.next/
+
+# Vercel local metadata
+.vercel/
 
 # Logs de sistema y archivos temporales
 npm-debug.log*
@@ -25,21 +32,13 @@ Thumbs.db
 # Python virtual environment
 venv/
 backend/venv/
-
-# Variables de entorno (contienen secrets)
-.env
-.env.local
-backend/.env
-
-# Python virtual environment
-venv/
-backend/venv/
+.venv/
+**/.venv/
 
 # Python bytecode
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Docker (archivos locales que no deben subirse)
-# El Dockerfile y .dockerignore SÍ se suben al repo.
+# Docker local
 docker-compose.override.yml

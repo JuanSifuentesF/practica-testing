@@ -107,7 +107,7 @@ function getSessionTypeInfo(sessionType: string) {
       return {
         label: sessionType,
         icon: BookOpen,
-        color: "text-slate-400",
+        color: "text-muted-foreground",
       };
   }
 }
@@ -147,7 +147,7 @@ function getStatusDisplay(status: string, scorePercent: number | null) {
       return {
         text: "Pendiente",
         emoji: "⏳",
-        className: "text-slate-500",
+        className: "text-muted-foreground",
       };
     case "active":
       return {
@@ -168,13 +168,13 @@ function getStatusDisplay(status: string, scorePercent: number | null) {
       return {
         text: "Saltada",
         emoji: "⏭️",
-        className: "text-slate-500",
+        className: "text-muted-foreground",
       };
     default:
       return {
         text: status,
         emoji: "❓",
-        className: "text-slate-500",
+        className: "text-muted-foreground",
       };
   }
 }
@@ -250,9 +250,9 @@ export function SessionCard({
             : status === "completed"
               ? // Las sesiones completadas tienen un estilo más tenue
                 // para indicar que ya no requieren atención.
-                "border-slate-800/60 bg-slate-900/30 opacity-75"
+                "border-border/60 bg-card/30 opacity-75"
               : // Sesiones normales (pendientes que no son la primera).
-                "border-slate-800 bg-slate-900/50 hover:border-slate-700"
+                "border-border bg-card/50 hover:border-border/80"
         }
       `}
     >
@@ -270,8 +270,8 @@ export function SessionCard({
             {/* Hora programada (si existe) */}
             {formattedTime && (
               <>
-                <span className="text-xs text-slate-600">·</span>
-                <span className="flex items-center gap-1 text-xs text-slate-400">
+                <span className="text-xs text-muted-foreground">·</span>
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
                   {formattedTime}
                 </span>
@@ -280,7 +280,7 @@ export function SessionCard({
           </div>
 
           {/* Título de la sesión */}
-          <h3 className="mt-1.5 text-base font-semibold text-white">{title}</h3>
+          <h3 className="mt-1.5 text-base font-semibold text-foreground">{title}</h3>
         </div>
 
         {/* Badges de dificultad y duración */}
@@ -292,7 +292,7 @@ export function SessionCard({
           )}
           <Badge
             variant="outline"
-            className="border-slate-700 bg-slate-800/50 text-slate-300"
+            className="border-border bg-muted/50 text-muted-foreground"
           >
             {durationMinutes} min
           </Badge>
@@ -322,7 +322,7 @@ export function SessionCard({
 
       {/* ── Fila 3: Método + Estado ────────────────────────── */}
       <div className="mt-4 flex items-center justify-between text-xs">
-        <span className="text-slate-400">
+        <span className="text-muted-foreground">
           Método: {getMethodLabel(methodUsed)}
         </span>
         <span className={statusDisplay.className}>
@@ -330,13 +330,8 @@ export function SessionCard({
         </span>
       </div>
 
-      {/* ── Fila 4: Botón "Empezar sesión" (condicional) ───── */}
-      {/*
-        Solo se muestra si esta es la PRIMERA sesión pendiente del plan.
-        Esto guía al usuario hacia su próxima acción sin confundirlo
-        con múltiples botones de "empezar".
-      */}
-      {isFirstPending && (
+      {/* ── Fila 4: Botón de acción (condicional) ─────────────── */}
+      {isFirstPending ? (
         <Link
           href={`/session?session_id=${sessionId}`}
           className="mt-4 flex w-full items-center justify-center gap-2
@@ -344,10 +339,21 @@ export function SessionCard({
                      font-semibold text-slate-950 transition-colors
                      hover:bg-emerald-400"
         >
-          Empezar sesión
+          {status === "active" ? "Continuar sesión" : "Empezar sesión"}
           <ChevronRight className="h-4 w-4" />
         </Link>
-      )}
+      ) : status === "completed" ? (
+        <Link
+          href={`/session?session_id=${sessionId}`}
+          className="mt-4 flex w-full items-center justify-center gap-2
+                     rounded-lg border border-border bg-muted/60 px-4 py-2 text-xs
+                     font-medium text-muted-foreground transition-colors
+                     hover:bg-muted hover:text-foreground"
+        >
+          Revisar sesión
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
+      ) : null}
     </article>
   );
 }

@@ -1,7 +1,6 @@
-// frontend/app/(dashboard)/settings/ai/_components/test-connection-card.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,9 +12,11 @@ import {
 import type { AiProvider, AiUsageMode } from "@/types";
 
 interface TestConnectionCardProps {
-  mode: AiUsageMode;
-  provider: AiProvider;
-  byokApiKey: string;
+  readonly mode: AiUsageMode;
+  readonly provider: AiProvider;
+  readonly modelName: string | null;
+  readonly byokApiKey: string;
+  readonly onVerifiedChange?: (verified: boolean) => void;
 }
 
 type InspectionReason =
@@ -90,7 +91,9 @@ function isInspectionApiResponse(
 export function TestConnectionCard({
   mode,
   provider,
+  modelName,
   byokApiKey,
+  onVerifiedChange,
 }: TestConnectionCardProps) {
   const [inspection, setInspection] = useState<InspectionState>({
     mode,
@@ -102,20 +105,31 @@ export function TestConnectionCard({
   const [isChecking, setIsChecking] = useState(false);
 
   // Un resultado corresponde a una configuración concreta. Si el usuario
-  // modifica modo, proveedor o key, reiniciar ese estado antes del commit.
-  if (
-    inspection.mode !== mode ||
-    inspection.provider !== provider ||
-    inspection.byokApiKey !== byokApiKey
-  ) {
-    setInspection({
-      mode,
-      provider,
-      byokApiKey,
-      result: null,
-      error: null,
-    });
-  }
+  // modifica modo, proveedor o key, reiniciar ese estado de forma segura en un useEffect
+  // para evitar llamadas a setState de componentes padres durante el renderizado.
+  useEffect(() => {
+    let active = true;
+    if (
+      inspection.mode !== mode ||
+      inspection.provider !== provider ||
+      inspection.byokApiKey !== byokApiKey
+    ) {
+      setTimeout(() => {
+        if (!active) return;
+        setInspection({
+          mode,
+          provider,
+          byokApiKey,
+          result: null,
+          error: null,
+        });
+        onVerifiedChange?.(false);
+      }, 0);
+    }
+    return () => {
+      active = false;
+    };
+  }, [mode, provider, byokApiKey, inspection.mode, inspection.provider, inspection.byokApiKey, onVerifiedChange]);
 
   const { result, error } = inspection;
 
@@ -148,11 +162,13 @@ export function TestConnectionCard({
         throw new Error("INVALID_INSPECTION_RESPONSE");
       }
 
+      const isConfigured = json.data.status === "configured";
       setInspection({
         ...checkedConfiguration,
         result: json.data,
         error: null,
       });
+      onVerifiedChange?.(isConfigured);
     } catch (caught) {
       setInspection({
         ...checkedConfiguration,
@@ -162,6 +178,7 @@ export function TestConnectionCard({
             ? caught.message
             : "No se pudo verificar la configuración.",
       });
+      onVerifiedChange?.(false);
     } finally {
       setIsChecking(false);
     }
@@ -174,15 +191,19 @@ export function TestConnectionCard({
         ? "text-blue-400"
         : "text-amber-400";
 
+  // Resolver dinámicamente el modelo que se muestra en base a la prop actual
+  const isDefaulted = modelName === null;
+  const displayedModelName = modelName || (result?.status === "configured" ? result.model : "");
+
   return (
-    <Card className="border-slate-800 bg-slate-900/50">
+    <Card className="border-border bg-card text-card-foreground">
       <CardHeader>
-        <CardTitle className="text-lg text-slate-100">
+        <CardTitle className="text-xl font-bold">
           Verificar configuración
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted-foreground">
           Comprueba la selección local y la disponibilidad de la configuración
           del servidor. No crea un cliente del proveedor, no hace una llamada
           externa y no reserva cuota.
@@ -191,15 +212,13 @@ export function TestConnectionCard({
           type="button"
           onClick={checkConfiguration}
           disabled={isChecking}
+          className="border border-border bg-secondary text-secondary-foreground font-semibold px-5 py-2 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 shadow-md cursor-pointer"
         >
           {isChecking ? "Verificando…" : "Verificar configuración"}
         </Button>
 
         {result ? (
-          <div
-            className="rounded-md border border-slate-800 bg-slate-950/50 p-4 text-sm"
-            aria-live="polite"
-          >
+          <div className="rounded-md border border-border bg-background p-4 text-sm space-y-2" aria-live="polite">
             {result.status === "demo" ? (
               <p className={resultClass}>
                 Modo demo activo: no se requiere proveedor.
@@ -210,20 +229,18 @@ export function TestConnectionCard({
                 <p className={resultClass}>
                   Configuración lista para una llamada real futura.
                 </p>
-                <p className="mt-1 text-slate-400">
+                <p className="mt-1 text-muted-foreground">
                   Proveedor:{" "}
-                  <span className="text-slate-200">{result.provider}</span>
+                  <span className="text-foreground">{result.provider}</span>
                   {" · "}Modelo allowlisted:{" "}
-                  <span className="text-slate-200">{result.model}</span>
-                  {result.modelWasDefaulted
-                    ? " (se usó el default seguro)"
-                    : ""}
+                  <span className="text-foreground">{displayedModelName}</span>
+                  {isDefaulted ? " (se usó el default seguro)" : ""}
                 </p>
                 {result.mode === "byok" ? (
                   <p className="mt-2 text-xs text-amber-300">
-                    La key no vacía todavía no ha sido validada por el
-                    proveedor; AI-05 lo hará al ejecutar la primera solicitud
-                    trazable.
+                    La clave no vacía todavía no ha sido validada por el
+                    proveedor; el sistema lo hará al ejecutar la primera solicitud
+                    de teoría o práctica.
                   </p>
                 ) : null}
               </>

@@ -24,10 +24,10 @@ export function BugEvaluation({
     <section className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-white">
+          <h2 className="text-base font-semibold text-foreground">
             Evaluacion del bug report
           </h2>
-          <p className="mt-1 text-sm text-slate-300">
+          <p className="mt-1 text-sm text-foreground">
             {feedback.feedback_summary}
           </p>
         </div>
@@ -39,7 +39,7 @@ export function BugEvaluation({
         {feedback.criteria_results.map((criterion, index) => (
           <li
             key={`${criterion.criterion}-${index}`}
-            className="flex gap-3 rounded-lg border border-slate-800 bg-slate-950/30 p-3 text-sm"
+            className="flex gap-3 rounded-lg border border-border bg-card/30 p-3 text-sm"
           >
             <span>
               {criterion.passed ? (
@@ -49,10 +49,10 @@ export function BugEvaluation({
               )}
             </span>
             <div>
-              <p className="font-medium text-slate-200">
+              <p className="font-medium text-foreground">
                 {criterion.criterion}
               </p>
-              <p className="mt-1 text-slate-400">{criterion.detail}</p>
+              <p className="mt-1 text-muted-foreground">{criterion.detail}</p>
             </div>
           </li>
         ))}
@@ -90,11 +90,11 @@ function Comparison({
     <div className="mt-5">
       <div className="flex items-center gap-2">
         <FileSearch className="size-4 text-amber-300" />
-        <h3 className="font-semibold text-white">
+        <h3 className="font-semibold text-foreground">
           Comparacion con solucion modelo
         </h3>
       </div>
-      <p className="mt-1 text-sm text-slate-400">{explanation}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{explanation}</p>
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
         <Report title="Tu reporte" report={user} />
         <Report title="Solucion modelo" report={model} />
@@ -105,15 +105,15 @@ function Comparison({
 
 function Report({ title, report }: { title: string; report: BugReportData }) {
   return (
-    <article className="rounded-lg border border-slate-800 bg-slate-950/30 p-4 text-sm">
-      <h4 className="font-semibold text-white">{title}</h4>
-      <dl className="mt-3 space-y-2 text-slate-300">
+    <article className="rounded-lg border border-border bg-card/30 p-4 text-sm">
+      <h4 className="font-semibold text-foreground">{title}</h4>
+      <dl className="mt-3 space-y-2 text-foreground">
         <div>
-          <dt className="text-xs uppercase text-slate-500">Titulo</dt>
+          <dt className="text-xs uppercase text-muted-foreground">Titulo</dt>
           <dd>{report.title}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase text-slate-500">Pasos</dt>
+          <dt className="text-xs uppercase text-muted-foreground">Pasos</dt>
           <dd>
             <ol className="list-decimal pl-5">
               {report.steps.map((step, index) => (
@@ -123,7 +123,7 @@ function Report({ title, report }: { title: string; report: BugReportData }) {
           </dd>
         </div>
         <div>
-          <dt className="text-xs uppercase text-slate-500">
+          <dt className="text-xs uppercase text-muted-foreground">
             Actual / esperado
           </dt>
           <dd>
@@ -131,7 +131,7 @@ function Report({ title, report }: { title: string; report: BugReportData }) {
           </dd>
         </div>
         <div>
-          <dt className="text-xs uppercase text-slate-500">
+          <dt className="text-xs uppercase text-muted-foreground">
             Severidad / prioridad
           </dt>
           <dd>

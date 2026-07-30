@@ -295,7 +295,7 @@ export function TheoryPanel({ sessionData }: TheoryPanelProps) {
                 Día {sessionData.day_number} —{" "}
                 {getSessionTypeLabel(sessionData.session_type)}
               </p>
-              <h1 className="text-xl font-bold tracking-tight text-white">
+              <h1 className="text-xl font-bold tracking-tight text-foreground">
                 Sesión {sessionData.session_number} de{" "}
                 {sessionData.plan_context.total_sessions}
               </h1>
@@ -356,7 +356,7 @@ export function TheoryPanel({ sessionData }: TheoryPanelProps) {
               <Sparkles className="absolute top-1/2 left-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 text-emerald-400" />
             </div>
             <div>
-              <p className="text-lg font-semibold text-white">
+              <p className="text-lg font-semibold text-foreground">
                 Generando contenido teórico...
               </p>
               <p className="mt-1 text-sm text-slate-400">

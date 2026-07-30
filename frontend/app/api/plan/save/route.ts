@@ -28,7 +28,6 @@
 import { NextResponse } from "next/server";
 import {
   parseGeneratedPlan,
-  type GeneratedPlan,
   type PlanSession,
 } from "@/app/api/plan/generate/route";
 import { createClient } from "@/lib/supabase/server";

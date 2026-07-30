@@ -28,6 +28,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import { PdfDropzone } from "./_components/pdf-dropzone";
 import { FilePreview } from "./_components/file-preview";
@@ -108,7 +109,7 @@ export default function SetupPage() {
   // ═══════════════════════════════════════════════════════════
 
   const router = useRouter();
-  const { aiFetch } = useAiSession();
+  const { aiFetch, byokApiKey } = useAiSession();
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
@@ -342,22 +343,42 @@ export default function SetupPage() {
     <div className="flex flex-col gap-8 max-w-2xl">
       {/* ─── Encabezado de la página ─── */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight text-white">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
           Configurar Plan de Estudio
         </h1>
-        <p className="text-slate-400">
+        <p className="text-muted-foreground">
           Sube el PDF del syllabus ISTQB y configura tus preferencias de
           estudio. El agente creará un plan personalizado para ti.
         </p>
       </div>
 
+      {byokApiKey === "" ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl mt-0.5" role="img" aria-label="api key warning">🔑</span>
+            <div>
+              <h3 className="font-semibold text-amber-400">Configuración de IA Requerida</h3>
+              <p className="text-xs text-amber-200/80 leading-relaxed mt-0.5">
+                Para poder generar tu plan personalizado con IA, primero necesitas ingresar tu API Key temporal (BYOK) en los ajustes.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/settings/ai"
+            className="shrink-0 inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition-colors text-center cursor-pointer font-sans"
+          >
+            Configurar API Key →
+          </Link>
+        </div>
+      ) : null}
+
       {/* ─── Sección 1: Subir PDF ─── */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold text-slate-200">
+          <h2 className="text-lg font-semibold text-foreground">
             📄 Syllabus PDF
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Sube el documento oficial del ISTQB Foundation Level v4.0
           </p>
         </div>
@@ -378,7 +399,7 @@ export default function SetupPage() {
       </div>
 
       {/* ─── Separador visual ─── */}
-      <Separator className="bg-slate-800" />
+      <Separator className="bg-border" />
 
       {/* ─── Sección 2: Configuración del Plan ─── */}
       <StudyConfig
@@ -389,7 +410,7 @@ export default function SetupPage() {
 
       {/* ─── Progreso del proceso ─── */}
       {stage !== "idle" && stage !== "error" && (
-        <div className="flex flex-col gap-3 rounded-lg bg-slate-800/50 border border-slate-700/50 p-5">
+        <div className="flex flex-col gap-3 rounded-lg bg-card border border-border p-5 shadow-sm">
           {/* Indicador de progreso con animación */}
           <div className="flex items-center gap-3">
             {stage !== "complete" ? (
@@ -431,13 +452,13 @@ export default function SetupPage() {
                 />
               </svg>
             )}
-            <p className="text-sm text-slate-300 font-medium">
+            <p className="text-sm text-foreground font-medium">
               {STAGE_MESSAGES[stage]}
             </p>
           </div>
 
           {/* 🆕 Barra de progreso visual — actualizada con getProgressPercent */}
-          <div className="w-full bg-slate-700 rounded-full h-1.5">
+          <div className="w-full bg-muted rounded-full h-1.5">
             <div
               className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500 ease-out"
               style={{ width: getProgressPercent() }}
@@ -478,16 +499,16 @@ export default function SetupPage() {
 
           {/* 🆕 Resultado de la generación del plan */}
           {planResult && (
-            <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-slate-700/50">
+            <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-border">
               <div className="flex items-center gap-2">
                 <span className="text-emerald-400 font-semibold text-sm">
                   📅 Plan generado: {planResult.total_sessions} sesiones
                 </span>
               </div>
-              <div className="text-xs text-slate-400 space-y-1">
+              <div className="text-xs text-muted-foreground space-y-1">
                 <p>
                   📆 Inicio:{" "}
-                  <span className="text-slate-300">
+                  <span className="text-foreground">
                     {new Date(
                       planResult.start_date + "T00:00:00",
                     ).toLocaleDateString("es-MX", {
@@ -500,7 +521,7 @@ export default function SetupPage() {
                 </p>
                 <p>
                   🎯 Fin estimado:{" "}
-                  <span className="text-slate-300">
+                  <span className="text-foreground">
                     {new Date(
                       planResult.estimated_end_date + "T00:00:00",
                     ).toLocaleDateString("es-MX", {
@@ -513,7 +534,7 @@ export default function SetupPage() {
                 </p>
                 <p>
                   🤖 Modelo:{" "}
-                  <span className="text-slate-500">
+                  <span className="text-muted-foreground">
                     {planResult.model_used}
                   </span>
                 </p>
@@ -549,7 +570,7 @@ export default function SetupPage() {
       {/* ─── Botón de envío ─── */}
       <button
         onClick={handleSubmit}
-        disabled={!selectedFile || isLoading}
+        disabled={!selectedFile || isLoading || byokApiKey === ""}
         className="
           relative
           flex items-center justify-center
@@ -561,7 +582,7 @@ export default function SetupPage() {
           transition-all duration-200
           hover:bg-emerald-500
           active:scale-[0.98]
-          disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed
+          disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed
           disabled:active:scale-100
         "
       >
@@ -595,11 +616,15 @@ export default function SetupPage() {
       </button>
 
       {/* ─── Nota informativa ─── */}
-      {!selectedFile && (
-        <p className="text-center text-xs text-slate-600">
+      {byokApiKey === "" ? (
+        <p className="text-center text-xs text-amber-500 bg-amber-950/20 border border-amber-500/10 p-2 rounded-md">
+          ⚠️ Ingresa tu API Key en los ajustes de IA para habilitar la generación de tu plan.
+        </p>
+      ) : !selectedFile ? (
+        <p className="text-center text-xs text-muted-foreground">
           Selecciona un PDF del syllabus ISTQB para habilitar el botón
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

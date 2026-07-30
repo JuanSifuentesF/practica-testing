@@ -68,11 +68,11 @@ export function TheoryBrief({
       : syllabusText;
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+    <div className="rounded-xl border border-border bg-card/50 p-5">
       {/* Header con ícono */}
       <div className="flex items-center gap-2 mb-3">
         <BookOpen className="size-4 text-emerald-400" />
-        <h2 className="text-sm font-semibold text-slate-300">
+        <h2 className="text-sm font-semibold text-foreground">
           Contexto Teórico
         </h2>
       </div>
@@ -83,8 +83,8 @@ export function TheoryBrief({
           className="
             inline-flex items-center px-2.5 py-0.5
             text-xs font-mono font-semibold
-            rounded-md bg-slate-800 text-slate-300
-            border border-slate-700
+            rounded-md bg-muted text-foreground
+            border border-border
           "
         >
           {topicCode}
@@ -101,12 +101,12 @@ export function TheoryBrief({
       </div>
 
       {/* Nombre del tópico */}
-      <h3 className="text-base font-semibold text-white mb-2">{topicName}</h3>
+      <h3 className="text-base font-semibold text-foreground mb-2">{topicName}</h3>
 
       {/* Texto del syllabus */}
       {syllabusText ? (
         <>
-          <p className="text-sm text-slate-400 leading-relaxed whitespace-pre-line">
+          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
             {displayText}
           </p>
           {isLong && (
@@ -130,7 +130,7 @@ export function TheoryBrief({
           )}
         </>
       ) : (
-        <p className="text-sm text-slate-500 italic">
+        <p className="text-sm text-muted-foreground italic">
           No hay texto del syllabus disponible para este tópico.
         </p>
       )}

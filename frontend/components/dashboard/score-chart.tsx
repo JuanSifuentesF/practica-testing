@@ -189,8 +189,8 @@ function CustomTooltip({ active, payload }: TooltipContentProps) {
     // Glassmorphism: fondo semi-transparente + blur
     <div
       className="
-        rounded-lg border border-slate-700
-        bg-slate-900/95 backdrop-blur-sm
+        rounded-lg border border-border
+        bg-card/95 backdrop-blur-sm
         px-4 py-3 shadow-xl
         min-w-[220px]
       "
@@ -212,32 +212,32 @@ function CustomTooltip({ active, payload }: TooltipContentProps) {
       </div>
 
       {/* Detalles de la sesión */}
-      <div className="space-y-1 text-xs text-slate-400">
+      <div className="space-y-1 text-xs text-muted-foreground">
         <div className="flex justify-between">
           <span>Sesión:</span>
-          <span className="text-slate-200">
+          <span className="text-foreground">
             Día {data.day_number} — {sessionTypeLabel}
           </span>
         </div>
 
         <div className="flex justify-between">
           <span>Fecha:</span>
-          <span className="text-slate-200">
+          <span className="text-foreground">
             {formatDate(data.completed_at)}
           </span>
         </div>
 
         {/* Tópicos evaluados (si hay) */}
         {data.topic_codes.length > 0 && (
-          <div className="pt-1 border-t border-slate-700/50">
-            <span className="text-slate-500">Tópicos:</span>
+          <div className="pt-1 border-t border-border">
+            <span className="text-muted-foreground">Tópicos:</span>
             <div className="flex flex-wrap gap-1 mt-1">
               {data.topic_codes.map((code) => (
                 <span
                   key={code}
                   className="
                     text-[10px] font-mono px-1.5 py-0.5
-                    rounded bg-slate-800 text-slate-300
+                    rounded bg-muted text-foreground
                   "
                 >
                   {code}
@@ -332,8 +332,8 @@ export function ScoreChart({ data }: ScoreChartProps) {
   // completado ninguna sesión todavía.
   if (!data || data.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-        <h3 className="text-lg font-semibold text-white mb-2">
+      <div className="rounded-xl border border-border bg-card p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-2">
           📈 Evolución de Scores
         </h3>
         <div
@@ -343,10 +343,10 @@ export function ScoreChart({ data }: ScoreChartProps) {
           "
         >
           <div className="text-4xl mb-3">📊</div>
-          <p className="text-slate-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             Aún no tienes sesiones completadas.
           </p>
-          <p className="text-slate-500 text-xs mt-1">
+          <p className="text-muted-foreground text-xs mt-1">
             Completa tu primera sesión de estudio para ver la gráfica de
             progreso.
           </p>
@@ -367,14 +367,14 @@ export function ScoreChart({ data }: ScoreChartProps) {
   }));
 
   return (
-    <div className="w-full rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+    <div className="w-full rounded-xl border border-border bg-card p-6">
       {/* ─── Encabezado de la sección ─── */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-white">
+        <h3 className="text-lg font-semibold text-foreground">
           📈 Evolución de Scores
         </h3>
         {/* Leyenda compacta de colores */}
-        <div className="hidden sm:flex items-center gap-3 text-xs text-slate-400">
+        <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <span
               className="inline-block w-2.5 h-2.5 rounded-full"
@@ -499,7 +499,7 @@ export function ScoreChart({ data }: ScoreChartProps) {
       </ResponsiveContainer>
 
       {/* ─── Leyenda mobile (solo visible < sm) ─── */}
-      <div className="flex sm:hidden items-center justify-center gap-3 mt-3 text-xs text-slate-400">
+      <div className="flex sm:hidden items-center justify-center gap-3 mt-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <span
             className="inline-block w-2 h-2 rounded-full"

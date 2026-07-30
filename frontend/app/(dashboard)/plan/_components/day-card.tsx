@@ -140,8 +140,8 @@ export function DayCard({
           isToday
             ? // El día actual tiene un borde más brillante y un fondo
               // con un sutil tinte esmeralda para destacar.
-              "border-emerald-500/40 bg-slate-900/80 ring-1 ring-emerald-500/10"
-            : "border-slate-800 bg-slate-900/40"
+              "border-emerald-500/40 bg-card/80 ring-1 ring-emerald-500/10"
+            : "border-border bg-card/40"
         }
       `}
     >
@@ -156,7 +156,7 @@ export function DayCard({
               ${
                 isToday
                   ? "bg-emerald-500 text-slate-950"
-                  : "bg-slate-800 text-slate-300"
+                  : "bg-muted text-foreground"
               }
             `}
           >
@@ -166,7 +166,7 @@ export function DayCard({
           <div>
             {/* Fecha formateada + Badge "HOY" */}
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold capitalize text-white">
+              <h3 className="text-lg font-semibold capitalize text-foreground">
                 {/*
                   capitalize: convierte la primera letra a mayúscula.
                   Intl.DateTimeFormat retorna "lunes 30 de junio" en
@@ -188,8 +188,8 @@ export function DayCard({
 
             {/* Info secundaria: dificultad + duración total */}
             <div className="flex items-center gap-3 mt-0.5">
-              <Calendar className="h-3.5 w-3.5 text-slate-500" />
-              <span className="text-xs text-slate-500">
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">
                 Día {dayNumber} · {sessions.length}{" "}
                 {sessions.length === 1 ? "sesión" : "sesiones"} ·{" "}
                 {totalDayMinutes} min total
@@ -205,7 +205,7 @@ export function DayCard({
       </div>
 
       {/* ── Separador visual ─────────────────────────────────── */}
-      <div className="my-4 h-px bg-slate-800" />
+      <div className="my-4 h-px bg-border" />
 
       {/* ── Sesiones del día ─────────────────────────────────── */}
       {/*

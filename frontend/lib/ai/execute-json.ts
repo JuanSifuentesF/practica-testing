@@ -390,6 +390,7 @@ export async function executeAiJson<T>(
             signal: controller.signal,
           });
         const rawText = completion.choices[0]?.message?.content ?? "";
+        console.log("[executeAiJson] Raw LLM text:", rawText);
 
         promptTokens +=
           validUsage(completion.usage?.prompt_tokens) ?? fallbackPromptTokens;
@@ -400,7 +401,11 @@ export async function executeAiJson<T>(
         let value: T | null = null;
         try {
           value = rawText.length > 0 ? options.parse(rawText) : null;
-        } catch {
+          if (value === null) {
+            console.warn("[executeAiJson] parse() returned null for rawText.");
+          }
+        } catch (e) {
+          console.error("[executeAiJson] parse() threw error:", e);
           value = null;
         }
 

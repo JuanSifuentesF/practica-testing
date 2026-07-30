@@ -23,9 +23,9 @@ const NOTICES = [
 
 export function SecurityNotice() {
   return (
-    <Card className="border-amber-900/50 bg-amber-950/20">
+    <Card className="border-amber-200 bg-amber-500/5 dark:border-amber-900/50 dark:bg-amber-950/20">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base text-amber-300">
+        <CardTitle className="text-base text-amber-700 dark:text-amber-300">
           Seguridad de la configuración
         </CardTitle>
       </CardHeader>
@@ -34,8 +34,8 @@ export function SecurityNotice() {
           {NOTICES.map((notice) => (
             <li key={notice.title} className="flex gap-3 text-sm">
               <span aria-hidden="true">{notice.icon}</span>
-              <p className="text-slate-400">
-                <span className="font-medium text-slate-200">
+              <p className="text-muted-foreground">
+                <span className="font-medium text-foreground">
                   {notice.title}:
                 </span>{" "}
                 {notice.description}
@@ -43,7 +43,7 @@ export function SecurityNotice() {
             </li>
           ))}
         </ul>
-        <p className="mt-4 text-xs text-amber-200/80">
+        <p className="mt-4 text-xs text-amber-800/90 dark:text-amber-200/80">
           “Verificar configuración” no envía una petición al proveedor ni
           certifica una key BYOK; esa validación ocurre con la primera llamada
           real y trazable de AI-05.

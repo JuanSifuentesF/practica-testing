@@ -58,12 +58,12 @@ export function BugReportForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-xl border border-slate-800 bg-slate-900/60 p-5"
+      className="rounded-xl border border-border bg-card/60 p-5"
     >
-      <h2 className="text-base font-semibold text-white">
+      <h2 className="text-base font-semibold text-foreground">
         Redacta el reporte de defecto
       </h2>
-      <p className="mt-1 text-sm text-slate-400">
+      <p className="mt-1 text-sm text-muted-foreground">
         Describe hechos reproducibles. La evidencia textual es opcional.
       </p>
       <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -116,7 +116,7 @@ export function BugReportForm({
         multiline
       />
       <fieldset className="mt-5">
-        <legend className="text-sm font-medium text-slate-200">
+        <legend className="text-sm font-medium text-foreground">
           Pasos para reproducir
         </legend>
         <div className="mt-3 space-y-2">
@@ -126,7 +126,7 @@ export function BugReportForm({
                 value={step}
                 disabled={disabled}
                 onChange={(event) => updateStep(index, event.target.value)}
-                className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
+                className="min-w-0 flex-1 rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground"
                 placeholder={`Paso ${index + 1}`}
               />
               <button
@@ -138,7 +138,7 @@ export function BugReportForm({
                     steps: current.steps.filter((_, i) => i !== index),
                   }))
                 }
-                className="rounded-lg border border-slate-700 px-3 text-slate-400 disabled:opacity-40"
+                className="rounded-lg border border-border px-3 text-muted-foreground disabled:opacity-40"
               >
                 <Trash2 className="size-4" />
               </button>
@@ -193,9 +193,9 @@ function Field({
   multiline?: boolean;
 }) {
   const className =
-    "mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white";
+    "mt-1 w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground";
   return (
-    <label className="block text-sm font-medium text-slate-200">
+    <label className="block text-sm font-medium text-foreground">
       {label}
       {multiline ? (
         <textarea
@@ -230,13 +230,13 @@ function SelectField({
   disabled: boolean;
 }) {
   return (
-    <label className="block text-sm font-medium text-slate-200">
+    <label className="block text-sm font-medium text-foreground">
       {label}
       <select
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
+        className="mt-1 w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground"
       >
         {values.map((item) => (
           <option key={item} value={item}>

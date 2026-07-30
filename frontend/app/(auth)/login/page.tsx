@@ -109,8 +109,8 @@ export default function LoginPage() {
   return (
     <>
       {/* ──── Título y subtítulo ──── */}
-      <h1 className="mb-2 text-2xl font-semibold text-white">Iniciar Sesión</h1>
-      <p className="mb-6 text-sm text-slate-400">
+      <h1 className="mb-2 text-2xl font-semibold text-foreground">Iniciar Sesión</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
         Ingresa tus credenciales para continuar con tu plan de estudio.
       </p>
 
@@ -120,7 +120,7 @@ export default function LoginPage() {
         {/* Campo: Email */}
         <div className="space-y-2">
           {/* Label de shadcn/ui — asociado al input por htmlFor */}
-          <Label htmlFor="email" className="text-slate-300">
+          <Label htmlFor="email" className="text-foreground">
             Correo Electrónico
           </Label>
           {/* Input de shadcn/ui — personalizado con clases de Tailwind.
@@ -139,13 +139,13 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="bg-slate-950 border-slate-700 text-white placeholder:text-slate-500"
+            className="border-input bg-card text-foreground placeholder:text-muted-foreground"
           />
         </div>
 
         {/* Campo: Password */}
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-slate-300">
+          <Label htmlFor="password" className="text-foreground">
             Contraseña
           </Label>
           <Input
@@ -154,7 +154,7 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="bg-slate-950 border-slate-700 text-white"
+            className="border-input bg-card text-foreground"
           />
         </div>
 
@@ -165,7 +165,7 @@ export default function LoginPage() {
             - text-red-400: texto rojo claro para legibilidad
         */}
         {error && (
-          <div className="rounded-md bg-red-900/30 p-3 border border-red-800 text-sm text-red-400">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             {error}
           </div>
         )}
@@ -181,7 +181,7 @@ export default function LoginPage() {
         <Button
           type="submit"
           disabled={loading}
-          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white"
+          className="w-full rounded-xl bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
         >
           {loading ? "Verificando..." : "Entrar"}
         </Button>
@@ -192,9 +192,9 @@ export default function LoginPage() {
           Link de Next.js: navegación client-side sin recarga completa.
           text-emerald-400: color consistente con el branding.
       */}
-      <div className="mt-6 text-center text-sm text-slate-400">
+      <div className="mt-6 text-center text-sm text-muted-foreground">
         ¿No tienes cuenta?{" "}
-        <Link href="/register" className="text-emerald-400 hover:underline">
+        <Link href="/register" className="font-semibold text-emerald-700 underline-offset-4 hover:text-emerald-800 hover:underline">
           Regístrate aquí
         </Link>
       </div>

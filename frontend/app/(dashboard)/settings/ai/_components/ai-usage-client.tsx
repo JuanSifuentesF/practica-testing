@@ -62,13 +62,13 @@ export function AiUsageClient() {
 
   if (!report && isLoading) {
     return (
-      <Card aria-busy="true" className="border-slate-800 bg-slate-900/50">
+      <Card aria-busy="true" className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-lg text-slate-100">
+          <CardTitle className="text-lg text-foreground">
             Consumo de IA
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-slate-400">
+        <CardContent className="text-sm text-muted-foreground">
           Cargando consumo y límites…
         </CardContent>
       </Card>
@@ -101,11 +101,11 @@ export function AiUsageClient() {
         <div>
           <h2
             id="ai-usage-title"
-            className="text-xl font-semibold text-slate-100"
+            className="text-xl font-semibold text-foreground"
           >
             Consumo de IA
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-muted-foreground">
             Actividad registrada y cuota de plataforma medida en UTC.
           </p>
         </div>
@@ -114,6 +114,7 @@ export function AiUsageClient() {
           variant="outline"
           onClick={refresh}
           disabled={isLoading}
+          className="border-border bg-card text-foreground hover:bg-muted hover:text-foreground transition-colors duration-200"
         >
           {isLoading ? "Actualizando…" : "Actualizar consumo"}
         </Button>

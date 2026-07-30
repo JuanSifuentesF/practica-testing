@@ -32,6 +32,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAiSession } from "@/components/ai/ai-session-provider";
 
 // ─────────────────────────────────────────────────────────────
 // Rutas de navegación
@@ -102,102 +103,46 @@ function isActivePath(pathname: string, href: string): boolean {
 }
 
 export function MainNav() {
-  // ───────────────────────────────────────────────────────────
-  // Ruta actual
-  // ───────────────────────────────────────────────────────────
-  //
-  // usePathname() devuelve la URL activa.
-  //
-  // Ejemplos:
-  //
-  //   /dashboard
-  //   /plan
-  //   /session/abc
-  //   /practice/123/results
-  //
-  // La utilizamos para resaltar visualmente la opción
-  // actualmente seleccionada.
-  // ───────────────────────────────────────────────────────────
   const pathname = usePathname();
+  const { byokApiKey } = useAiSession();
 
   return (
-    // ─────────────────────────────────────────────────────────
-    // Contenedor principal
-    // ─────────────────────────────────────────────────────────
-    //
-    // hidden
-    //   Oculto por defecto (mobile-first).
-    //
-    // md:flex
-    //   Visible desde 768px.
-    //
-    // items-center
-    //   Centra verticalmente los elementos.
-    //
-    // space-x-6
-    //   Espaciado horizontal uniforme entre links.
-    //
-    // text-sm
-    //   Tamaño de fuente 14px.
-    //
-    // font-medium
-    //   Peso de fuente equilibrado para navegación.
-    // ─────────────────────────────────────────────────────────
     <nav className="hidden items-center space-x-6 text-sm font-medium md:flex">
       {routes.map((route) => {
-        // Determina si este enlace representa
-        // la sección actualmente activa.
         const isActive = isActivePath(pathname, route.href);
+        const isAiRoute = route.href === "/settings/ai";
 
         return (
           <Link
             key={route.href}
             href={route.href}
-            // ───────────────────────────────────────
-            // Accesibilidad
-            // ───────────────────────────────────────
-            //
-            // aria-current="page"
-            //
-            // Indica a lectores de pantalla cuál es
-            // la página actualmente seleccionada.
-            //
-            // Beneficios:
-            //
-            // - Mejor experiencia para usuarios
-            //   con tecnologías asistivas.
-            // - Cumplimiento de buenas prácticas WCAG.
-            // ───────────────────────────────────────
+            data-tour={
+              route.href === "/settings/ai"
+                ? "ai-config"
+                : route.href === "/practice"
+                ? "practice-tab"
+                : undefined
+            }
             aria-current={isActive ? "page" : undefined}
             className={
               isActive
-                ? // ────────────────────────────────
-                  // Link activo
-                  // ────────────────────────────────
-                  //
-                  // text-emerald-400
-                  //   Color principal de la marca.
-                  //
-                  // hover:text-emerald-300
-                  //   Ligera variación para indicar
-                  //   interactividad sin perder el
-                  //   estado activo.
-                  // ────────────────────────────────
-                  "text-emerald-400 transition-colors hover:text-emerald-300"
-                : // ────────────────────────────────
-                  // Link inactivo
-                  // ────────────────────────────────
-                  //
-                  // text-slate-400
-                  //   Color neutro.
-                  //
-                  // hover:text-emerald-400
-                  //   Feedback visual al pasar el mouse.
-                  // ────────────────────────────────
-                  "text-slate-400 transition-colors hover:text-emerald-400"
+                ? "text-emerald-400 transition-colors hover:text-emerald-300 light:text-emerald-700 light:hover:text-emerald-800"
+                : "text-muted-foreground transition-colors hover:text-emerald-400 light:hover:text-emerald-700"
             }
           >
-            {route.label}
+            {isAiRoute ? (
+              <span className="inline-flex items-center gap-1.5">
+                {byokApiKey !== "" ? (
+                  <span className="size-2 rounded-full bg-emerald-400 light:bg-emerald-600" title="API Key de IA lista" />
+                ) : (
+                  <span className="size-2 rounded-full bg-amber-400 animate-pulse light:bg-amber-500" title="API Key de IA requerida" />
+                )}
+                {route.label}
+                {byokApiKey === "" && <span className="text-xs">🔑</span>}
+              </span>
+            ) : (
+              route.label
+            )}
           </Link>
         );
       })}

@@ -66,12 +66,12 @@ export function QuizNavigation({
               className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-all duration-200 ${
                 isCurrent
                   ? // Estado: pregunta actual
-                    "bg-emerald-500 text-slate-950 ring-2 ring-emerald-400/50 ring-offset-2 ring-offset-slate-900"
+                    "bg-emerald-500 text-slate-950 ring-2 ring-emerald-400/50 ring-offset-2 ring-offset-background"
                   : isAnswered
                     ? // Estado: respondida (pero no la actual)
                       "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30"
                     : // Estado: pendiente
-                      "bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-600 hover:text-slate-300"
+                      "bg-muted text-muted-foreground border border-border hover:border-border hover:text-foreground"
               }`}
             >
               {i + 1}
@@ -86,13 +86,13 @@ export function QuizNavigation({
           type="button"
           onClick={() => onNavigate(currentIndex - 1)}
           disabled={currentIndex === 0}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <ArrowLeft className="h-4 w-4" />
           Anterior
         </button>
 
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-muted-foreground">
           {currentIndex + 1} / {totalQuestions}
         </span>
 
@@ -100,7 +100,7 @@ export function QuizNavigation({
           type="button"
           onClick={() => onNavigate(currentIndex + 1)}
           disabled={currentIndex === totalQuestions - 1}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
         >
           Siguiente
           <ArrowRight className="h-4 w-4" />

@@ -1,7 +1,7 @@
 // frontend/app/(dashboard)/settings/ai/_components/ai-mode-selector.tsx
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { parseAiUsageMode } from "@/lib/ai/settings-contract";
@@ -47,41 +47,47 @@ export function AiModeSelector({
   }
 
   return (
-    <Card className="border-slate-800 bg-slate-900/50">
+    <Card className="border-border bg-card text-card-foreground">
       <CardHeader>
-        <CardTitle className="text-lg text-slate-100">Modo de IA</CardTitle>
+        <CardTitle className="text-xl font-bold">
+          Modo de Consumo de IA
+        </CardTitle>
+        <CardDescription>
+          Selecciona cómo se aprovisionarán las llamadas a los modelos de lenguaje.
+        </CardDescription>
       </CardHeader>
-      <CardContent>
+
+      <CardContent className="space-y-4">
         <RadioGroup
           value={mode}
           onValueChange={handleChange}
           disabled={isSaving}
-          className="space-y-3"
+          className="grid gap-3 md:grid-cols-3"
         >
           {MODE_OPTIONS.map((option) => {
-            const selected = mode === option.value;
+            const isSelected = mode === option.value;
             return (
               <div
                 key={option.value}
                 className={
-                  selected
-                    ? "flex items-start gap-3 rounded-lg border border-emerald-700 bg-emerald-950/30 p-4"
-                    : "flex items-start gap-3 rounded-lg border border-slate-800 bg-slate-950/50 p-4 hover:border-slate-700"
+                  isSelected
+                    ? "flex items-start gap-3 rounded-lg border-2 border-emerald-500 bg-emerald-500/10 p-4 text-left transition-all cursor-pointer dark:bg-emerald-500/10 light:bg-emerald-50"
+                    : "flex items-start gap-3 rounded-lg border border-border bg-card p-4 hover:border-slate-400 transition-all cursor-pointer"
                 }
               >
                 <RadioGroupItem
                   value={option.value}
                   id={`mode-${option.value}`}
-                  className="mt-1 border-slate-600 text-emerald-400"
+                  className="mt-1"
                 />
                 <Label
                   htmlFor={`mode-${option.value}`}
                   className="cursor-pointer"
                 >
-                  <span className="font-medium text-slate-100">
+                  <span className="font-medium text-foreground">
                     {option.label}
                   </span>
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {option.description}
                   </p>
                 </Label>

@@ -27,14 +27,14 @@ export function ValidationChecklist({
   onItemChange: (id: string, patch: Partial<ChecklistProgressItem>) => void;
 }) {
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+    <section className="rounded-xl border border-border bg-card/60 p-5">
       <div className="flex items-center gap-2">
         <ClipboardCheck className="size-5 text-blue-300" />
         <div>
-          <h2 className="text-base font-semibold text-white">
+          <h2 className="text-base font-semibold text-foreground">
             Checklist de validaciones
           </h2>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             Registra pruebas manuales; esta UI no contacta FastAPI.
           </p>
         </div>
@@ -55,7 +55,7 @@ export function ValidationChecklist({
           return (
             <article
               key={item.id}
-              className="rounded-lg border border-slate-800 bg-slate-950/30 p-4"
+              className="rounded-lg border border-border bg-card/30 p-4"
             >
               <div className="flex gap-3">
                 <button
@@ -66,7 +66,7 @@ export function ValidationChecklist({
                   onClick={() =>
                     onItemChange(item.id, { checked: !entry.checked })
                   }
-                  className="mt-0.5 text-slate-400 disabled:opacity-50"
+                  className="mt-0.5 text-muted-foreground disabled:opacity-50"
                 >
                   {entry.checked ? (
                     <CheckCircle2 className="size-5 text-emerald-400" />
@@ -81,17 +81,17 @@ export function ValidationChecklist({
                     >
                       {item.category}
                     </span>
-                    <h3 className="text-sm font-medium text-white">
+                    <h3 className="text-sm font-medium text-foreground">
                       {item.description}
                     </h3>
                   </div>
-                  <p className="mt-2 text-sm text-slate-300">
+                  <p className="mt-2 text-sm text-foreground">
                     <strong>Esperado:</strong> {item.expectedResult}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {item.documentation}
                   </p>
-                  <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-slate-400">
+                  <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Resultado real observado
                     <textarea
                       value={entry.actualResult}
@@ -102,7 +102,7 @@ export function ValidationChecklist({
                         })
                       }
                       placeholder="Ej.: 422, error_code=NO_TEXT_EXTRACTED"
-                      className="mt-1 min-h-20 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm normal-case tracking-normal text-white"
+                      className="mt-1 min-h-20 w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm normal-case tracking-normal text-foreground"
                     />
                   </label>
                 </div>

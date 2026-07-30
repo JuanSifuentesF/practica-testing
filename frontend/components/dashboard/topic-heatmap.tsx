@@ -80,29 +80,29 @@ const STATUS_STYLES: Record<TopicProgressStatus, StatusStyle> = {
   pending: {
     label: "Pendiente",
     cellClass:
-      "border-slate-700 bg-slate-800/70 text-slate-300 hover:bg-slate-700/90 focus-visible:bg-slate-700/90",
-    badgeClass: "border-slate-700 bg-slate-800 text-slate-300",
+      "border-border bg-muted/70 text-foreground hover:bg-muted/90 focus-visible:bg-muted/90",
+    badgeClass: "border-border bg-muted text-foreground",
     dotClass: "bg-slate-500",
   },
   in_progress: {
     label: "En progreso",
     cellClass:
-      "border-blue-500/70 bg-blue-600/80 text-white shadow-blue-500/20 hover:bg-blue-500 focus-visible:bg-blue-500",
-    badgeClass: "border-blue-500/40 bg-blue-950/70 text-blue-300",
+      "border-blue-500/70 bg-blue-600/80 text-foreground shadow-blue-500/20 hover:bg-blue-500 focus-visible:bg-blue-500",
+    badgeClass: "border-blue-500/40 bg-blue-950/70 text-blue-300 light:border-blue-200 light:bg-blue-50 light:text-blue-800",
     dotClass: "bg-blue-400",
   },
   mastered: {
     label: "Dominado",
     cellClass:
       "border-emerald-400/80 bg-emerald-500/85 text-slate-950 shadow-emerald-500/25 hover:bg-emerald-400 focus-visible:bg-emerald-400",
-    badgeClass: "border-emerald-500/40 bg-emerald-950/70 text-emerald-300",
+    badgeClass: "border-emerald-500/40 bg-emerald-950/70 text-emerald-300 light:border-emerald-200 light:bg-emerald-50 light:text-emerald-800",
     dotClass: "bg-emerald-400",
   },
   failed: {
     label: "Fallido",
     cellClass:
-      "border-red-400/80 bg-red-500/85 text-white shadow-red-500/25 hover:bg-red-400 focus-visible:bg-red-400",
-    badgeClass: "border-red-500/40 bg-red-950/70 text-red-300",
+      "border-red-400/80 bg-red-500/85 text-foreground shadow-red-500/25 hover:bg-red-400 focus-visible:bg-red-400",
+    badgeClass: "border-red-500/40 bg-red-950/70 text-red-300 light:border-red-200 light:bg-red-50 light:text-red-800",
     dotClass: "bg-red-400",
   },
 };
@@ -119,12 +119,12 @@ function getCompactTopicLabel(topicCode: string): string {
 function getLevelClass(level: LevelK | null): string {
   switch (level) {
     case "K3":
-      return "border-purple-500/40 bg-purple-950/70 text-purple-300";
+      return "border-purple-500/40 bg-purple-950/70 text-purple-300 light:border-purple-200 light:bg-purple-50 light:text-purple-800";
     case "K2":
-      return "border-blue-500/40 bg-blue-950/70 text-blue-300";
+      return "border-blue-500/40 bg-blue-950/70 text-blue-300 light:border-blue-200 light:bg-blue-50 light:text-blue-800";
     case "K1":
     default:
-      return "border-slate-600 bg-slate-800 text-slate-300";
+      return "border-border bg-muted text-foreground";
   }
 }
 
@@ -174,28 +174,28 @@ function TopicTooltip({ topic }: { topic: TopicHeatmapItem }) {
   const status = STATUS_STYLES[topic.status];
   const bestScoreClass =
     topic.best_score >= 70
-      ? "text-emerald-300"
+      ? "text-emerald-300 light:text-emerald-700"
       : topic.best_score > 0
-        ? "text-red-300"
-        : "text-slate-300";
+        ? "text-red-300 light:text-red-700"
+        : "text-foreground";
 
   return (
     <div
       className="
         pointer-events-none absolute left-1/2 top-full z-50 mt-2
-        w-72 -translate-x-1/2 rounded-xl border border-slate-700
-        bg-slate-950/95 p-4 text-left shadow-2xl shadow-black/40
+        w-72 -translate-x-1/2 rounded-xl border border-border
+        bg-card/95 p-4 text-left shadow-2xl shadow-black/40 light:shadow-slate-900/15
         opacity-0 backdrop-blur-md transition-opacity duration-150
         group-hover:opacity-100 group-focus-within:opacity-100
       "
       role="tooltip"
     >
-      <div className="mb-3 flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
+      <div className="mb-3 flex items-start justify-between gap-3 border-b border-border pb-3">
         <div>
-          <p className="font-mono text-sm font-bold text-white">
+          <p className="font-mono text-sm font-bold text-foreground">
             {topic.topic_code}
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-slate-300">
+          <p className="mt-1 text-xs leading-relaxed text-foreground">
             {topic.topic_name ?? "Tópico del syllabus ISTQB"}
           </p>
         </div>
@@ -208,7 +208,7 @@ function TopicTooltip({ topic }: { topic: TopicHeatmapItem }) {
 
       <div className="grid grid-cols-2 gap-3 text-xs">
         <div>
-          <span className="block text-slate-500">Estado</span>
+          <span className="block text-muted-foreground">Estado</span>
           <span
             className={`mt-1 inline-flex rounded-md border px-2 py-1 ${status.badgeClass}`}
           >
@@ -216,20 +216,20 @@ function TopicTooltip({ topic }: { topic: TopicHeatmapItem }) {
           </span>
         </div>
         <div>
-          <span className="block text-slate-500">Intentos</span>
-          <span className="mt-1 block font-semibold text-slate-100">
+          <span className="block text-muted-foreground">Intentos</span>
+          <span className="mt-1 block font-semibold text-foreground">
             {topic.attempts}
           </span>
         </div>
         <div>
-          <span className="block text-slate-500">Mejor score</span>
+          <span className="block text-muted-foreground">Mejor score</span>
           <span className={`mt-1 block font-semibold ${bestScoreClass}`}>
             {topic.best_score}%
           </span>
         </div>
         <div>
-          <span className="block text-slate-500">Último score</span>
-          <span className="mt-1 block font-semibold text-slate-100">
+          <span className="block text-muted-foreground">Último score</span>
+          <span className="mt-1 block font-semibold text-foreground">
             {topic.last_score}%
           </span>
         </div>
@@ -245,12 +245,12 @@ export function TopicHeatmap({ topicProgress }: TopicHeatmapProps) {
 
   if (totalTopics === 0) {
     return (
-      <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-        <h2 className="text-lg font-semibold text-white">Mapa de Tópicos</h2>
-        <div className="mt-4 flex h-[220px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-800 bg-slate-950/30 text-center">
+      <section className="rounded-xl border border-border bg-card p-6">
+        <h2 className="text-lg font-semibold text-foreground">Mapa de Tópicos</h2>
+        <div className="mt-4 flex h-[220px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-center">
           <div className="mb-3 text-4xl">🗺️</div>
-          <p className="text-sm text-slate-400">No hay tópicos disponibles.</p>
-          <p className="mt-1 max-w-sm text-xs text-slate-500">
+          <p className="text-sm text-muted-foreground">No hay tópicos disponibles.</p>
+          <p className="mt-1 max-w-sm text-xs text-muted-foreground">
             Esto suele indicar que el plan activo no creó registros en
             topic_progress. Revisa UP-05 o crea un nuevo plan.
           </p>
@@ -260,26 +260,26 @@ export function TopicHeatmap({ topicProgress }: TopicHeatmapProps) {
   }
 
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 shadow-xl shadow-black/10">
+    <section className="rounded-xl border border-border bg-card p-6 shadow-xl shadow-black/10 light:shadow-slate-900/5">
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-2xl">🗺️</span>
-            <h2 className="text-xl font-bold tracking-tight text-white">
+            <h2 className="text-xl font-bold tracking-tight text-foreground">
               Mapa de Tópicos por Estado
             </h2>
           </div>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
             Visualiza todos los tópicos del plan activo agrupados por capítulo.
             Los colores siguen el estado real de topic_progress.
           </p>
         </div>
 
-        <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm">
-          <p className="text-slate-500">Dominados</p>
-          <p className="text-2xl font-bold text-emerald-400">
+        <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
+          <p className="text-muted-foreground">Dominados</p>
+          <p className="text-2xl font-bold text-emerald-400 light:text-emerald-700">
             {masteredTopics}
-            <span className="text-sm font-normal text-slate-500">
+            <span className="text-sm font-normal text-muted-foreground">
               /{totalTopics}
             </span>
           </p>
@@ -288,7 +288,7 @@ export function TopicHeatmap({ topicProgress }: TopicHeatmapProps) {
 
       <div className="mb-6 flex flex-wrap gap-3 text-xs">
         {Object.entries(STATUS_STYLES).map(([status, config]) => (
-          <div key={status} className="flex items-center gap-2 text-slate-300">
+          <div key={status} className="flex items-center gap-2 text-foreground">
             <span className={`h-3 w-3 rounded-full ${config.dotClass}`} />
             <span>{config.label}</span>
           </div>
@@ -306,14 +306,14 @@ export function TopicHeatmap({ topicProgress }: TopicHeatmapProps) {
             >
               <header className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-300">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-300 light:text-emerald-700">
                     {chapter.meta.title}
                   </p>
-                  <h3 className="mt-1 text-sm font-semibold text-white">
+                  <h3 className="mt-1 text-sm font-semibold text-foreground">
                     {chapter.meta.name}
                   </h3>
                 </div>
-                <span className="rounded-full border border-slate-700 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300">
+                <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs text-foreground">
                   {masteredInChapter}/{chapter.topics.length} ok
                 </span>
               </header>
@@ -346,7 +346,7 @@ export function TopicHeatmap({ topicProgress }: TopicHeatmapProps) {
                   })}
                 </div>
               ) : (
-                <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-slate-800 bg-slate-950/30 text-xs text-slate-500">
+                <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
                   Sin tópicos en este capítulo
                 </div>
               )}

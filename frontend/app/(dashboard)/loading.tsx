@@ -59,7 +59,7 @@ export default function DashboardLoading() {
             Mensaje sutil que informa al usuario qué está pasando.
             text-sm → fuente pequeña para no competir con el spinner.
             text-slate-400 → gris claro, discreto. */}
-        <p className="text-sm text-slate-400">Cargando aplicación...</p>
+        <p className="text-sm text-muted-foreground">Cargando aplicación...</p>
       </div>
     </div>
   );

@@ -201,24 +201,24 @@ function CustomTooltip({ active, payload }: TooltipContentProps) {
   const statusColor = ACTUAL_COLORS[data.status];
 
   return (
-    <div className="min-w-[240px] rounded-xl border border-slate-700 bg-slate-950/95 p-4 shadow-2xl shadow-black/30 backdrop-blur-md">
-      <div className="mb-3 border-b border-slate-800 pb-3">
-        <p className="text-sm font-bold text-white">
+    <div className="min-w-[240px] rounded-xl border border-border bg-card/95 p-4 shadow-2xl shadow-black/30 backdrop-blur-md">
+      <div className="mb-3 border-b border-border pb-3">
+        <p className="text-sm font-bold text-foreground">
           Día {data.day_number} — {SESSION_TYPE_LABELS[data.session_type]}
         </p>
-        <p className="mt-1 text-xs text-slate-500">Sesión {data.session_id}</p>
+        <p className="mt-1 text-xs text-muted-foreground">Sesión {data.session_id}</p>
       </div>
 
       <div className="space-y-2 text-xs">
         <div className="flex items-center justify-between gap-4">
-          <span className="text-slate-400">Estimado</span>
+          <span className="text-muted-foreground">Estimado</span>
           <span className="font-semibold text-sky-300">
             {data.estimated_minutes} min
           </span>
         </div>
 
         <div className="flex items-center justify-between gap-4">
-          <span className="text-slate-400">Real</span>
+          <span className="text-muted-foreground">Real</span>
           <span className="font-semibold" style={{ color: statusColor }}>
             {data.actual_minutes === null
               ? "Sin registro"
@@ -227,14 +227,14 @@ function CustomTooltip({ active, payload }: TooltipContentProps) {
         </div>
 
         <div className="flex items-center justify-between gap-4">
-          <span className="text-slate-400">Diferencia</span>
-          <span className="font-semibold text-slate-100">
+          <span className="text-muted-foreground">Diferencia</span>
+          <span className="font-semibold text-foreground">
             {formatSignedMinutes(data.variance_minutes)}
           </span>
         </div>
 
         <div className="flex items-center justify-between gap-4">
-          <span className="text-slate-400">Estado</span>
+          <span className="text-muted-foreground">Estado</span>
           <span
             className="rounded-full px-2 py-0.5 text-[11px] font-bold"
             style={{ backgroundColor: `${statusColor}20`, color: statusColor }}
@@ -265,19 +265,19 @@ export function TimeComparisonChart({ data }: TimeComparisonChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+      <section className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center gap-2">
           <span className="text-2xl">⏱️</span>
-          <h2 className="text-xl font-bold tracking-tight text-white">
+          <h2 className="text-xl font-bold tracking-tight text-foreground">
             Gestión de Tiempo
           </h2>
         </div>
 
-        <div className="mt-5 flex h-[240px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-800 bg-slate-950/30 text-center">
-          <p className="text-sm text-slate-400">
+        <div className="mt-5 flex h-[240px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-center">
+          <p className="text-sm text-muted-foreground">
             Aún no hay sesiones completadas para comparar.
           </p>
-          <p className="mt-1 max-w-sm text-xs text-slate-500">
+          <p className="mt-1 max-w-sm text-xs text-muted-foreground">
             Completa una sesión de teoría y quiz para que el dashboard pueda
             calcular tiempo estimado vs tiempo real.
           </p>
@@ -287,36 +287,36 @@ export function TimeComparisonChart({ data }: TimeComparisonChartProps) {
   }
 
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 shadow-xl shadow-black/10">
+    <section className="rounded-xl border border-border bg-card p-6 shadow-xl shadow-black/10">
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-2xl">⏱️</span>
-            <h2 className="text-xl font-bold tracking-tight text-white">
+            <h2 className="text-xl font-bold tracking-tight text-foreground">
               Tiempo Real vs Estimado
             </h2>
           </div>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
             Compara los minutos planificados para cada sesión contra el tiempo
             real registrado entre started_at y completed_at.
           </p>
         </div>
 
         <div className="grid grid-cols-3 gap-3 text-center text-xs">
-          <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
-            <p className="text-slate-500">Prom. estimado</p>
+          <div className="rounded-lg border border-border bg-card px-3 py-2">
+            <p className="text-muted-foreground">Prom. estimado</p>
             <p className="mt-1 text-lg font-bold text-sky-300">
               {averageEstimated ?? 0}m
             </p>
           </div>
-          <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
-            <p className="text-slate-500">Prom. real</p>
+          <div className="rounded-lg border border-border bg-card px-3 py-2">
+            <p className="text-muted-foreground">Prom. real</p>
             <p className="mt-1 text-lg font-bold text-emerald-300">
               {averageActual === null ? "--" : `${averageActual}m`}
             </p>
           </div>
-          <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
-            <p className="text-slate-500">Desvío total</p>
+          <div className="rounded-lg border border-border bg-card px-3 py-2">
+            <p className="text-muted-foreground">Desvío total</p>
             <p className="mt-1 text-lg font-bold text-amber-300">
               {formatSignedMinutes(totalVariance)}
             </p>
@@ -324,7 +324,7 @@ export function TimeComparisonChart({ data }: TimeComparisonChartProps) {
         </div>
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-4 text-xs text-slate-300">
+      <div className="mb-5 flex flex-wrap gap-4 text-xs text-foreground">
         <span className="flex items-center gap-2">
           <span
             className="h-3 w-3 rounded-sm"
