@@ -73,6 +73,21 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function findTheoryTopicsPayload(value: unknown, depth = 0): unknown[] | null {
+  if (!isRecord(value) || depth > 2) return null;
+
+  if (Array.isArray(value.topics)) return value.topics;
+  if (isRecord(value.topic)) return [value.topic];
+  if (isNonEmptyString(value.topic_code)) return [value];
+
+  for (const key of ["theory", "content", "data", "result", "response"]) {
+    const nested = findTheoryTopicsPayload(value[key], depth + 1);
+    if (nested) return nested;
+  }
+
+  return null;
+}
+
 function isKeyConcept(
   value: unknown,
 ): value is TheoryTopicContent["key_concepts"][number] {
@@ -122,48 +137,52 @@ function isTheoryTopic(value: unknown): value is TheoryTopicContent {
   );
 }
 
-function parseTheoryResponse(
+export function parseTheoryResponse(
   rawText: string,
   expectedTopics: SessionTopic[],
 ): TheoryTopicContent[] | null {
   const value = parseFirstJsonObject(rawText);
-  if (!value || !Array.isArray(value.topics)) {
+  const topicsPayload = findTheoryTopicsPayload(value);
+  if (!topicsPayload) {
     return null;
   }
 
   // Sanitizar nulls en key_concepts.example para que coincidan con la definición opcional de TypeScript
-  for (const topic of value.topics) {
-    if (topic && Array.isArray(topic.key_concepts)) {
+  for (const topic of topicsPayload) {
+    if (isRecord(topic) && Array.isArray(topic.key_concepts)) {
       for (const concept of topic.key_concepts) {
-        if (concept && (concept.example === null || concept.example === "")) {
+        if (
+          isRecord(concept) &&
+          (concept.example === null || concept.example === "")
+        ) {
           delete concept.example;
         }
       }
     }
   }
 
-  if (!value.topics.every(isTheoryTopic)) {
+  if (!topicsPayload.every(isTheoryTopic)) {
     return null;
   }
 
   const expectedCodes = expectedTopics.map((topic) => topic.code);
   const expectedCodeSet = new Set(expectedCodes);
-  const generatedCodes = value.topics.map((topic) => topic.topic_code);
+  const generatedCodes = topicsPayload.map((topic) => topic.topic_code);
   if (
     expectedCodeSet.size !== expectedCodes.length ||
-    value.topics.length !== expectedCodes.length ||
+    topicsPayload.length !== expectedCodes.length ||
     new Set(generatedCodes).size !== generatedCodes.length ||
     generatedCodes.some((code) => !expectedCodeSet.has(code))
   ) {
     return null;
   }
 
-  if (validateTheoryTopics(value.topics, expectedCodes).length > 0) {
+  if (validateTheoryTopics(topicsPayload, expectedCodes).length > 0) {
     return null;
   }
 
   const generatedByCode = new Map(
-    value.topics.map((topic) => [topic.topic_code, topic]),
+    topicsPayload.map((topic) => [topic.topic_code, topic]),
   );
   const orderedTopics: TheoryTopicContent[] = [];
   for (const expected of expectedTopics) {
@@ -176,6 +195,26 @@ function parseTheoryResponse(
     });
   }
   return orderedTopics;
+}
+
+export function buildTheoryFormatRetryPrompt(
+  basePrompt: string,
+  topic: SessionTopic,
+): string {
+  return `${basePrompt}
+
+## REINTENTO ESTRICTO DE FORMATO
+
+El intento anterior no cumplio el contrato JSON requerido por la aplicacion.
+Devuelve solo un objeto JSON valido, sin Markdown, sin explicaciones y sin texto adicional.
+
+Contrato obligatorio:
+- La raiz debe ser exactamente un objeto con la propiedad "topics".
+- "topics" debe ser un array con exactamente 1 elemento.
+- El unico elemento debe usar topic_code "${topic.code}", topic_name "${topic.name}" y level_k "${topic.level_k}".
+- Incluye introduction, key_concepts, examples, connections y summary con contenido pedagogico completo.
+- No uses nombres alternativos como "topic", "theory", "content", "data", "result" o "response" en la raiz.
+- No omitas key_concepts ni summary.`;
 }
 
 function createDemoTheoryRaw(topics: SessionTopic[]): string {
@@ -548,7 +587,10 @@ export async function POST(
         userId: user.id,
         feature: "theory",
         systemPrompt,
-        userPrompts: [topicUserPrompt],
+        userPrompts: [
+          topicUserPrompt,
+          buildTheoryFormatRetryPrompt(topicUserPrompt, topic),
+        ],
         maxCompletionTokensPerAttempt: 4000, // un solo tópico cabe holgadamente con su detalle completo aquí
         timeoutMs: THEORY_TIMEOUT_MS,
         parse: (rawText) => parseTheoryResponse(rawText, [topic]),
