@@ -2,7 +2,7 @@
 # Dockerfile — Backend ISTQB Study Agent (FastAPI)
 # ═══════════════════════════════════════════════════════════════
 #
-# Multi-stage build optimizado para producción en DigitalOcean.
+# Multi-stage build optimizado para producción en Heroku (Cedar Container Registry).
 #
 # Stage 1 (builder):
 #   - Instala dependencias de compilación temporales.
@@ -125,6 +125,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+RUN useradd --create-home --shell /usr/sbin/nologin appuser
+
 # Copiar los paquetes Python compilados del Stage 1.
 #
 # --from=builder: indica que el origen es la etapa "builder".
@@ -140,7 +142,7 @@ COPY --from=builder /install/bin /usr/local/bin
 #
 # El .dockerignore se encarga de excluir venv/, __pycache__/,
 # .env y otros archivos que no deben estar en la imagen.
-COPY ./app ./app
+COPY --chown=appuser:appuser ./app ./app
 
 # Exponer el puerto 8000.
 #
@@ -148,6 +150,8 @@ COPY ./app ./app
 # en el puerto 8000. No abre el puerto; eso lo hace -p al
 # ejecutar `docker run -p 8000:8000`.
 EXPOSE 8000
+
+USER appuser
 
 # Comando de inicio del contenedor.
 #
@@ -162,4 +166,4 @@ EXPOSE 8000
 # 1. No hay archivos que cambien en un contenedor inmutable.
 # 2. --reload consume CPU innecesariamente.
 # 3. --reload importa watchfiles que no está instalado.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port \"${PORT:-8000}\""]
