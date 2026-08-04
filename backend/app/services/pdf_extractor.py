@@ -26,6 +26,7 @@ Uso:
 
 import io
 import logging
+import re
 from dataclasses import dataclass
 
 import fitz  # PyMuPDF — se importa como 'fitz' por razones históricas
@@ -36,6 +37,13 @@ import pdfplumber
 # El nombre __name__ produce "app.services.pdf_extractor", lo que
 # permite filtrar logs por módulo en producción.
 logger = logging.getLogger(__name__)
+
+ISTQB_TOPIC_CODE_PATTERN = re.compile(r"FL-\d+\.\d+\.\d+")
+ISTQB_OBJECTIVES_HEADING_PATTERN = re.compile(
+    r"(Objetivos de Aprendizaje|Learning Objectives)",
+    re.IGNORECASE,
+)
+ISTQB_HYBRID_EXTRACTION_METHOD = "pymupdf+pdfplumber-objectives"
 
 
 @dataclass
@@ -52,7 +60,8 @@ class ExtractionResult:
         total_pages: Número total de páginas del PDF.
         full_text: Texto completo concatenado de todas las páginas.
         pages: Lista de tuplas (page_number, text) por cada página.
-        extraction_method: "pdfplumber" o "pymupdf" según qué método se usó.
+        extraction_method: Metodo usado: "pdfplumber", "pymupdf" o
+            "pymupdf+pdfplumber-objectives".
         text_length: Longitud total del texto extraído.
     """
 
@@ -88,13 +97,20 @@ class PdfExtractorService:
     # es un scan sin OCR o está corrupto.
     MIN_TEXT_LENGTH = 100
 
-    def extract(self, pdf_bytes: bytes, filename: str) -> ExtractionResult:
+    def extract(
+        self,
+        pdf_bytes: bytes,
+        filename: str,
+        prefer_fast_istqb: bool = False,
+    ) -> ExtractionResult:
         """
         Extrae texto de un archivo PDF usando pdfplumber con fallback a PyMuPDF.
 
         Args:
             pdf_bytes: Contenido binario completo del archivo PDF.
             filename: Nombre original del archivo (para logging y respuesta).
+            prefer_fast_istqb: Si es True, intenta primero el camino hibrido
+                optimizado para syllabus ISTQB y conserva fallback completo.
 
         Returns:
             ExtractionResult: Objeto con el texto extraído y metadatos.
@@ -108,7 +124,34 @@ class PdfExtractorService:
             len(pdf_bytes),
         )
 
-        # ─── Intento 1: pdfplumber ───
+        # Camino rapido opcional para syllabi ISTQB: conserva PyMuPDF en todo
+        # el documento y usa pdfplumber solo donde estan los objetivos.
+        if prefer_fast_istqb:
+            try:
+                result = self._extract_with_istqb_hybrid(pdf_bytes, filename)
+                if result and result.text_length >= self.MIN_TEXT_LENGTH:
+                    logger.info(
+                        "Extraccion rapida ISTQB exitosa: %d paginas, "
+                        "%d caracteres, metodo: %s",
+                        result.total_pages,
+                        result.text_length,
+                        result.extraction_method,
+                    )
+                    return result
+                if result:
+                    logger.warning(
+                        "Extraccion rapida ISTQB produjo solo %d caracteres. "
+                        "Intentando pdfplumber completo...",
+                        result.text_length,
+                    )
+            except Exception as e:
+                logger.warning(
+                    "Extraccion rapida ISTQB fallo con error: %s. "
+                    "Intentando pdfplumber completo...",
+                    str(e),
+                )
+
+        # ─── Intento principal: pdfplumber ───
         try:
             result = self._extract_with_pdfplumber(pdf_bytes, filename)
             if result.text_length >= self.MIN_TEXT_LENGTH:
@@ -209,6 +252,69 @@ class PdfExtractorService:
             full_text=full_text,
             pages=pages,
             extraction_method="pdfplumber",
+            text_length=len(full_text),
+        )
+
+    def _extract_with_istqb_hybrid(
+        self,
+        pdf_bytes: bytes,
+        filename: str,
+    ) -> ExtractionResult | None:
+        """
+        Extrae PDFs ISTQB con un camino rapido y conservador.
+
+        PyMuPDF lee todo el documento muy rapido, pero en el syllabus CTFL v4
+        parte algunas filas de objetivos. Para conservar el contrato completo,
+        reemplazamos solo esas paginas de objetivos por texto de pdfplumber.
+        """
+        pages: list[tuple[int, str]] = []
+        objective_page_numbers: list[int] = []
+
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            total_pages = len(doc)
+            for page_number, page in enumerate(doc, start=1):
+                text = page.get_text("text") or ""
+                pages.append((page_number, text))
+                if (
+                    ISTQB_OBJECTIVES_HEADING_PATTERN.search(text)
+                    and ISTQB_TOPIC_CODE_PATTERN.search(text)
+                ):
+                    objective_page_numbers.append(page_number)
+        finally:
+            doc.close()
+
+        if not objective_page_numbers:
+            return None
+
+        precise_pages: dict[int, str] = {}
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            for page_number in objective_page_numbers:
+                if page_number > len(pdf.pages):
+                    continue
+                precise_pages[page_number] = (
+                    pdf.pages[page_number - 1].extract_text_simple() or ""
+                )
+
+        full_text = "\n\n".join(
+            precise_pages.get(page_number, text)
+            for page_number, text in pages
+        )
+
+        logger.info(
+            "Extraccion hibrida ISTQB uso pdfplumber en paginas objetivo: %s",
+            ", ".join(str(page) for page in objective_page_numbers),
+        )
+
+        return ExtractionResult(
+            filename=filename,
+            total_pages=total_pages,
+            full_text=full_text,
+            pages=[
+                (page_number, precise_pages.get(page_number, text))
+                for page_number, text in pages
+            ],
+            extraction_method=ISTQB_HYBRID_EXTRACTION_METHOD,
             text_length=len(full_text),
         )
 

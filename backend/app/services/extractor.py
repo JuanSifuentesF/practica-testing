@@ -45,7 +45,11 @@ Uso:
 import logging
 from dataclasses import dataclass
 
-from app.services.pdf_extractor import ExtractionResult, PdfExtractorService
+from app.services.pdf_extractor import (
+    ISTQB_HYBRID_EXTRACTION_METHOD,
+    ExtractionResult,
+    PdfExtractorService,
+)
 from app.services.topic_detector import (DetectedTopic, TopicDetectionResult,
                                          TopicDetectorService)
 
@@ -188,12 +192,7 @@ class ExtractorService:
         extraction_result: ExtractionResult = self._pdf_extractor.extract(
             pdf_bytes=pdf_bytes,
             filename=filename,
-        )
-        logger.info(
-            "Texto extraído: %d páginas, %d caracteres, método: %s",
-            extraction_result.total_pages,
-            extraction_result.text_length,
-            extraction_result.extraction_method,
+            prefer_fast_istqb=True,
         )
 
         # ─── Paso 2: Detectar tópicos ───
@@ -201,6 +200,31 @@ class ExtractorService:
         # Usa el full_text del paso anterior como input.
         detection_result: TopicDetectionResult = self._topic_detector.detect(
             full_text=extraction_result.full_text,
+        )
+
+        if (
+            extraction_result.extraction_method == ISTQB_HYBRID_EXTRACTION_METHOD
+            and not detection_result.is_complete
+        ):
+            logger.warning(
+                "Extraccion hibrida ISTQB incompleta (%d topicos). "
+                "Reintentando con pdfplumber completo para preservar el catalogo.",
+                detection_result.total_topics,
+            )
+            extraction_result = self._pdf_extractor.extract(
+                pdf_bytes=pdf_bytes,
+                filename=filename,
+                prefer_fast_istqb=False,
+            )
+            detection_result = self._topic_detector.detect(
+                full_text=extraction_result.full_text,
+            )
+
+        logger.info(
+            "Texto extraído: %d páginas, %d caracteres, método: %s",
+            extraction_result.total_pages,
+            extraction_result.text_length,
+            extraction_result.extraction_method,
         )
         logger.info(
             "Tópicos detectados: %d (completo: %s)",

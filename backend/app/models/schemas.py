@@ -525,9 +525,9 @@ class FullExtractionResponse(BaseModel):
         ...,
         description=(
             "Método de extracción de texto utilizado: "
-            "'pdfplumber' o 'pymupdf'."
+            "'pdfplumber', 'pymupdf' o 'pymupdf+pdfplumber-objectives'."
         ),
-        examples=["pdfplumber"],
+        examples=["pymupdf+pdfplumber-objectives"],
     )
 
     topics: dict[str, TopicInfo] = Field(
