@@ -668,9 +668,13 @@ export default function PracticeTopicPage() {
                     className="
                       flex items-center gap-2 px-5 py-2.5
                       text-sm font-semibold rounded-lg
-                      bg-brand-600 text-white
-                      hover:bg-brand-500
-                      disabled:opacity-50 disabled:cursor-not-allowed
+                      border border-transparent
+                      bg-primary text-primary-foreground
+                      hover:bg-primary/90
+                      disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-600
+                      disabled:hover:bg-slate-100 disabled:opacity-100 disabled:cursor-not-allowed
+                      dark:disabled:border-slate-700 dark:disabled:bg-slate-800 dark:disabled:text-slate-400
+                      dark:disabled:hover:bg-slate-800
                       transition-colors cursor-pointer
                     "
                   >
