@@ -1,39 +1,42 @@
 // ============================================================
-// hooks/use-text-to-speech.ts — Hook TTS con Web Speech API
+// hooks/use-text-to-speech.ts — Hook TTS multi-provider
 // ============================================================
 // TIPO: Client-side hook ("use client" en quien lo consuma)
 //
 // PROPÓSITO:
-//   Envolver la Web Speech API del navegador (speechSynthesis)
-//   para leer texto en voz alta. No requiere backend ni cambios
-//   de deploy: corre 100% en el navegador del usuario.
+//   Envolver múltiples motores de síntesis de voz bajo una
+//   interfaz unificada. Soporta:
+//   1. "browser" — Web Speech API nativa (gratis, offline)
+//   2. "google"  — Google Cloud TTS Neural2/Studio via API route
 //
 // DISEÑO:
-//   - Dividimos el texto en fragmentos (chunks) y los encadenamos
-//     con utterance.onend. Esto evita el bug conocido de Chrome
-//     que corta audios largos (~200-300 caracteres) de golpe.
-//   - Usamos refs para que los cambios de voz/velocidad apliquen
-//     al siguiente fragmento sin reiniciar toda la lectura.
+//   - El provider activo se configura con setProvider().
+//   - Para "google" se requiere setGoogleApiKey() con la key BYOK.
+//   - Todos los providers emiten los mismos campos de highlighting
+//     (charIndex, charLength, currentChunkText) para que
+//     HighlightableText funcione sin cambios.
 //   - Es SSR-safe: todo acceso a window/speechSynthesis está
 //     protegido con typeof window !== "undefined".
-//
-// LIMITACIONES Conocidas:
-//   1. Los navegadores móviles y Firefox pausan TTS si la pestaña
-//      pasa a segundo plano.
-//   2. Chrome tiene un bug donde resume() no reactiva tras un
-//      stop() completo; por eso stop() reinicia la cola a 0.
 // ============================================================
 
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { TtsProvider } from "@/types/tts";
+import { GoogleTtsProvider } from "@/lib/tts/google-tts-provider";
 
 export interface TextToSpeechController {
-  /** true si el navegador soporta speechSynthesis */
+  /** true si el navegador soporta al menos Web Speech API */
   isSupported: boolean;
-  /** Lista de voces disponibles */
+  /** Provider activo */
+  provider: TtsProvider;
+  setProvider: (p: TtsProvider) => void;
+  /** API key para Google Cloud TTS (in-memory) */
+  googleApiKey: string;
+  setGoogleApiKey: (key: string) => void;
+  /** Lista de voces del navegador */
   voices: SpeechSynthesisVoice[];
-  /** Nombre de la voz seleccionada */
+  /** Nombre de la voz seleccionada (browser) o ID de voz (google) */
   selectedVoiceName: string;
   setSelectedVoiceName: (name: string) => void;
   /** Velocidad de reproducción (0.5 - 2) */
@@ -49,15 +52,15 @@ export interface TextToSpeechController {
   totalChunks: number;
   /** Texto del fragmento actual que se está leyendo */
   currentChunkText: string;
-  /** Índice del carácter dentro del fragmento actual que se pronuncia (onboundary) */
+  /** Índice del carácter dentro del fragmento actual que se pronuncia */
   charIndex: number;
-  /** Longitud del carácter/palabra actual (onboundary) */
+  /** Longitud del carácter/palabra actual */
   charLength: number;
   /** Lee un texto en voz alta (reemplaza lectura anterior) */
   speak: (text: string) => void;
-  /** Pausa la lectitura actual */
+  /** Pausa la lectura actual */
   pause: () => void;
-  /** Reanuda la lectitura pausada */
+  /** Reanuda la lectura pausada */
   resume: () => void;
   /** Detiene y limpia la cola de lectura */
   stop: () => void;
@@ -90,7 +93,6 @@ function splitIntoChunks(text: string, maxChars = MAX_CHUNK_CHARS): string[] {
 
   if (!clean) return [];
 
-  // Dividir en frases respetando .,!,?,... y saltos de línea.
   const sentences = clean
     .split(/(?<=[.!?…])\s+|\n+/)
     .map((s) => s.trim())
@@ -100,7 +102,6 @@ function splitIntoChunks(text: string, maxChars = MAX_CHUNK_CHARS): string[] {
   let current = "";
 
   for (const sentence of sentences) {
-    // Frase más larga que el máximo: se corta por palabras.
     if (sentence.length > maxChars) {
       if (current) {
         chunks.push(current.trim());
@@ -133,6 +134,12 @@ function splitIntoChunks(text: string, maxChars = MAX_CHUNK_CHARS): string[] {
 
 export function useTextToSpeech(): TextToSpeechController {
   const isSupported = isClientSupported();
+
+  // ─── Provider state ─────────────────────────────────────
+  const [provider, setProvider] = useState<TtsProvider>("browser");
+  const [googleApiKey, setGoogleApiKey] = useState("");
+
+  // ─── Browser TTS refs ───────────────────────────────────
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const chunksRef = useRef<string[]>([]);
   const idxRef = useRef(0);
@@ -140,6 +147,10 @@ export function useTextToSpeech(): TextToSpeechController {
   const voiceRef = useRef("");
   const speakChunkAtRef = useRef<(idx: number) => void>(() => {});
 
+  // ─── Google TTS provider ref ────────────────────────────
+  const googleProviderRef = useRef<GoogleTtsProvider | null>(null);
+
+  // ─── Shared UI state ────────────────────────────────────
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoiceName, setSelectedVoiceNameState] = useState("");
   const [rate, setRateState] = useState(1);
@@ -151,6 +162,7 @@ export function useTextToSpeech(): TextToSpeechController {
   const [charIndex, setCharIndex] = useState(-1);
   const [charLength, setCharLength] = useState(0);
 
+  // ─── Initialize browser speech synthesis ────────────────
   useEffect(() => {
     if (!isSupported) return;
     const synth = window.speechSynthesis;
@@ -173,7 +185,45 @@ export function useTextToSpeech(): TextToSpeechController {
     };
   }, [isSupported]);
 
-  // Mantener refs sincronizadas con el estado.
+  // ─── Initialize Google TTS provider ─────────────────────
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    googleProviderRef.current = new GoogleTtsProvider({
+      onStart: () => {
+        setIsSpeaking(true);
+        setIsPaused(false);
+      },
+      onEnd: () => {
+        setIsSpeaking(false);
+        setIsPaused(false);
+        setCurrentChunkIndex(-1);
+        setCurrentChunkText("");
+        setCharIndex(-1);
+        setCharLength(0);
+      },
+      onError: (error) => {
+        console.error("[GoogleTTS]", error);
+        setIsSpeaking(false);
+        setIsPaused(false);
+      },
+      onBoundary: (ci, cl) => {
+        setCharIndex(ci);
+        setCharLength(cl);
+      },
+      onChunkChange: (text, idx, total) => {
+        setCurrentChunkText(text);
+        setCurrentChunkIndex(idx);
+        setTotalChunks(total);
+      },
+    });
+
+    return () => {
+      googleProviderRef.current?.destroy();
+    };
+  }, []);
+
+  // Sync refs
   useEffect(() => {
     rateRef.current = rate;
   }, [rate]);
@@ -182,13 +232,15 @@ export function useTextToSpeech(): TextToSpeechController {
     voiceRef.current = selectedVoiceName;
   }, [selectedVoiceName]);
 
-  // Detener al desmontar el componente.
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (isSupported) synthRef.current?.cancel();
+      googleProviderRef.current?.destroy();
     };
   }, [isSupported]);
 
+  // ─── Browser TTS: speak chunk at index ──────────────────
   const speakChunkAt = useCallback(
     (idx: number) => {
       const synth = synthRef.current;
@@ -233,7 +285,6 @@ export function useTextToSpeech(): TextToSpeechController {
         speakChunkAtRef.current(idx + 1);
       };
       utterance.onerror = () => {
-        // Salto de fragmento ante error (no abortar todo).
         window.setTimeout(() => speakChunkAtRef.current(idx + 1), 60);
       };
 
@@ -242,43 +293,89 @@ export function useTextToSpeech(): TextToSpeechController {
     []
   );
 
-  // Exponer siempre la última versión del callback para onend.
   useEffect(() => {
     speakChunkAtRef.current = speakChunkAt;
   }, [speakChunkAt]);
 
-  const speak = useCallback((text: string) => {
-    const synth = synthRef.current;
-    if (!synth) return;
-    const chunks = splitIntoChunks(text);
-    if (chunks.length === 0) return;
+  // ─── Unified speak ─────────────────────────────────────
+  const speak = useCallback(
+    (text: string) => {
+      if (provider === "google") {
+        // Google Cloud TTS: enviar texto completo al provider
+        if (!googleApiKey) {
+          console.warn("[TTS] Google Cloud TTS requiere API key");
+          return;
+        }
+        const gProvider = googleProviderRef.current;
+        if (!gProvider) return;
 
-    synth.cancel();
-    chunksRef.current = chunks;
-    idxRef.current = 0;
-    setTotalChunks(chunks.length);
-    setCurrentChunkIndex(0);
-    setCurrentChunkText(chunks[0] ?? "");
-    setCharIndex(0);
-    setCharLength(0);
-    // Pequeño delay: cancel() debe terminar antes del primer speak().
-    window.setTimeout(() => speakChunkAtRef.current(0), 120);
-  }, []);
+        // Dividir en chunks para Google también (evitar textos enormes)
+        const chunks = splitIntoChunks(text, 800); // Chunks más grandes para Google
+        if (chunks.length === 0) return;
 
+        // Por ahora sintetizamos el texto completo de una vez
+        // (Google maneja textos largos mejor que Web Speech API)
+        const fullText = chunks.join(" ");
+        setTotalChunks(1);
+        setCurrentChunkIndex(0);
+        setCurrentChunkText(fullText);
+        setCharIndex(0);
+        setCharLength(0);
+
+        gProvider.speak(fullText, selectedVoiceName, rate, googleApiKey);
+        return;
+      }
+
+      // Browser Web Speech API
+      const synth = synthRef.current;
+      if (!synth) return;
+      const chunks = splitIntoChunks(text);
+      if (chunks.length === 0) return;
+
+      synth.cancel();
+      chunksRef.current = chunks;
+      idxRef.current = 0;
+      setTotalChunks(chunks.length);
+      setCurrentChunkIndex(0);
+      setCurrentChunkText(chunks[0] ?? "");
+      setCharIndex(0);
+      setCharLength(0);
+      window.setTimeout(() => speakChunkAtRef.current(0), 120);
+    },
+    [provider, googleApiKey, selectedVoiceName, rate]
+  );
+
+  // ─── Unified pause ─────────────────────────────────────
   const pause = useCallback(() => {
-    synthRef.current?.pause();
-    setIsPaused(true);
-  }, []);
+    if (provider === "google") {
+      googleProviderRef.current?.pause();
+      setIsPaused(true);
+    } else {
+      synthRef.current?.pause();
+      setIsPaused(true);
+    }
+  }, [provider]);
 
+  // ─── Unified resume ────────────────────────────────────
   const resume = useCallback(() => {
-    synthRef.current?.resume();
-    setIsPaused(false);
-  }, []);
+    if (provider === "google") {
+      googleProviderRef.current?.resume();
+      setIsPaused(false);
+    } else {
+      synthRef.current?.resume();
+      setIsPaused(false);
+    }
+  }, [provider]);
 
+  // ─── Unified stop ──────────────────────────────────────
   const stop = useCallback(() => {
-    synthRef.current?.cancel();
-    chunksRef.current = [];
-    idxRef.current = 0;
+    if (provider === "google") {
+      googleProviderRef.current?.stop();
+    } else {
+      synthRef.current?.cancel();
+      chunksRef.current = [];
+      idxRef.current = 0;
+    }
     setIsSpeaking(false);
     setIsPaused(false);
     setCurrentChunkIndex(-1);
@@ -286,7 +383,7 @@ export function useTextToSpeech(): TextToSpeechController {
     setCurrentChunkText("");
     setCharIndex(-1);
     setCharLength(0);
-  }, []);
+  }, [provider]);
 
   const setSelectedVoiceName = useCallback((name: string) => {
     setSelectedVoiceNameState(name);
@@ -298,6 +395,10 @@ export function useTextToSpeech(): TextToSpeechController {
 
   return {
     isSupported,
+    provider,
+    setProvider,
+    googleApiKey,
+    setGoogleApiKey,
     voices,
     selectedVoiceName,
     setSelectedVoiceName,

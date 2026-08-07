@@ -4,25 +4,24 @@
 // ============================================================
 // TIPO: Client Component (consume useTextToSpeech y useState)
 //
-// PROPS:
-//   - topic: TheoryTopicContent — tópico a leer en voz alta
-//
 // DISEÑO:
 //   Construye un texto limpio desde los campos del tópico
 //   (introducción, conceptos clave, ejemplos, conexiones, resumen)
 //   y lo pasa al hook useTextToSpeech. Ofrece play/pausa/stop,
-//   control de velocidad y selección de voz en español.
-//
-//   Se oculta por completo en navegadores sin soporte de
-//   speechSynthesis para no mostrar UI inútil.
+//   control de velocidad, selección de provider (browser/google)
+//   y selección de voz.
 // ============================================================
 
 "use client";
 
-import { useMemo } from "react";
-import { Volume2, Pause, Play, Square } from "lucide-react";
-import { TextToSpeechController, useTextToSpeech } from "@/hooks/use-text-to-speech";
+import { useMemo, useState } from "react";
+import { Volume2, Pause, Play, Square, Sparkles, Globe } from "lucide-react";
+import {
+  TextToSpeechController,
+  useTextToSpeech,
+} from "@/hooks/use-text-to-speech";
 import type { TheoryTopicContent } from "@/types/theory";
+import { GOOGLE_TTS_VOICES } from "@/types/tts";
 
 interface TheoryReadAloudProps {
   topic: TheoryTopicContent;
@@ -58,7 +57,9 @@ function buildSpeechText(topic: TheoryTopicContent): string {
   if (topic.connections.length > 0) {
     blocks.push("Conexiones con otros tópicos.");
     for (const connection of topic.connections) {
-      blocks.push(`${connection.related_topic_code}. ${connection.relationship}.`);
+      blocks.push(
+        `${connection.related_topic_code}. ${connection.relationship}.`
+      );
     }
   }
 
@@ -70,6 +71,7 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
   const defaultTts = useTextToSpeech();
   const tts = controller ?? defaultTts;
   const text = useMemo(() => buildSpeechText(topic), [topic]);
+  const [showGoogleKeyInput, setShowGoogleKeyInput] = useState(false);
 
   const spanishVoices = useMemo(
     () => tts.voices.filter((v) => v.lang.toLowerCase().startsWith("es")),
@@ -86,18 +88,98 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
       ? Math.round(((tts.currentChunkIndex + 1) / tts.totalChunks) * 100)
       : 0;
 
+  const isGoogleReady = tts.provider === "google" && tts.googleApiKey.length > 0;
+
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-emerald-300/40 bg-emerald-500/5 p-3 dark:border-emerald-900/30 dark:bg-emerald-950/10">
+      {/* ── Selector de Provider ──────────────────────────── */}
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className="text-[11px] text-muted-foreground font-medium">Motor:</span>
+        <button
+          type="button"
+          onClick={() => {
+            tts.stop();
+            tts.setProvider("browser");
+            setShowGoogleKeyInput(false);
+          }}
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all ${
+            tts.provider === "browser"
+              ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/40"
+              : "bg-muted/30 text-muted-foreground hover:bg-muted/60"
+          }`}
+        >
+          <Globe className="h-3 w-3" />
+          Navegador
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            tts.stop();
+            tts.setProvider("google");
+            if (!tts.googleApiKey) setShowGoogleKeyInput(true);
+            // Setear voz por defecto de Google si no hay una seleccionada
+            if (!GOOGLE_TTS_VOICES.find((v) => v.id === tts.selectedVoiceName)) {
+              tts.setSelectedVoiceName(GOOGLE_TTS_VOICES[0].id);
+            }
+          }}
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all ${
+            tts.provider === "google"
+              ? "bg-sky-500/20 text-sky-700 dark:text-sky-300 ring-1 ring-sky-500/40"
+              : "bg-muted/30 text-muted-foreground hover:bg-muted/60"
+          }`}
+        >
+          <Sparkles className="h-3 w-3" />
+          Google Neural
+        </button>
+      </div>
+
+      {/* ── Google API Key input (solo si Google seleccionado y sin key) ── */}
+      {tts.provider === "google" && showGoogleKeyInput && (
+        <div className="rounded-md border border-sky-300/40 bg-sky-500/5 dark:bg-sky-950/20 p-2.5 space-y-2">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Ingresa tu API key de Google Cloud (con Cloud Text-to-Speech habilitado).
+            La key se mantiene solo en memoria y se borra al recargar.
+          </p>
+          <div className="flex gap-1.5">
+            <input
+              type="password"
+              value={tts.googleApiKey}
+              onChange={(e) => tts.setGoogleApiKey(e.target.value)}
+              placeholder="AIzaSy..."
+              className="flex-1 rounded-md border border-border/60 bg-background px-2 py-1.5 text-xs placeholder:text-muted-foreground focus:border-sky-500 focus:ring-1 focus:ring-sky-500/50 outline-none"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            {tts.googleApiKey && (
+              <button
+                type="button"
+                onClick={() => setShowGoogleKeyInput(false)}
+                className="rounded-md bg-sky-500/20 px-2.5 py-1.5 text-[11px] font-medium text-sky-700 dark:text-sky-300 hover:bg-sky-500/30 transition-colors"
+              >
+                Listo
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Controles de reproducción ────────────────────── */}
       <div className="flex flex-wrap items-center gap-2">
         {!tts.isSpeaking ? (
           <button
             type="button"
             onClick={() => tts.speak(text)}
+            disabled={tts.provider === "google" && !isGoogleReady}
             className={`${btn} text-emerald-700 dark:text-emerald-300`}
             aria-label="Leer el contenido del tópico en voz alta"
           >
             <Volume2 className="h-3.5 w-3.5" />
             Leer en voz alta
+            {tts.provider === "google" && (
+              <span className="ml-0.5 text-[9px] bg-sky-500/20 text-sky-600 dark:text-sky-400 px-1 rounded-full">
+                Neural
+              </span>
+            )}
           </button>
         ) : (
           <>
@@ -134,6 +216,7 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
           </>
         )}
 
+        {/* Velocidad */}
         <div className="flex items-center gap-1 ml-auto">
           <label
             htmlFor={`tts-rate-${topic.topic_code}`}
@@ -155,7 +238,8 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
           </select>
         </div>
 
-        {spanishVoices.length > 0 && (
+        {/* Selector de voz */}
+        {tts.provider === "browser" && spanishVoices.length > 0 && (
           <div className="flex items-center gap-1">
             <label
               htmlFor={`tts-voice-${topic.topic_code}`}
@@ -177,9 +261,44 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
             </select>
           </div>
         )}
+
+        {tts.provider === "google" && (
+          <div className="flex items-center gap-1">
+            <label
+              htmlFor={`tts-gvoice-${topic.topic_code}`}
+              className="text-xs text-muted-foreground"
+            >
+              Voz
+            </label>
+            <select
+              id={`tts-gvoice-${topic.topic_code}`}
+              value={tts.selectedVoiceName}
+              onChange={(e) => tts.setSelectedVoiceName(e.target.value)}
+              className="max-w-[14rem] rounded-md border border-border/60 bg-background px-1.5 py-1 text-xs truncate"
+            >
+              {GOOGLE_TTS_VOICES.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Botón para mostrar/ocultar input de key Google */}
+        {tts.provider === "google" && tts.googleApiKey && !showGoogleKeyInput && (
+          <button
+            type="button"
+            onClick={() => setShowGoogleKeyInput(true)}
+            className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+            title="Cambiar API key"
+          >
+            🔑
+          </button>
+        )}
       </div>
 
-      {/* ── Subtítulo de lectura activa y barra de progreso ─────── */}
+      {/* ── Subtítulo de lectura activa y barra de progreso ── */}
       {tts.isSpeaking && (
         <div className="mt-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2.5 dark:bg-emerald-950/40 text-xs space-y-1.5 transition-all">
           <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
@@ -192,13 +311,18 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
               </span>
               {tts.isPaused ? "Lectura en pausa" : "Leyendo en voz alta..."} (
               {tts.currentChunkIndex + 1} de {tts.totalChunks})
+              {tts.provider === "google" && (
+                <span className="text-[9px] bg-sky-500/20 text-sky-600 dark:text-sky-400 px-1.5 rounded-full font-medium">
+                  Google Neural
+                </span>
+              )}
             </span>
             <span className="font-mono">{progressPercent}%</span>
           </div>
 
-          {tts.currentChunkText && (
+          {tts.currentChunkText && tts.provider === "browser" && (
             <p className="text-foreground/90 font-medium leading-relaxed italic bg-background/50 p-2 rounded border border-border/40">
-              "{tts.currentChunkText}"
+              &quot;{tts.currentChunkText}&quot;
             </p>
           )}
 
