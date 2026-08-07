@@ -28,6 +28,7 @@
 import { BookOpen, Lightbulb, Beaker, Link2, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CollapsibleSection } from "./collapsible-section";
+import { TheoryReadAloud } from "./theory-read-aloud";
 import type { TheoryTopicContent } from "@/types/theory";
 
 interface TheoryTopicViewProps {
@@ -59,6 +60,9 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
           {topic.topic_name}
         </span>
       </div>
+
+      {/* ── Toolbar TTS: leer en voz alta ─────────────────── */}
+      <TheoryReadAloud topic={topic} />
 
       {/* ── Sección 1: Introducción ───────────────────────── */}
       <CollapsibleSection
