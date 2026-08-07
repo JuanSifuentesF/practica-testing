@@ -21,11 +21,12 @@
 
 import { useMemo } from "react";
 import { Volume2, Pause, Play, Square } from "lucide-react";
-import { useTextToSpeech } from "@/hooks/use-text-to-speech";
+import { TextToSpeechController, useTextToSpeech } from "@/hooks/use-text-to-speech";
 import type { TheoryTopicContent } from "@/types/theory";
 
 interface TheoryReadAloudProps {
   topic: TheoryTopicContent;
+  controller?: TextToSpeechController;
 }
 
 const RATE_OPTIONS = [0.75, 1, 1.25, 1.5];
@@ -65,8 +66,9 @@ function buildSpeechText(topic: TheoryTopicContent): string {
   return blocks.join("\n\n");
 }
 
-export function TheoryReadAloud({ topic }: TheoryReadAloudProps) {
-  const tts = useTextToSpeech();
+export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
+  const defaultTts = useTextToSpeech();
+  const tts = controller ?? defaultTts;
   const text = useMemo(() => buildSpeechText(topic), [topic]);
 
   const spanishVoices = useMemo(

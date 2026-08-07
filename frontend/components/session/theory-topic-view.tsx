@@ -29,6 +29,8 @@ import { BookOpen, Lightbulb, Beaker, Link2, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CollapsibleSection } from "./collapsible-section";
 import { TheoryReadAloud } from "./theory-read-aloud";
+import { HighlightableText } from "./highlightable-text";
+import { useTextToSpeech } from "@/hooks/use-text-to-speech";
 import type { TheoryTopicContent } from "@/types/theory";
 
 interface TheoryTopicViewProps {
@@ -46,6 +48,8 @@ function getLevelBadgeStyle(level: string): string {
 }
 
 export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
+  const tts = useTextToSpeech();
+
   return (
     <div className="space-y-3">
       {/* ── Header del tópico ─────────────────────────────── */}
@@ -62,7 +66,7 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
       </div>
 
       {/* ── Toolbar TTS: leer en voz alta ─────────────────── */}
-      <TheoryReadAloud topic={topic} />
+      <TheoryReadAloud topic={topic} controller={tts} />
 
       {/* ── Sección 1: Introducción ───────────────────────── */}
       <CollapsibleSection
@@ -70,9 +74,14 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
         icon={BookOpen}
         defaultOpen={true}
       >
-        <div className="prose-sm text-sm leading-relaxed text-foreground whitespace-pre-line">
-          {topic.introduction}
-        </div>
+        <HighlightableText
+          text={topic.introduction}
+          currentChunkText={tts.currentChunkText}
+          charIndex={tts.charIndex}
+          charLength={tts.charLength}
+          isSpeaking={tts.isSpeaking}
+          className="prose-sm text-sm leading-relaxed text-foreground whitespace-pre-line"
+        />
       </CollapsibleSection>
 
       {/* ── Sección 2: Conceptos Clave ────────────────────── */}
@@ -93,14 +102,26 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
                 {concept.term}
               </h4>
               {/* Definición */}
-              <p className="mt-1 text-sm leading-relaxed text-foreground">
-                {concept.definition}
-              </p>
+              <HighlightableText
+                text={concept.definition}
+                currentChunkText={tts.currentChunkText}
+                charIndex={tts.charIndex}
+                charLength={tts.charLength}
+                isSpeaking={tts.isSpeaking}
+                className="mt-1 text-sm leading-relaxed text-foreground"
+              />
               {/* Ejemplo del concepto (si existe) */}
               {concept.example && (
-                <p className="mt-2 border-l-2 border-emerald-500/50 dark:border-emerald-800 pl-3 text-xs leading-5 text-muted-foreground italic">
-                  💡 {concept.example}
-                </p>
+                <div className="mt-2 border-l-2 border-emerald-500/50 dark:border-emerald-800 pl-3 text-xs leading-5 text-muted-foreground italic">
+                  💡{" "}
+                  <HighlightableText
+                    text={concept.example}
+                    currentChunkText={tts.currentChunkText}
+                    charIndex={tts.charIndex}
+                    charLength={tts.charLength}
+                    isSpeaking={tts.isSpeaking}
+                  />
+                </div>
               )}
             </div>
           ))}
@@ -123,13 +144,25 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
                 <h4 className="text-sm font-semibold text-sky-700 dark:text-sky-300">
                   {example.title}
                 </h4>
-                <p className="mt-1 text-sm leading-relaxed text-foreground">
-                  {example.description}
-                </p>
-                <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-800 dark:text-amber-400/80">
+                <HighlightableText
+                  text={example.description}
+                  currentChunkText={tts.currentChunkText}
+                  charIndex={tts.charIndex}
+                  charLength={tts.charLength}
+                  isSpeaking={tts.isSpeaking}
+                  className="mt-1 text-sm leading-relaxed text-foreground"
+                />
+                <div className="mt-2 flex items-start gap-1.5 text-xs text-amber-800 dark:text-amber-400/80">
                   <span className="shrink-0 mt-0.5">📌</span>
-                  <span className="leading-5">{example.lesson}</span>
-                </p>
+                  <HighlightableText
+                    text={example.lesson}
+                    currentChunkText={tts.currentChunkText}
+                    charIndex={tts.charIndex}
+                    charLength={tts.charLength}
+                    isSpeaking={tts.isSpeaking}
+                    className="leading-5"
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -152,9 +185,14 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
                 <span className="shrink-0 font-mono text-xs text-purple-700 dark:text-purple-400 mt-0.5">
                   {conn.related_topic_code}
                 </span>
-                <span className="text-muted-foreground leading-relaxed">
-                  {conn.relationship}
-                </span>
+                <HighlightableText
+                  text={conn.relationship}
+                  currentChunkText={tts.currentChunkText}
+                  charIndex={tts.charIndex}
+                  charLength={tts.charLength}
+                  isSpeaking={tts.isSpeaking}
+                  className="text-muted-foreground leading-relaxed"
+                />
               </div>
             ))}
           </div>
@@ -164,9 +202,14 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
       {/* ── Sección 5: Resumen ────────────────────────────── */}
       <CollapsibleSection title="Resumen" icon={FileText}>
         <div className="rounded-lg border border-emerald-300/50 bg-emerald-500/10 dark:border-emerald-900/30 dark:bg-emerald-950/10 p-3">
-          <p className="text-sm leading-relaxed text-foreground whitespace-pre-line">
-            {topic.summary}
-          </p>
+          <HighlightableText
+            text={topic.summary}
+            currentChunkText={tts.currentChunkText}
+            charIndex={tts.charIndex}
+            charLength={tts.charLength}
+            isSpeaking={tts.isSpeaking}
+            className="text-sm leading-relaxed text-foreground whitespace-pre-line"
+          />
         </div>
       </CollapsibleSection>
     </div>
