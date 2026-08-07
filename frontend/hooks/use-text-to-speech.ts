@@ -43,6 +43,12 @@ export interface TextToSpeechController {
   isSpeaking: boolean;
   /** true cuando está en pausa */
   isPaused: boolean;
+  /** Índice del fragmento que se está leyendo (0-indexed, -1 si inactivo) */
+  currentChunkIndex: number;
+  /** Total de fragmentos en cola */
+  totalChunks: number;
+  /** Texto del fragmento actual que se está leyendo */
+  currentChunkText: string;
   /** Lee un texto en voz alta (reemplaza lectura anterior) */
   speak: (text: string) => void;
   /** Pausa la lectitura actual */
@@ -135,6 +141,9 @@ export function useTextToSpeech(): TextToSpeechController {
   const [rate, setRateState] = useState(1);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [currentChunkIndex, setCurrentChunkIndex] = useState(-1);
+  const [totalChunks, setTotalChunks] = useState(0);
+  const [currentChunkText, setCurrentChunkText] = useState("");
 
   useEffect(() => {
     if (!isSupported) return;
@@ -182,12 +191,17 @@ export function useTextToSpeech(): TextToSpeechController {
       if (idx >= chunks.length) {
         setIsSpeaking(false);
         setIsPaused(false);
+        setCurrentChunkIndex(-1);
+        setTotalChunks(0);
+        setCurrentChunkText("");
         chunksRef.current = [];
         idxRef.current = 0;
         return;
       }
       idxRef.current = idx;
       const chunk = chunks[idx];
+      setCurrentChunkIndex(idx);
+      setCurrentChunkText(chunk);
 
       const utterance = new SpeechSynthesisUtterance(chunk);
       const voice = synth.getVoices().find((v) => v.name === voiceRef.current);
@@ -226,6 +240,9 @@ export function useTextToSpeech(): TextToSpeechController {
     synth.cancel();
     chunksRef.current = chunks;
     idxRef.current = 0;
+    setTotalChunks(chunks.length);
+    setCurrentChunkIndex(0);
+    setCurrentChunkText(chunks[0] ?? "");
     // Pequeño delay: cancel() debe terminar antes del primer speak().
     window.setTimeout(() => speakChunkAtRef.current(0), 120);
   }, []);
@@ -246,6 +263,9 @@ export function useTextToSpeech(): TextToSpeechController {
     idxRef.current = 0;
     setIsSpeaking(false);
     setIsPaused(false);
+    setCurrentChunkIndex(-1);
+    setTotalChunks(0);
+    setCurrentChunkText("");
   }, []);
 
   const setSelectedVoiceName = useCallback((name: string) => {
@@ -265,6 +285,9 @@ export function useTextToSpeech(): TextToSpeechController {
     setRate,
     isSpeaking,
     isPaused,
+    currentChunkIndex,
+    totalChunks,
+    currentChunkText,
     speak,
     pause,
     resume,
