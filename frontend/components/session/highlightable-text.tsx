@@ -1,6 +1,6 @@
 // ============================================================
 // components/session/highlightable-text.tsx
-// Componente de texto con resaltado guiado estilo MS Edge Immersive Reader
+// Resaltado guiado por oraciones y palabras estilo MS Edge Immersive Reader
 // ============================================================
 "use client";
 
@@ -19,6 +19,13 @@ function normalize(s: string): string {
   return s.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
+function splitSentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?…])\s+|\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export function HighlightableText({
   text,
   currentChunkText,
@@ -27,33 +34,18 @@ export function HighlightableText({
   isSpeaking,
   className = "",
 }: HighlightableTextProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const activeSentenceRef = useRef<HTMLSpanElement>(null);
 
-  const cleanText = normalize(text);
-  const cleanChunk = normalize(currentChunkText);
+  if (!text) return null;
 
-  const isMatch =
-    isSpeaking &&
-    cleanChunk.length > 3 &&
-    (cleanText.includes(cleanChunk) ||
-      cleanChunk.includes(cleanText) ||
-      (cleanChunk.length > 20 && cleanText.includes(cleanChunk.slice(0, 20))));
-
-  // Auto-scroll suave para mantener el bloque activo visible
-  useEffect(() => {
-    if (isMatch && containerRef.current) {
-      containerRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-      });
-    }
-  }, [isMatch, currentChunkText]);
-
-  if (!isMatch) {
+  if (!isSpeaking || !currentChunkText) {
     return <div className={className}>{text}</div>;
   }
 
-  // Extraer palabra activa desde currentChunkText a partir de charIndex
+  const sentences = splitSentences(text);
+  const cleanChunk = normalize(currentChunkText);
+
+  // Extraer la palabra activa actual según charIndex en currentChunkText
   let activeWord = "";
   if (charIndex >= 0 && charIndex < currentChunkText.length) {
     let start = charIndex;
@@ -67,51 +59,112 @@ export function HighlightableText({
     activeWord = currentChunkText.slice(start, end).trim();
   }
 
-  // Si no pudimos encontrar la palabra por charIndex, intentar la primera palabra larga del chunk
-  if (!activeWord && cleanChunk) {
-    const firstWord = currentChunkText.split(/\s+/).find((w) => w.length > 3);
-    if (firstWord) activeWord = firstWord.replace(/[^\w]/g, "");
-  }
-
-  // Si hay palabra activa y está presente en el texto, resaltar la palabra en amarillo
-  if (activeWord && activeWord.length > 1) {
-    const regex = new RegExp(`\\b(${escapeRegExp(activeWord)})\\b`, "gi");
-    const parts = text.split(regex);
-
-    if (parts.length > 1) {
-      return (
-        <div
-          ref={containerRef}
-          className={`${className} rounded-md bg-sky-100/90 dark:bg-sky-950/70 text-sky-950 dark:text-sky-100 p-2 border-l-4 border-sky-500 shadow-sm transition-all duration-300`}
-        >
-          {parts.map((part, i) =>
-            part.toLowerCase() === activeWord.toLowerCase() ? (
-              <mark
-                key={i}
-                className="bg-amber-300 dark:bg-amber-400 dark:text-black font-bold rounded px-1 py-0.5 shadow-md"
-              >
-                {part}
-              </mark>
-            ) : (
-              <span key={i}>{part}</span>
-            )
-          )}
-        </div>
-      );
-    }
-  }
-
-  // Si no se encuentra la palabra exacta, resaltar el bloque completo en azul/cyan (estilo Edge Reader)
   return (
-    <div
-      ref={containerRef}
-      className={`${className} rounded-md bg-sky-100/90 dark:bg-sky-950/70 text-sky-950 dark:text-sky-100 p-2 border-l-4 border-sky-500 shadow-sm transition-all duration-300`}
-    >
-      {text}
+    <div className={className}>
+      {sentences.map((sentence, sIdx) => {
+        const cleanSentence = normalize(sentence);
+
+        // Verificar si esta oración específica coincide con el fragmento activo que lee el motor de voz
+        const isSentenceMatch =
+          cleanChunk.length > 0 &&
+          (cleanSentence.includes(cleanChunk) ||
+            cleanChunk.includes(cleanSentence) ||
+            (cleanSentence.length > 15 &&
+              cleanChunk.includes(cleanSentence.slice(0, 15))));
+
+        if (!isSentenceMatch) {
+          return <span key={sIdx}>{sentence} </span>;
+        }
+
+        // Renderizar ÚNICAMENTE esta oración con el fondo azul de oración activa (Edge Immersive Reader)
+        return (
+          <ActiveSentenceWrapper
+            key={sIdx}
+            sentence={sentence}
+            activeWord={activeWord}
+            charIndex={charIndex}
+          />
+        );
+      })}
     </div>
   );
 }
 
-function escapeRegExp(string: string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function ActiveSentenceWrapper({
+  sentence,
+  activeWord,
+  charIndex,
+}: {
+  sentence: string;
+  activeWord: string;
+  charIndex: number;
+}) {
+  const spanRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (spanRef.current) {
+      spanRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [sentence, activeWord]);
+
+  // Si hay una palabra activa, resaltar solo la palabra correspondiente dentro de esta oración
+  let renderedContent = <>{sentence}</>;
+
+  if (activeWord && activeWord.length > 1) {
+    // Si charIndex coincide con la posición exacta dentro de la oración
+    if (
+      charIndex >= 0 &&
+      charIndex < sentence.length &&
+      sentence
+        .slice(charIndex, charIndex + activeWord.length)
+        .toLowerCase() === activeWord.toLowerCase()
+    ) {
+      const before = sentence.slice(0, charIndex);
+      const word = sentence.slice(charIndex, charIndex + activeWord.length);
+      const after = sentence.slice(charIndex + activeWord.length);
+
+      renderedContent = (
+        <>
+          {before}
+          <mark className="bg-amber-300 dark:bg-amber-400 dark:text-black font-bold rounded px-1 py-0.5 shadow-md">
+            {word}
+          </mark>
+          {after}
+        </>
+      );
+    } else {
+      // Fallback: buscar la primera coincidencia exacta de activeWord en la oración activa
+      const lowerSentence = sentence.toLowerCase();
+      const lowerWord = activeWord.toLowerCase();
+      const wordIdx = lowerSentence.indexOf(lowerWord);
+
+      if (wordIdx !== -1) {
+        const before = sentence.slice(0, wordIdx);
+        const word = sentence.slice(wordIdx, wordIdx + activeWord.length);
+        const after = sentence.slice(wordIdx + activeWord.length);
+
+        renderedContent = (
+          <>
+            {before}
+            <mark className="bg-amber-300 dark:bg-amber-400 dark:text-black font-bold rounded px-1 py-0.5 shadow-md">
+              {word}
+            </mark>
+            {after}
+          </>
+        );
+      }
+    }
+  }
+
+  return (
+    <span
+      ref={spanRef}
+      className="inline-block rounded-md bg-sky-100/90 dark:bg-sky-950/70 text-sky-950 dark:text-sky-100 px-1.5 py-0.5 border-l-4 border-sky-500 shadow-sm transition-all duration-200 my-0.5 font-medium"
+    >
+      {renderedContent}{" "}
+    </span>
+  );
 }
