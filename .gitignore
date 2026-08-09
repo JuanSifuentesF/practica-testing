@@ -5,7 +5,8 @@
 backend/.env
 
 # Documentacion local de trabajo
-docs/
+docs/*
+!docs/media/
 
 # Dependencias de Node.js
 node_modules/
