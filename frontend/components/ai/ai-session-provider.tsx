@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -28,14 +29,18 @@ const AiSessionContext = createContext<AiSessionContextValue | null>(null);
 const BYOK_STORAGE_KEY = "istqb_byok_api_key";
 
 export function AiSessionProvider({ children }: { children: ReactNode }) {
-  const [byokApiKey, setByokApiKeyState] = useState(() => {
+  const [byokApiKey, setByokApiKeyState] = useState("");
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
       try {
-        return window.sessionStorage.getItem(BYOK_STORAGE_KEY) || "";
+        const saved = window.sessionStorage.getItem(BYOK_STORAGE_KEY) || "";
+        if (saved) {
+          setByokApiKeyState(saved);
+        }
       } catch {}
     }
-    return "";
-  });
+  }, []);
 
   const setByokApiKey = useCallback((value: string) => {
     const sanitized = value

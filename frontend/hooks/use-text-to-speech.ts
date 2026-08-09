@@ -24,6 +24,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TtsProvider } from "@/types/tts";
 import { GoogleTtsProvider } from "@/lib/tts/google-tts-provider";
+import { useAiSession } from "@/components/ai/ai-session-provider";
 
 export interface TextToSpeechController {
   /** true si el navegador soporta al menos Web Speech API */
@@ -31,9 +32,8 @@ export interface TextToSpeechController {
   /** Provider activo */
   provider: TtsProvider;
   setProvider: (p: TtsProvider) => void;
-  /** API key para Google Cloud TTS (in-memory) */
+  /** API key para Gemini TTS — leída de AiSessionProvider (configurada en /settings/ai) */
   googleApiKey: string;
-  setGoogleApiKey: (key: string) => void;
   /** Lista de voces del navegador */
   voices: SpeechSynthesisVoice[];
   /** Nombre de la voz seleccionada (browser) o ID de voz (google) */
@@ -137,7 +137,8 @@ export function useTextToSpeech(): TextToSpeechController {
 
   // ─── Provider state ─────────────────────────────────────
   const [provider, setProvider] = useState<TtsProvider>("browser");
-  const [googleApiKey, setGoogleApiKey] = useState("");
+  // La key viene del AiSessionProvider (sessionStorage, configurada en /settings/ai)
+  const { byokApiKey: googleApiKey } = useAiSession();
 
   // ─── Browser TTS refs ───────────────────────────────────
   const synthRef = useRef<SpeechSynthesis | null>(null);
@@ -398,7 +399,6 @@ export function useTextToSpeech(): TextToSpeechController {
     provider,
     setProvider,
     googleApiKey,
-    setGoogleApiKey,
     voices,
     selectedVoiceName,
     setSelectedVoiceName,

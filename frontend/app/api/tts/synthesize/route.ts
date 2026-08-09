@@ -1,80 +1,59 @@
 // ============================================================
 // app/api/tts/synthesize/route.ts
-// API Route — Proxy a Google Cloud Text-to-Speech
+// API Route — Proxy a Gemini 2.5 Flash TTS
 // ============================================================
 // PROPÓSITO:
-//   Recibe texto + API key del cliente (BYOK), genera SSML con
-//   <mark> por cada palabra para obtener timepoints, llama a la
-//   API de Google Cloud TTS y devuelve audio base64 + timepoints.
+//   Recibe texto + API key del cliente (BYOK), llama a la API
+//   de Gemini TTS y devuelve audio base64 (WAV) + timepoints vacíos.
+//   El PCM L16 crudo de Gemini se convierte a WAV en servidor
+//   añadiendo la cabecera estándar de 44 bytes (sin FFmpeg).
+//
+// VOCES DISPONIBLES (Gemini 2.5 Flash TTS):
+//   Femeninas: Aoede ⭐, Leda, Zephyr, Kore, Callirrhoe, Despina, Galatea, Io
+//   Masculinas: Charon, Fenrir, Puck, Orus, Achernar
 //
 // SEGURIDAD:
 //   La API key viene del cliente (BYOK in-memory) y se usa una
-//   sola vez en la llamada a Google. Nunca se persiste.
+//   sola vez en la llamada a Gemini. Nunca se persiste en servidor.
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
 
-interface GoogleTtsTimepoint {
-  markName: string;
-  timeSeconds: number;
-}
-
-interface GoogleTtsResponse {
-  audioContent: string;
-  timepoints?: GoogleTtsTimepoint[];
-  audioConfig?: { audioEncoding: string };
-}
-
 /**
- * Convierte texto plano a SSML con <mark> por cada palabra.
- * Devuelve el SSML y un mapa de markName → { textOffset, wordLength, word }.
+ * Convierte un buffer de PCM L16 (s16le, mono) a WAV añadiendo cabecera RIFF.
+ * No requiere FFmpeg ni dependencias externas — puro Node.js Buffer.
  */
-function textToSsmlWithMarks(text: string) {
-  const words = text.split(/(\s+)/); // Mantener espacios
-  let ssml = "<speak>";
-  let charOffset = 0;
-  const markMap: Record<
-    string,
-    { textOffset: number; wordLength: number; word: string }
-  > = {};
-  let wordIdx = 0;
-
-  for (const segment of words) {
-    if (/^\s+$/.test(segment)) {
-      // Es un espacio: agregar tal cual
-      ssml += segment;
-      charOffset += segment.length;
-    } else if (segment.length > 0) {
-      // Es una palabra: insertar <mark> antes
-      const markName = `w${wordIdx}`;
-      markMap[markName] = {
-        textOffset: charOffset,
-        wordLength: segment.length,
-        word: segment,
-      };
-      ssml += `<mark name="${markName}"/>${escapeXml(segment)}`;
-      charOffset += segment.length;
-      wordIdx++;
-    }
-  }
-
-  ssml += "</speak>";
-  return { ssml, markMap };
-}
-
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+function pcmToWav(
+  pcmBuffer: Buffer,
+  sampleRate = 24000,
+  numChannels = 1,
+  bitsPerSample = 16
+): Buffer {
+  const dataSize = pcmBuffer.length;
+  const header = Buffer.alloc(44);
+  // RIFF chunk
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + dataSize, 4);
+  header.write("WAVE", 8);
+  // fmt sub-chunk
+  header.write("fmt ", 12);
+  header.writeUInt32LE(16, 16);                                          // chunk size
+  header.writeUInt16LE(1, 20);                                           // PCM format
+  header.writeUInt16LE(numChannels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE((sampleRate * numChannels * bitsPerSample) / 8, 28); // byte rate
+  header.writeUInt16LE((numChannels * bitsPerSample) / 8, 32);          // block align
+  header.writeUInt16LE(bitsPerSample, 34);
+  // data sub-chunk
+  header.write("data", 36);
+  header.writeUInt32LE(dataSize, 40);
+  return Buffer.concat([header, pcmBuffer]);
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { text, voiceName, languageCode, rate, apiKey } = body;
+    const { text, voiceName, rate, apiKey } = body;
 
     if (!text || !apiKey) {
       return NextResponse.json(
@@ -83,69 +62,82 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const voice = voiceName || "es-US-Neural2-A";
-    const lang = languageCode || voice.slice(0, 5); // "es-US" from "es-US-Neural2-A"
-    const speakingRate = Math.max(0.25, Math.min(4, rate || 1));
+    // Voz por defecto: Aoede (femenina, cálida, natural en español)
+    const voice = (voiceName as string) || "Aoede";
+    // Gemini TTS no expone speakingRate — se recibe pero no se usa
+    void rate;
 
-    // Generar SSML con marks para timepoints
-    const { ssml, markMap } = textToSsmlWithMarks(text);
-
-    // Llamar a Google Cloud TTS v1beta1 (soporta enableTimePointing)
-    const googleResponse = await fetch(
-      `https://texttospeech.googleapis.com/v1beta1/text:synthesize?key=${apiKey}`,
+    // ── Llamada a Gemini 2.5 Flash TTS ─────────────────────────────────────
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          input: { ssml },
-          voice: {
-            languageCode: lang,
-            name: voice,
+          contents: [{ parts: [{ text }] }],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: voice },
+              },
+            },
           },
-          audioConfig: {
-            audioEncoding: "MP3",
-            speakingRate,
-          },
-          enableTimePointing: ["SSML_MARK"],
         }),
       }
     );
 
-    if (!googleResponse.ok) {
-      const errorText = await googleResponse.text();
-      console.error("[TTS] Google Cloud TTS error:", errorText);
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      console.error("[TTS] Gemini TTS error:", errorText);
 
-      let userMessage = "Error al sintetizar audio con Google Cloud TTS";
-      if (googleResponse.status === 403 || googleResponse.status === 401) {
+      let userMessage = "Error al sintetizar audio con Gemini TTS";
+      if (geminiResponse.status === 403 || geminiResponse.status === 401) {
         userMessage =
-          "API key inválida o sin permisos para Cloud Text-to-Speech. Verifica que la API esté habilitada en tu proyecto de Google Cloud.";
-      } else if (googleResponse.status === 429) {
-        userMessage = "Se excedió la cuota de Google Cloud TTS. Intenta más tarde.";
+          "API key inválida. Asegúrate de usar una key de Google AI Studio (aistudio.google.com), no de Google Cloud Console.";
+      } else if (geminiResponse.status === 429) {
+        userMessage = "Cuota de Gemini TTS excedida. Intenta más tarde.";
+      } else if (geminiResponse.status === 404) {
+        userMessage =
+          "Modelo gemini-2.5-flash-preview-tts no disponible con esta key.";
       }
 
       return NextResponse.json(
         { error: userMessage },
-        { status: googleResponse.status }
+        { status: geminiResponse.status }
       );
     }
 
-    const data: GoogleTtsResponse = await googleResponse.json();
+    const data = await geminiResponse.json();
+    const inlineData = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData;
 
-    // Mapear timepoints de Google (markName) a nuestro formato con offsets de texto
-    const timepoints = (data.timepoints || []).map((tp) => {
-      const info = markMap[tp.markName];
-      return {
-        word: info?.word ?? tp.markName,
-        textOffset: info?.textOffset ?? 0,
-        wordLength: info?.wordLength ?? 0,
-        timeSeconds: tp.timeSeconds,
-      };
-    });
+    if (!inlineData?.data) {
+      console.error(
+        "[TTS] Respuesta inesperada de Gemini:",
+        JSON.stringify(data).slice(0, 300)
+      );
+      return NextResponse.json(
+        { error: "Respuesta inesperada de Gemini TTS" },
+        { status: 500 }
+      );
+    }
 
+    // ── Convertir PCM L16 → WAV ─────────────────────────────────────────────
+    // Gemini devuelve: audio/L16;codec=pcm;rate=24000 (mono, s16le, sin cabecera)
+    const mimeType: string = inlineData.mimeType || "audio/L16;rate=24000";
+    const rateMatch = mimeType.match(/rate=(\d+)/);
+    const sampleRate = rateMatch ? parseInt(rateMatch[1]) : 24000;
+
+    const pcmBuffer = Buffer.from(inlineData.data, "base64");
+    const wavBuffer = pcmToWav(pcmBuffer, sampleRate);
+
+    // ── Respuesta (mismo contrato que antes para no romper el cliente) ───────
+    // Nota: Gemini TTS no ofrece timepoints por palabra → karaoke desactivado,
+    // pero la reproducción de audio funciona correctamente.
     return NextResponse.json({
-      audioBase64: data.audioContent,
-      audioEncoding: "MP3",
-      timepoints,
+      audioBase64: wavBuffer.toString("base64"),
+      audioEncoding: "WAV",
+      timepoints: [],
     });
   } catch (error) {
     console.error("[TTS] Synthesize error:", error);

@@ -13,12 +13,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("istqb-theme") as Theme) || "light";
-    }
-    return "light";
-  });
+  const [theme, setThemeState] = useState<Theme>("dark");
 
   function applyTheme(newTheme: Theme) {
     if (typeof document === "undefined") return;
@@ -33,8 +28,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
+    const saved = localStorage.getItem("istqb-theme") as Theme | null;
+    const initialTheme = saved === "light" || saved === "dark" ? saved : "dark";
+    setThemeState(initialTheme);
+    applyTheme(initialTheme);
+  }, []);
 
   function setTheme(newTheme: Theme) {
     setThemeState(newTheme);

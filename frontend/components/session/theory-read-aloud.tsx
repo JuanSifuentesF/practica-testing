@@ -71,7 +71,7 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
   const defaultTts = useTextToSpeech();
   const tts = controller ?? defaultTts;
   const text = useMemo(() => buildSpeechText(topic), [topic]);
-  const [showGoogleKeyInput, setShowGoogleKeyInput] = useState(false);
+
 
   const spanishVoices = useMemo(
     () => tts.voices.filter((v) => v.lang.toLowerCase().startsWith("es")),
@@ -100,7 +100,6 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
           onClick={() => {
             tts.stop();
             tts.setProvider("browser");
-            setShowGoogleKeyInput(false);
           }}
           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all ${
             tts.provider === "browser"
@@ -116,8 +115,7 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
           onClick={() => {
             tts.stop();
             tts.setProvider("google");
-            if (!tts.googleApiKey) setShowGoogleKeyInput(true);
-            // Setear voz por defecto de Google si no hay una seleccionada
+            // Setear voz por defecto de Gemini si no hay una seleccionada
             if (!GOOGLE_TTS_VOICES.find((v) => v.id === tts.selectedVoiceName)) {
               tts.setSelectedVoiceName(GOOGLE_TTS_VOICES[0].id);
             }
@@ -129,37 +127,24 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
           }`}
         >
           <Sparkles className="h-3 w-3" />
-          Google Neural
+          Gemini TTS
         </button>
       </div>
 
-      {/* ── Google API Key input (solo si Google seleccionado y sin key) ── */}
-      {tts.provider === "google" && showGoogleKeyInput && (
-        <div className="rounded-md border border-sky-300/40 bg-sky-500/5 dark:bg-sky-950/20 p-2.5 space-y-2">
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Ingresa tu API key de Google Cloud (con Cloud Text-to-Speech habilitado).
-            La key se mantiene solo en memoria y se borra al recargar.
+      {/* ── Aviso si no hay key configurada en Settings ─── */}
+      {tts.provider === "google" && !tts.googleApiKey && (
+        <div className="rounded-md border border-amber-300/40 bg-amber-500/5 dark:bg-amber-950/20 p-2.5 flex items-center gap-2">
+          <span className="text-amber-500 text-sm">⚠️</span>
+          <p className="text-[11px] text-muted-foreground leading-relaxed flex-1">
+            Configura tu API key de Gemini en{" "}
+            <a
+              href="/settings/ai"
+              className="font-semibold text-sky-600 dark:text-sky-400 underline underline-offset-2 hover:text-sky-500"
+            >
+              Configuración de IA
+            </a>
+            {" "}para usar Gemini TTS. La key se comparte con todos los módulos.
           </p>
-          <div className="flex gap-1.5">
-            <input
-              type="password"
-              value={tts.googleApiKey}
-              onChange={(e) => tts.setGoogleApiKey(e.target.value)}
-              placeholder="AIzaSy..."
-              className="flex-1 rounded-md border border-border/60 bg-background px-2 py-1.5 text-xs placeholder:text-muted-foreground focus:border-sky-500 focus:ring-1 focus:ring-sky-500/50 outline-none"
-              autoComplete="off"
-              spellCheck={false}
-            />
-            {tts.googleApiKey && (
-              <button
-                type="button"
-                onClick={() => setShowGoogleKeyInput(false)}
-                className="rounded-md bg-sky-500/20 px-2.5 py-1.5 text-[11px] font-medium text-sky-700 dark:text-sky-300 hover:bg-sky-500/30 transition-colors"
-              >
-                Listo
-              </button>
-            )}
-          </div>
         </div>
       )}
 
@@ -285,16 +270,15 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
           </div>
         )}
 
-        {/* Botón para mostrar/ocultar input de key Google */}
-        {tts.provider === "google" && tts.googleApiKey && !showGoogleKeyInput && (
-          <button
-            type="button"
-            onClick={() => setShowGoogleKeyInput(true)}
+        {/* Link discreto a Settings si Gemini activo */}
+        {tts.provider === "google" && tts.googleApiKey && (
+          <a
+            href="/settings/ai"
             className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-            title="Cambiar API key"
+            title="Gestionar API key en Configuración de IA"
           >
             🔑
-          </button>
+          </a>
         )}
       </div>
 
@@ -313,7 +297,7 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
               {tts.currentChunkIndex + 1} de {tts.totalChunks})
               {tts.provider === "google" && (
                 <span className="text-[9px] bg-sky-500/20 text-sky-600 dark:text-sky-400 px-1.5 rounded-full font-medium">
-                  Google Neural
+                  Gemini TTS
                 </span>
               )}
             </span>
