@@ -25,6 +25,7 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import { BookOpen, Lightbulb, Beaker, Link2, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CollapsibleSection } from "./collapsible-section";
@@ -37,6 +38,10 @@ interface TheoryTopicViewProps {
   topic: TheoryTopicContent;
 }
 
+const READING_TRACKING_STORAGE_KEY = "istqb-reading-tracking-enabled";
+const READING_TRACKING_TOGGLE_ENABLED =
+  process.env.NEXT_PUBLIC_READING_TRACKING_TOGGLE_ENABLED !== "false";
+
 // ─── Mapeo de level_k a colores de badge ────────────────────
 function getLevelBadgeStyle(level: string): string {
   const map: Record<string, string> = {
@@ -48,7 +53,42 @@ function getLevelBadgeStyle(level: string): string {
 }
 
 export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
-  const tts = useTextToSpeech();
+  const [readingTrackingEnabled, setReadingTrackingEnabled] = useState(false);
+  const effectiveReadingTrackingEnabled =
+    READING_TRACKING_TOGGLE_ENABLED && readingTrackingEnabled;
+  const tts = useTextToSpeech({
+    trackingEnabled: effectiveReadingTrackingEnabled,
+  });
+  const isTrackingActive = effectiveReadingTrackingEnabled && tts.isSpeaking;
+
+  useEffect(() => {
+    if (!READING_TRACKING_TOGGLE_ENABLED) {
+      setReadingTrackingEnabled(false);
+      return;
+    }
+
+    try {
+      setReadingTrackingEnabled(
+        window.localStorage.getItem(READING_TRACKING_STORAGE_KEY) === "true",
+      );
+    } catch {
+      setReadingTrackingEnabled(false);
+    }
+  }, []);
+
+  function handleReadingTrackingEnabledChange(enabled: boolean) {
+    if (!READING_TRACKING_TOGGLE_ENABLED) return;
+
+    setReadingTrackingEnabled(enabled);
+    try {
+      window.localStorage.setItem(
+        READING_TRACKING_STORAGE_KEY,
+        enabled ? "true" : "false",
+      );
+    } catch {
+      // Si localStorage no está disponible, la preferencia queda solo en memoria.
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -66,7 +106,13 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
       </div>
 
       {/* ── Toolbar TTS: leer en voz alta ─────────────────── */}
-      <TheoryReadAloud topic={topic} controller={tts} />
+      <TheoryReadAloud
+        topic={topic}
+        controller={tts}
+        readingTrackingEnabled={effectiveReadingTrackingEnabled}
+        showReadingTrackingToggle={READING_TRACKING_TOGGLE_ENABLED}
+        onReadingTrackingEnabledChange={handleReadingTrackingEnabledChange}
+      />
 
       {/* ── Sección 1: Introducción ───────────────────────── */}
       <CollapsibleSection
@@ -79,7 +125,7 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
           currentChunkText={tts.currentChunkText}
           charIndex={tts.charIndex}
           charLength={tts.charLength}
-          isSpeaking={tts.isSpeaking}
+          isSpeaking={isTrackingActive}
           className="prose-sm text-sm leading-relaxed text-foreground whitespace-pre-line"
         />
       </CollapsibleSection>
@@ -107,7 +153,7 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
                 currentChunkText={tts.currentChunkText}
                 charIndex={tts.charIndex}
                 charLength={tts.charLength}
-                isSpeaking={tts.isSpeaking}
+                isSpeaking={isTrackingActive}
                 className="mt-1 text-sm leading-relaxed text-foreground"
               />
               {/* Ejemplo del concepto (si existe) */}
@@ -119,7 +165,7 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
                     currentChunkText={tts.currentChunkText}
                     charIndex={tts.charIndex}
                     charLength={tts.charLength}
-                    isSpeaking={tts.isSpeaking}
+                    isSpeaking={isTrackingActive}
                   />
                 </div>
               )}
@@ -149,7 +195,7 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
                   currentChunkText={tts.currentChunkText}
                   charIndex={tts.charIndex}
                   charLength={tts.charLength}
-                  isSpeaking={tts.isSpeaking}
+                  isSpeaking={isTrackingActive}
                   className="mt-1 text-sm leading-relaxed text-foreground"
                 />
                 <div className="mt-2 flex items-start gap-1.5 text-xs text-amber-800 dark:text-amber-400/80">
@@ -159,7 +205,7 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
                     currentChunkText={tts.currentChunkText}
                     charIndex={tts.charIndex}
                     charLength={tts.charLength}
-                    isSpeaking={tts.isSpeaking}
+                    isSpeaking={isTrackingActive}
                     className="leading-5"
                   />
                 </div>
@@ -190,7 +236,7 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
                   currentChunkText={tts.currentChunkText}
                   charIndex={tts.charIndex}
                   charLength={tts.charLength}
-                  isSpeaking={tts.isSpeaking}
+                  isSpeaking={isTrackingActive}
                   className="text-muted-foreground leading-relaxed"
                 />
               </div>
@@ -207,7 +253,7 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
             currentChunkText={tts.currentChunkText}
             charIndex={tts.charIndex}
             charLength={tts.charLength}
-            isSpeaking={tts.isSpeaking}
+            isSpeaking={isTrackingActive}
             className="text-sm leading-relaxed text-foreground whitespace-pre-line"
           />
         </div>

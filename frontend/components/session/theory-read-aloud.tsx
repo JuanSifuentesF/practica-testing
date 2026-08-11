@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Volume2, Pause, Play, Square, Sparkles, Globe } from "lucide-react";
 import {
   TextToSpeechController,
@@ -26,6 +26,9 @@ import { GOOGLE_TTS_VOICES } from "@/types/tts";
 interface TheoryReadAloudProps {
   topic: TheoryTopicContent;
   controller?: TextToSpeechController;
+  readingTrackingEnabled?: boolean;
+  showReadingTrackingToggle?: boolean;
+  onReadingTrackingEnabledChange?: (enabled: boolean) => void;
 }
 
 const RATE_OPTIONS = [0.75, 1, 1.25, 1.5];
@@ -67,7 +70,13 @@ function buildSpeechText(topic: TheoryTopicContent): string {
   return blocks.join("\n\n");
 }
 
-export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
+export function TheoryReadAloud({
+  topic,
+  controller,
+  readingTrackingEnabled = false,
+  showReadingTrackingToggle = true,
+  onReadingTrackingEnabledChange,
+}: TheoryReadAloudProps) {
   const defaultTts = useTextToSpeech();
   const tts = controller ?? defaultTts;
   const text = useMemo(() => buildSpeechText(topic), [topic]);
@@ -93,7 +102,7 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-emerald-300/40 bg-emerald-500/5 p-3 dark:border-emerald-900/30 dark:bg-emerald-950/10">
       {/* ── Selector de Provider ──────────────────────────── */}
-      <div className="flex items-center gap-1.5 mb-1">
+      <div className="flex flex-wrap items-center gap-1.5 mb-1">
         <span className="text-[11px] text-muted-foreground font-medium">Motor:</span>
         <button
           type="button"
@@ -129,6 +138,37 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
           <Sparkles className="h-3 w-3" />
           Gemini TTS
         </button>
+        {showReadingTrackingToggle && (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={readingTrackingEnabled}
+            onClick={() =>
+              onReadingTrackingEnabledChange?.(!readingTrackingEnabled)
+            }
+            className={`ml-auto inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all ${
+              readingTrackingEnabled
+                ? "bg-emerald-500/20 text-emerald-700 ring-1 ring-emerald-500/40 dark:text-emerald-300"
+                : "bg-muted/30 text-muted-foreground hover:bg-muted/60"
+            }`}
+            title="Muestra u oculta resaltado, subtítulos, barra de avance y auto-scroll de lectura"
+          >
+            <span
+              className={`relative h-4 w-7 rounded-full transition-colors ${
+                readingTrackingEnabled ? "bg-emerald-500" : "bg-slate-500/50"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${
+                  readingTrackingEnabled
+                    ? "translate-x-3.5"
+                    : "translate-x-0.5"
+                }`}
+              />
+            </span>
+            Seguimiento {readingTrackingEnabled ? "ON" : "OFF"}
+          </button>
+        )}
       </div>
 
       {/* ── Aviso si no hay key configurada en Settings ─── */}
@@ -283,7 +323,7 @@ export function TheoryReadAloud({ topic, controller }: TheoryReadAloudProps) {
       </div>
 
       {/* ── Subtítulo de lectura activa y barra de progreso ── */}
-      {tts.isSpeaking && (
+      {readingTrackingEnabled && tts.isSpeaking && tts.totalChunks > 0 && (
         <div className="mt-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2.5 dark:bg-emerald-950/40 text-xs space-y-1.5 transition-all">
           <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
             <span className="flex items-center gap-1.5">

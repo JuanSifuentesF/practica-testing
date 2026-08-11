@@ -26,6 +26,10 @@ import type { TtsProvider } from "@/types/tts";
 import { GoogleTtsProvider } from "@/lib/tts/google-tts-provider";
 import { useAiSession } from "@/components/ai/ai-session-provider";
 
+interface UseTextToSpeechOptions {
+  trackingEnabled?: boolean;
+}
+
 export interface TextToSpeechController {
   /** true si el navegador soporta al menos Web Speech API */
   isSupported: boolean;
@@ -132,8 +136,12 @@ function splitIntoChunks(text: string, maxChars = MAX_CHUNK_CHARS): string[] {
   return chunks;
 }
 
-export function useTextToSpeech(): TextToSpeechController {
+export function useTextToSpeech(
+  options: UseTextToSpeechOptions = {},
+): TextToSpeechController {
   const isSupported = isClientSupported();
+  const trackingEnabled = options.trackingEnabled ?? true;
+  const trackingEnabledRef = useRef(trackingEnabled);
 
   // ─── Provider state ─────────────────────────────────────
   const [provider, setProvider] = useState<TtsProvider>("browser");
@@ -162,6 +170,22 @@ export function useTextToSpeech(): TextToSpeechController {
   const [currentChunkText, setCurrentChunkText] = useState("");
   const [charIndex, setCharIndex] = useState(-1);
   const [charLength, setCharLength] = useState(0);
+
+  const resetTrackingState = useCallback(() => {
+    setCurrentChunkIndex(-1);
+    setTotalChunks(0);
+    setCurrentChunkText("");
+    setCharIndex(-1);
+    setCharLength(0);
+  }, []);
+
+  useEffect(() => {
+    trackingEnabledRef.current = trackingEnabled;
+    googleProviderRef.current?.setTrackingEnabled(trackingEnabled);
+    if (!trackingEnabled) {
+      resetTrackingState();
+    }
+  }, [trackingEnabled, resetTrackingState]);
 
   // ─── Initialize browser speech synthesis ────────────────
   useEffect(() => {
@@ -198,31 +222,32 @@ export function useTextToSpeech(): TextToSpeechController {
       onEnd: () => {
         setIsSpeaking(false);
         setIsPaused(false);
-        setCurrentChunkIndex(-1);
-        setCurrentChunkText("");
-        setCharIndex(-1);
-        setCharLength(0);
+        resetTrackingState();
       },
       onError: (error) => {
         console.error("[GoogleTTS]", error);
         setIsSpeaking(false);
         setIsPaused(false);
+        resetTrackingState();
       },
       onBoundary: (ci, cl) => {
+        if (!trackingEnabledRef.current) return;
         setCharIndex(ci);
         setCharLength(cl);
       },
       onChunkChange: (text, idx, total) => {
+        if (!trackingEnabledRef.current) return;
         setCurrentChunkText(text);
         setCurrentChunkIndex(idx);
         setTotalChunks(total);
       },
     });
+    googleProviderRef.current.setTrackingEnabled(trackingEnabledRef.current);
 
     return () => {
       googleProviderRef.current?.destroy();
     };
-  }, []);
+  }, [resetTrackingState]);
 
   // Sync refs
   useEffect(() => {
@@ -250,21 +275,20 @@ export function useTextToSpeech(): TextToSpeechController {
       if (idx >= chunks.length) {
         setIsSpeaking(false);
         setIsPaused(false);
-        setCurrentChunkIndex(-1);
-        setTotalChunks(0);
-        setCurrentChunkText("");
-        setCharIndex(-1);
-        setCharLength(0);
+        resetTrackingState();
         chunksRef.current = [];
         idxRef.current = 0;
         return;
       }
       idxRef.current = idx;
       const chunk = chunks[idx];
-      setCurrentChunkIndex(idx);
-      setCurrentChunkText(chunk);
-      setCharIndex(0);
-      setCharLength(0);
+      if (trackingEnabledRef.current) {
+        setTotalChunks(chunks.length);
+        setCurrentChunkIndex(idx);
+        setCurrentChunkText(chunk);
+        setCharIndex(0);
+        setCharLength(0);
+      }
 
       const utterance = new SpeechSynthesisUtterance(chunk);
       const voice = synth.getVoices().find((v) => v.name === voiceRef.current);
@@ -277,6 +301,7 @@ export function useTextToSpeech(): TextToSpeechController {
         setIsPaused(false);
       };
       utterance.onboundary = (event) => {
+        if (!trackingEnabledRef.current) return;
         if (event.name === "word" || !event.name) {
           setCharIndex(event.charIndex);
           setCharLength(event.charLength || 0);
@@ -291,7 +316,7 @@ export function useTextToSpeech(): TextToSpeechController {
 
       synth.speak(utterance);
     },
-    []
+    [resetTrackingState]
   );
 
   useEffect(() => {
@@ -317,11 +342,15 @@ export function useTextToSpeech(): TextToSpeechController {
         // Por ahora sintetizamos el texto completo de una vez
         // (Google maneja textos largos mejor que Web Speech API)
         const fullText = chunks.join(" ");
-        setTotalChunks(1);
-        setCurrentChunkIndex(0);
-        setCurrentChunkText(fullText);
-        setCharIndex(0);
-        setCharLength(0);
+        if (trackingEnabledRef.current) {
+          setTotalChunks(1);
+          setCurrentChunkIndex(0);
+          setCurrentChunkText(fullText);
+          setCharIndex(0);
+          setCharLength(0);
+        } else {
+          resetTrackingState();
+        }
 
         gProvider.speak(fullText, selectedVoiceName, rate, googleApiKey);
         return;
@@ -336,14 +365,18 @@ export function useTextToSpeech(): TextToSpeechController {
       synth.cancel();
       chunksRef.current = chunks;
       idxRef.current = 0;
-      setTotalChunks(chunks.length);
-      setCurrentChunkIndex(0);
-      setCurrentChunkText(chunks[0] ?? "");
-      setCharIndex(0);
-      setCharLength(0);
+      if (trackingEnabledRef.current) {
+        setTotalChunks(chunks.length);
+        setCurrentChunkIndex(0);
+        setCurrentChunkText(chunks[0] ?? "");
+        setCharIndex(0);
+        setCharLength(0);
+      } else {
+        resetTrackingState();
+      }
       window.setTimeout(() => speakChunkAtRef.current(0), 120);
     },
-    [provider, googleApiKey, selectedVoiceName, rate]
+    [provider, googleApiKey, selectedVoiceName, rate, resetTrackingState]
   );
 
   // ─── Unified pause ─────────────────────────────────────
@@ -379,12 +412,8 @@ export function useTextToSpeech(): TextToSpeechController {
     }
     setIsSpeaking(false);
     setIsPaused(false);
-    setCurrentChunkIndex(-1);
-    setTotalChunks(0);
-    setCurrentChunkText("");
-    setCharIndex(-1);
-    setCharLength(0);
-  }, [provider]);
+    resetTrackingState();
+  }, [provider, resetTrackingState]);
 
   const setSelectedVoiceName = useCallback((name: string) => {
     setSelectedVoiceNameState(name);

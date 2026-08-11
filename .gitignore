@@ -4,9 +4,14 @@
 .env
 backend/.env
 
-# Documentacion local de trabajo
+# Documentacion local de trabajo y logs de sesiones/agentes
 docs/*
 !docs/media/
+opencode_session_log.md
+AGENTS.md
+chrome_err.txt
+chrome_out.txt
+scratch/
 
 # Dependencias de Node.js
 node_modules/
@@ -43,3 +48,4 @@ __pycache__/
 
 # Docker local
 docker-compose.override.yml
+.vercel

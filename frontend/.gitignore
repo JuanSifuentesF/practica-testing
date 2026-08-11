@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+test-*.mjs
+test-*.ts
+test-output*.txt
 
 # next.js
 /.next/
@@ -40,3 +43,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel

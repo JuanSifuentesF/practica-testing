@@ -129,6 +129,7 @@ export class GoogleTtsProvider {
   private _isPaused = false;
   private _isSpeaking = false;
   private stopped = false;
+  private trackingEnabled = true;
 
   // Estado del pipeline de chunks
   private chunks: string[] = [];
@@ -141,6 +142,20 @@ export class GoogleTtsProvider {
 
   get isSpeaking(): boolean { return this._isSpeaking; }
   get isPaused(): boolean { return this._isPaused; }
+
+  setTrackingEnabled(enabled: boolean): void {
+    this.trackingEnabled = enabled;
+    if (!enabled) {
+      this.stopTimepointSync();
+      this.timepoints = [];
+      this.lastTimepointIdx = -1;
+      return;
+    }
+
+    if (this.audio && !this.audio.paused && !this.audio.ended) {
+      this.startTimepointSync();
+    }
+  }
 
   async speak(
     text: string,
@@ -177,7 +192,9 @@ export class GoogleTtsProvider {
     const total = this.chunks.length;
     const chunkText = this.chunks[idx];
 
-    this.callbacks.onChunkChange(chunkText, idx, total);
+    if (this.trackingEnabled) {
+      this.callbacks.onChunkChange(chunkText, idx, total);
+    }
 
     // Obtener el src: usar pre-fetcheado si ya está listo, sino fetch ahora
     let audioSrc: string;
@@ -225,7 +242,7 @@ export class GoogleTtsProvider {
     this.audio.onloadedmetadata = () => {
       if (!this.audio || this.stopped) return;
       const duration = this.audio.duration;
-      if (duration && isFinite(duration) && duration > 0) {
+      if (this.trackingEnabled && duration && isFinite(duration) && duration > 0) {
         this.timepoints = estimateWordTimepoints(chunkText, duration);
         this.startTimepointSync();
       }
@@ -282,7 +299,9 @@ export class GoogleTtsProvider {
     if (this.audio && this._isPaused) {
       this.audio.play();
       this._isPaused = false;
-      this.startTimepointSync();
+      if (this.trackingEnabled) {
+        this.startTimepointSync();
+      }
     }
   }
 
@@ -316,6 +335,7 @@ export class GoogleTtsProvider {
    */
   private startTimepointSync(): void {
     this.stopTimepointSync();
+    if (!this.trackingEnabled) return;
     if (this.timepoints.length === 0) return;
 
     const sync = () => {
