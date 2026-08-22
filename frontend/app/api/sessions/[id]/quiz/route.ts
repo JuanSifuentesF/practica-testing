@@ -50,6 +50,10 @@ import type { EvaluateResponse } from "@/types/evaluate";
 // ─── Forzar Node.js runtime ─────────────────────────────────────
 // Edge runtime no soporta el SDK de OpenAI ni las cookies de
 // Supabase SSR. Forzamos Node.js para tener acceso completo.
+
+// ─── Forzar Node.js runtime ─────────────────────────────────────
+// Edge runtime no soporta el SDK de OpenAI ni las cookies de
+// Supabase SSR. Forzamos Node.js para tener acceso completo.
 export const runtime = "nodejs";
 
 // ─── Constantes ──────────────────────────────────────────────────
@@ -99,25 +103,75 @@ function readCanonicalTopicCodes(value: unknown): string[] | null {
   return [...codes].sort();
 }
 
+// ──────────────────────────────────────────────────────────────
+// CAPA 3: Normalización tolerante del JSON del LLM
+// ──────────────────────────────────────────────────────────────
+// Gemini y otros modelos a veces responden con:
+//   - Opciones en mayúsculas: { "A": "...", "B": "..." }
+//   - correct en mayúscula: "correct": "C"
+//   - level_k en minúscula o sin prefijo: "k2", "K 2", "2"
+//   - Envuelto en bloques markdown: ```json ... ```
+//
+// Esta función normaliza esas variaciones ANTES de validar,
+// evitando rechazos innecesarios por diferencias cosméticas.
+// ──────────────────────────────────────────────────────────────
+
+function normalizeQuestionRaw(raw: unknown): unknown {
+  if (!isRecord(raw)) return raw;
+
+  const result = { ...raw };
+
+  // Normalizar correct: "A" → "a", "B" → "b", etc.
+  if (typeof result.correct === "string") {
+    result.correct = result.correct.trim().toLowerCase();
+  }
+
+  // Normalizar level_k: "k1" → "K1", "k2" → "K2", "K 3" → "K3"
+  if (typeof result.level_k === "string") {
+    const cleaned = result.level_k.replace(/\s+/g, "").toUpperCase();
+    // Aceptar variantes: "K1", "K2", "K3", o solo "1", "2", "3"
+    if (/^K[123]$/.test(cleaned)) {
+      result.level_k = cleaned;
+    } else if (/^[123]$/.test(cleaned)) {
+      result.level_k = `K${cleaned}`;
+    }
+  }
+
+  // Normalizar options: { "A": "...", "B": "..." } → { "a": "...", "b": "..." }
+  if (isRecord(result.options)) {
+    const opts = result.options;
+    const normalized: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(opts)) {
+      normalized[key.trim().toLowerCase()] = val;
+    }
+    result.options = normalized;
+  }
+
+  return result;
+}
+
 function readQuizQuestion(
   value: unknown,
   questionId: number,
 ): QuizSnapshotQuestion | null {
+  // Aplicar normalización tolerante antes de validar
+  const normalized = normalizeQuestionRaw(value);
+
   if (
-    !isRecord(value) ||
-    typeof value.question !== "string" ||
-    value.question.trim().length < 10 ||
-    typeof value.explanation !== "string" ||
-    value.explanation.trim().length < 20 ||
-    typeof value.topic_code !== "string" ||
-    !isLevelK(value.level_k) ||
-    !isAnswerOption(value.correct) ||
-    !isRecord(value.options)
+    !isRecord(normalized) ||
+    typeof normalized.question !== "string" ||
+    normalized.question.trim().length < 10 ||
+    typeof normalized.explanation !== "string" ||
+    normalized.explanation.trim().length < 20 ||
+    typeof normalized.topic_code !== "string" ||
+    !isLevelK(normalized.level_k) ||
+    !isAnswerOption(normalized.correct) ||
+    !isRecord(normalized.options)
   ) {
     return null;
   }
 
-  const options = value.options;
+  const options = normalized.options;
   if (
     typeof options.a !== "string" ||
     options.a.trim().length < 3 ||
@@ -133,17 +187,17 @@ function readQuizQuestion(
 
   return {
     question_id: questionId,
-    question: value.question,
+    question: normalized.question,
     options: {
       a: options.a,
       b: options.b,
       c: options.c,
       d: options.d,
     },
-    correct: value.correct,
-    explanation: value.explanation,
-    topic_code: value.topic_code,
-    level_k: value.level_k,
+    correct: normalized.correct,
+    explanation: normalized.explanation,
+    topic_code: normalized.topic_code,
+    level_k: normalized.level_k,
   };
 }
 

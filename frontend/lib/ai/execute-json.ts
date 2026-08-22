@@ -409,6 +409,94 @@ export async function executeAiJson<T>(
           value = null;
         }
 
+        // ────────────────────────────────────────────────────────
+        // CAPA 2: Self-Correction — Segundo turno correctivo
+        // ────────────────────────────────────────────────────────
+        // Si el primer intento generó texto pero no pasó la validación,
+        // le damos UNA oportunidad al modelo de corregir su salida.
+        // El costo extra es ~500-1000 tokens en el ~5% de los casos.
+        // ────────────────────────────────────────────────────────
+        if (value === null && rawText.length > 0) {
+          console.log("[executeAiJson] Attempting self-correction turn...");
+
+          const correctionController = new AbortController();
+          const correctionTimeoutId = setTimeout(
+            () => correctionController.abort(),
+            options.timeoutMs,
+          );
+
+          try {
+            const correctionParams: CompletionParams = {
+              model: activeRuntime.model,
+              messages: [
+                { role: "system", content: options.systemPrompt },
+                { role: "user", content: userPrompt },
+                { role: "assistant", content: rawText },
+                {
+                  role: "user",
+                  content:
+                    "Tu respuesta anterior no cumplió con el formato JSON requerido. " +
+                    "Posibles problemas: claves faltantes, cantidad de preguntas incorrecta, " +
+                    "topic_code o level_k inválido, opciones incompletas, o texto fuera del JSON. " +
+                    "Corrige y devuelve SOLO el objeto JSON válido completo, sin texto adicional.",
+                },
+              ],
+              max_tokens: options.maxCompletionTokensPerAttempt,
+              response_format: { type: "json_object" },
+              ...(options.tuning?.(activeRuntime.provider) ?? {}),
+            };
+
+            const correctionCompletion =
+              await activeRuntime.runtime.client.chat.completions.create(
+                correctionParams,
+                { signal: correctionController.signal },
+              );
+            const correctedText =
+              correctionCompletion.choices[0]?.message?.content ?? "";
+            console.log(
+              "[executeAiJson] Corrected LLM text:",
+              correctedText.slice(0, 200),
+            );
+
+            promptTokens +=
+              validUsage(correctionCompletion.usage?.prompt_tokens) ??
+              estimateTokens(options.systemPrompt + "\n" + userPrompt + rawText);
+            completionTokens +=
+              validUsage(correctionCompletion.usage?.completion_tokens) ??
+              estimateTokens(correctedText);
+
+            try {
+              value =
+                correctedText.length > 0
+                  ? options.parse(correctedText)
+                  : null;
+              if (value !== null) {
+                console.log(
+                  "[executeAiJson] Self-correction succeeded on second turn.",
+                );
+              } else {
+                console.warn(
+                  "[executeAiJson] Self-correction also returned null.",
+                );
+              }
+            } catch (e2) {
+              console.error(
+                "[executeAiJson] Self-correction parse() threw error:",
+                e2,
+              );
+              value = null;
+            }
+          } catch (correctionError) {
+            console.error(
+              "[executeAiJson] Self-correction API call failed:",
+              correctionError,
+            );
+            // No rethrow — continuamos con value = null y el flujo normal
+          } finally {
+            clearTimeout(correctionTimeoutId);
+          }
+        }
+
         if (value !== null) {
           const usageFailure = await recordOrFail({
             eventId: activeRuntime.eventId,

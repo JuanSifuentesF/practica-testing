@@ -71,6 +71,25 @@ interface QuizCardProps {
 
 type QuizFetcher = (input: string, init?: RequestInit) => Promise<Response>;
 
+// ──────────────────────────────────────────────────────────────
+// CAPA 1: Silent Auto-Retry
+// ──────────────────────────────────────────────────────────────
+// Reintentos transparentes para el usuario. Cubre dos escenarios:
+//
+//   1. HTTP 409 (Conflict) — Lock de concurrencia: otra pestaña o
+//      proceso ya está generando el quiz. Esperamos Retry-After.
+//
+//   2. HTTP 500/502 — Error transitorio del servidor/LLM: timeout
+//      de Gemini, respuesta no válida, o error interno. Esperamos
+//      1.5 segundos y reintentamos automáticamente hasta 2 veces.
+//
+// El usuario NUNCA ve estos reintentos — el spinner de "Generando
+// quiz..." permanece visible durante todo el proceso.
+// ──────────────────────────────────────────────────────────────
+const SILENT_RETRY_STATUSES = new Set([500, 502]);
+const MAX_SILENT_RETRIES = 2;
+const SILENT_RETRY_DELAY_MS = 1_500;
+
 async function fetchQuizWithRetry(
   fetcher: QuizFetcher,
   sessionId: string,
@@ -83,6 +102,8 @@ async function fetchQuizWithRetry(
     });
 
   let response = await request();
+
+  // ── Reintentos por 409 Conflict (lock de concurrencia) ────
   for (let attempt = 0; attempt < 15; attempt += 1) {
     const retryAfter = Number(response.headers.get("Retry-After"));
     if (
@@ -90,11 +111,28 @@ async function fetchQuizWithRetry(
       !Number.isFinite(retryAfter) ||
       retryAfter <= 0
     ) {
-      return response;
+      break;
     }
 
     await new Promise((resolve) =>
       setTimeout(resolve, Math.min(retryAfter, 5) * 1_000),
+    );
+    response = await request();
+  }
+
+  // ── Reintentos silenciosos por 500/502 (fallo transitorio) ─
+  for (let silentRetry = 0; silentRetry < MAX_SILENT_RETRIES; silentRetry += 1) {
+    if (!SILENT_RETRY_STATUSES.has(response.status)) {
+      break;
+    }
+
+    console.warn(
+      `[quiz-card] Silent retry ${silentRetry + 1}/${MAX_SILENT_RETRIES} ` +
+        `after HTTP ${response.status}`,
+    );
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, SILENT_RETRY_DELAY_MS),
     );
     response = await request();
   }
