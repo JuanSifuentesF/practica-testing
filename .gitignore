@@ -49,3 +49,16 @@ __pycache__/
 # Docker local
 docker-compose.override.yml
 .vercel
+
+# Configuracion local de editores, IDEs y agentes de IA (no forman parte del proyecto)
+.agents/
+.cursor/
+.vscode/
+.opencode/
+.mcp-config/
+.antigravitycli/
+opencode.json
+
+# Cache de pytest
+.pytest_cache/
+**/.pytest_cache/
