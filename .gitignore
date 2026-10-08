@@ -54,11 +54,19 @@ docker-compose.override.yml
 .agents/
 .cursor/
 .vscode/
+.idea/
+**/.idea/
 .opencode/
 .mcp-config/
 .antigravitycli/
 opencode.json
 
+# Snippets temporales de DB
+supabase/snippets/
+
 # Cache de pytest
 .pytest_cache/
 **/.pytest_cache/
+
+# Demos y prototipos de diseno locales
+english-tutor-design-demo/

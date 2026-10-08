@@ -339,7 +339,8 @@ describe("UP-04 plan Demo contract", () => {
     expect(response.status).toBe(502);
     expect(body.code).toBe("AI_INVALID_RESPONSE");
     expect(runtimeMocks.resolveAiRuntime).toHaveBeenCalledTimes(1);
-    expect(invalidCreate).toHaveBeenCalledTimes(1);
+    // 2 llamadas: intento inicial + turno correctivo de Capa 2 antes de fallar
+    expect(invalidCreate).toHaveBeenCalledTimes(2);
     expect(runtimeMocks.recordAiUsage).toHaveBeenCalledTimes(1);
     expect(runtimeMocks.recordAiUsage).toHaveBeenCalledWith(
       expect.objectContaining({

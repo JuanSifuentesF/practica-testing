@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useSyncExternalStore } from "react";
 
 type Theme = "dark" | "light";
 
@@ -12,32 +12,56 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+function subscribeTheme(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener("theme-change", callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener("theme-change", callback);
+  };
+}
 
-  function applyTheme(newTheme: Theme) {
-    if (typeof document === "undefined") return;
-    const root = document.documentElement;
-    if (newTheme === "dark") {
-      root.classList.add("dark");
-      root.classList.remove("light");
-    } else {
-      root.classList.remove("dark");
-      root.classList.add("light");
-    }
+function getThemeSnapshot(): Theme {
+  try {
+    const saved = localStorage.getItem("istqb-theme");
+    return saved === "light" || saved === "dark" ? saved : "dark";
+  } catch {
+    return "dark";
   }
+}
+
+function getServerThemeSnapshot(): Theme {
+  return "dark";
+}
+
+function applyTheme(newTheme: Theme) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (newTheme === "dark") {
+    root.classList.add("dark");
+    root.classList.remove("light");
+  } else {
+    root.classList.remove("dark");
+    root.classList.add("light");
+  }
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const theme = useSyncExternalStore(
+    subscribeTheme,
+    getThemeSnapshot,
+    getServerThemeSnapshot,
+  );
 
   useEffect(() => {
-    const saved = localStorage.getItem("istqb-theme") as Theme | null;
-    const initialTheme = saved === "light" || saved === "dark" ? saved : "dark";
-    setThemeState(initialTheme);
-    applyTheme(initialTheme);
-  }, []);
+    applyTheme(theme);
+  }, [theme]);
 
   function setTheme(newTheme: Theme) {
-    setThemeState(newTheme);
-    localStorage.setItem("istqb-theme", newTheme);
-    applyTheme(newTheme);
+    try {
+      localStorage.setItem("istqb-theme", newTheme);
+      window.dispatchEvent(new Event("theme-change"));
+    } catch {}
   }
 
   function toggleTheme() {

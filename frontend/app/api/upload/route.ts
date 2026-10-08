@@ -197,6 +197,14 @@ export async function POST(request: Request) {
     // runtime de Node.js en el servidor de Next.js.
     const fileBuffer = Buffer.from(await file.arrayBuffer());
 
+    // Validar cabecera real (magic bytes) del PDF para evitar extension spoofing
+    if (!fileBuffer.subarray(0, 5).equals(Buffer.from("%PDF-"))) {
+      return NextResponse.json(
+        { error: "El archivo no contiene una cabecera PDF válida (%PDF-)." },
+        { status: 400 },
+      );
+    }
+
     // ─── Subir al bucket ─────────────────────────────────────
     const { data: uploadData, error: uploadError } = await adminClient.storage
       .from("pdfs") // Nombre del bucket (creado en DB-03)

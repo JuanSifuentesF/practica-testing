@@ -8,16 +8,36 @@
 //   El PCM L16 crudo de Gemini se convierte a WAV en servidor
 //   añadiendo la cabecera estándar de 44 bytes (sin FFmpeg).
 //
-// VOCES DISPONIBLES (Gemini 2.5 Flash TTS):
-//   Femeninas: Aoede ⭐, Leda, Zephyr, Kore, Callirrhoe, Despina, Galatea, Io
-//   Masculinas: Charon, Fenrir, Puck, Orus, Achernar
-//
 // SEGURIDAD:
-//   La API key viene del cliente (BYOK in-memory) y se usa una
-//   sola vez en la llamada a Gemini. Nunca se persiste en servidor.
+//   - Requiere autenticación de usuario (getUser()).
+//   - Valida longitud máxima de texto para evitar abuso de memoria (DoS).
+//   - Sanitiza y codifica la API key (BYOK in-memory).
+//   - Valida el nombre de voz contra una lista blanca segura.
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+
+export const runtime = "nodejs";
+
+const MAX_TEXT_LENGTH = 5_000;
+const MAX_KEY_LENGTH = 512;
+
+const ALLOWED_VOICES = new Set([
+  "Aoede",
+  "Leda",
+  "Zephyr",
+  "Kore",
+  "Callirrhoe",
+  "Despina",
+  "Galatea",
+  "Io",
+  "Charon",
+  "Fenrir",
+  "Puck",
+  "Orus",
+  "Achernar",
+]);
 
 /**
  * Convierte un buffer de PCM L16 (s16le, mono) a WAV añadiendo cabecera RIFF.
@@ -27,7 +47,7 @@ function pcmToWav(
   pcmBuffer: Buffer,
   sampleRate = 24000,
   numChannels = 1,
-  bitsPerSample = 16
+  bitsPerSample = 16,
 ): Buffer {
   const dataSize = pcmBuffer.length;
   const header = Buffer.alloc(44);
@@ -37,12 +57,12 @@ function pcmToWav(
   header.write("WAVE", 8);
   // fmt sub-chunk
   header.write("fmt ", 12);
-  header.writeUInt32LE(16, 16);                                          // chunk size
-  header.writeUInt16LE(1, 20);                                           // PCM format
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
   header.writeUInt16LE(numChannels, 22);
   header.writeUInt32LE(sampleRate, 24);
-  header.writeUInt32LE((sampleRate * numChannels * bitsPerSample) / 8, 28); // byte rate
-  header.writeUInt16LE((numChannels * bitsPerSample) / 8, 32);          // block align
+  header.writeUInt32LE((sampleRate * numChannels * bitsPerSample) / 8, 28);
+  header.writeUInt16LE((numChannels * bitsPerSample) / 8, 32);
   header.writeUInt16LE(bitsPerSample, 34);
   // data sub-chunk
   header.write("data", 36);
@@ -52,45 +72,79 @@ function pcmToWav(
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { text, voiceName, rate, apiKey } = body;
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    if (!text || !apiKey) {
+    if (authError || !user) {
       return NextResponse.json(
-        { error: "Se requieren 'text' y 'apiKey'" },
-        { status: 400 }
+        { error: "No autenticado. Por favor inicia sesión." },
+        { status: 401 },
       );
     }
 
-    // Voz por defecto: Aoede (femenina, cálida, natural en español)
-    const voice = (voiceName as string) || "Aoede";
-    // Gemini TTS no expone speakingRate — se recibe pero no se usa
-    void rate;
+    const body = await request.json();
+    const { text, voiceName, apiKey } = body;
+
+    if (!text || typeof text !== "string" || text.trim().length === 0) {
+      return NextResponse.json(
+        { error: "El campo 'text' es obligatorio y debe ser texto no vacío." },
+        { status: 400 },
+      );
+    }
+
+    if (text.length > MAX_TEXT_LENGTH) {
+      return NextResponse.json(
+        {
+          error: `El texto supera el límite máximo de ${MAX_TEXT_LENGTH} caracteres.`,
+        },
+        { status: 400 },
+      );
+    }
+
+    if (
+      !apiKey ||
+      typeof apiKey !== "string" ||
+      apiKey.trim().length === 0 ||
+      apiKey.length > MAX_KEY_LENGTH ||
+      /[\r\n]/.test(apiKey)
+    ) {
+      return NextResponse.json(
+        { error: "La API key proporcionada tiene un formato inválido." },
+        { status: 400 },
+      );
+    }
+
+    const sanitizedKey = apiKey.trim();
+    const voice =
+      typeof voiceName === "string" && ALLOWED_VOICES.has(voiceName)
+        ? voiceName
+        : "Aoede";
 
     // ── Llamada a Gemini 2.5 Flash TTS ─────────────────────────────────────
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text }] }],
-          generationConfig: {
-            responseModalities: ["AUDIO"],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: { voiceName: voice },
-              },
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${encodeURIComponent(
+      sanitizedKey,
+    )}`;
+
+    const geminiResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: text.trim() }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: voice },
             },
           },
-        }),
-      }
-    );
+        },
+      }),
+    });
 
     if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      console.error("[TTS] Gemini TTS error:", errorText);
-
       let userMessage = "Error al sintetizar audio con Gemini TTS";
       if (geminiResponse.status === 403 || geminiResponse.status === 401) {
         userMessage =
@@ -104,7 +158,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         { error: userMessage },
-        { status: geminiResponse.status }
+        { status: geminiResponse.status },
       );
     }
 
@@ -112,28 +166,20 @@ export async function POST(request: NextRequest) {
     const inlineData = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData;
 
     if (!inlineData?.data) {
-      console.error(
-        "[TTS] Respuesta inesperada de Gemini:",
-        JSON.stringify(data).slice(0, 300)
-      );
       return NextResponse.json(
         { error: "Respuesta inesperada de Gemini TTS" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     // ── Convertir PCM L16 → WAV ─────────────────────────────────────────────
-    // Gemini devuelve: audio/L16;codec=pcm;rate=24000 (mono, s16le, sin cabecera)
     const mimeType: string = inlineData.mimeType || "audio/L16;rate=24000";
     const rateMatch = mimeType.match(/rate=(\d+)/);
-    const sampleRate = rateMatch ? parseInt(rateMatch[1]) : 24000;
+    const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
 
     const pcmBuffer = Buffer.from(inlineData.data, "base64");
     const wavBuffer = pcmToWav(pcmBuffer, sampleRate);
 
-    // ── Respuesta (mismo contrato que antes para no romper el cliente) ───────
-    // Nota: Gemini TTS no ofrece timepoints por palabra → karaoke desactivado,
-    // pero la reproducción de audio funciona correctamente.
     return NextResponse.json({
       audioBase64: wavBuffer.toString("base64"),
       audioEncoding: "WAV",
@@ -143,7 +189,7 @@ export async function POST(request: NextRequest) {
     console.error("[TTS] Synthesize error:", error);
     return NextResponse.json(
       { error: "Error interno al procesar la solicitud de TTS" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

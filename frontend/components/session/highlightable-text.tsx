@@ -38,10 +38,6 @@ function splitSentences(text: string): string[] {
     .filter(Boolean);
 }
 
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 /**
  * Verifica si el elemento está fuera del área visible del viewport
  * con un margen de tolerancia para evitar scrolls innecesarios.

@@ -4,9 +4,8 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import {
@@ -28,25 +27,38 @@ const AiSessionContext = createContext<AiSessionContextValue | null>(null);
 
 const BYOK_STORAGE_KEY = "istqb_byok_api_key";
 
-export function AiSessionProvider({ children }: { children: ReactNode }) {
-  const [byokApiKey, setByokApiKeyState] = useState("");
+function subscribeByok(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener("byok-change", callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener("byok-change", callback);
+  };
+}
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = window.sessionStorage.getItem(BYOK_STORAGE_KEY) || "";
-        if (saved) {
-          setByokApiKeyState(saved);
-        }
-      } catch {}
-    }
-  }, []);
+function getByokSnapshot(): string {
+  try {
+    return window.sessionStorage.getItem(BYOK_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function getServerByokSnapshot(): string {
+  return "";
+}
+
+export function AiSessionProvider({ children }: { children: ReactNode }) {
+  const byokApiKey = useSyncExternalStore(
+    subscribeByok,
+    getByokSnapshot,
+    getServerByokSnapshot,
+  );
 
   const setByokApiKey = useCallback((value: string) => {
     const sanitized = value
       .replace(/[\r\n]/g, "")
       .slice(0, MAX_BYOK_API_KEY_LENGTH);
-    setByokApiKeyState(sanitized);
     if (typeof window !== "undefined") {
       try {
         if (sanitized) {
@@ -54,15 +66,16 @@ export function AiSessionProvider({ children }: { children: ReactNode }) {
         } else {
           window.sessionStorage.removeItem(BYOK_STORAGE_KEY);
         }
+        window.dispatchEvent(new Event("byok-change"));
       } catch {}
     }
   }, []);
 
   const clearByokApiKey = useCallback(() => {
-    setByokApiKeyState("");
     if (typeof window !== "undefined") {
       try {
         window.sessionStorage.removeItem(BYOK_STORAGE_KEY);
+        window.dispatchEvent(new Event("byok-change"));
       } catch {}
     }
   }, []);

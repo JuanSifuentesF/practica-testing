@@ -25,7 +25,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { BookOpen, Lightbulb, Beaker, Link2, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CollapsibleSection } from "./collapsible-section";
@@ -42,6 +42,28 @@ const READING_TRACKING_STORAGE_KEY = "istqb-reading-tracking-enabled";
 const READING_TRACKING_TOGGLE_ENABLED =
   process.env.NEXT_PUBLIC_READING_TRACKING_TOGGLE_ENABLED !== "false";
 
+function subscribeReadingTracking(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener("reading-tracking-change", callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener("reading-tracking-change", callback);
+  };
+}
+
+function getReadingTrackingSnapshot(): boolean {
+  if (!READING_TRACKING_TOGGLE_ENABLED) return false;
+  try {
+    return window.localStorage.getItem(READING_TRACKING_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function getServerReadingTrackingSnapshot(): boolean {
+  return false;
+}
+
 // ─── Mapeo de level_k a colores de badge ────────────────────
 function getLevelBadgeStyle(level: string): string {
   const map: Record<string, string> = {
@@ -53,7 +75,11 @@ function getLevelBadgeStyle(level: string): string {
 }
 
 export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
-  const [readingTrackingEnabled, setReadingTrackingEnabled] = useState(false);
+  const readingTrackingEnabled = useSyncExternalStore(
+    subscribeReadingTracking,
+    getReadingTrackingSnapshot,
+    getServerReadingTrackingSnapshot,
+  );
   const effectiveReadingTrackingEnabled =
     READING_TRACKING_TOGGLE_ENABLED && readingTrackingEnabled;
   const tts = useTextToSpeech({
@@ -61,30 +87,15 @@ export function TheoryTopicView({ topic }: TheoryTopicViewProps) {
   });
   const isTrackingActive = effectiveReadingTrackingEnabled && tts.isSpeaking;
 
-  useEffect(() => {
-    if (!READING_TRACKING_TOGGLE_ENABLED) {
-      setReadingTrackingEnabled(false);
-      return;
-    }
-
-    try {
-      setReadingTrackingEnabled(
-        window.localStorage.getItem(READING_TRACKING_STORAGE_KEY) === "true",
-      );
-    } catch {
-      setReadingTrackingEnabled(false);
-    }
-  }, []);
-
   function handleReadingTrackingEnabledChange(enabled: boolean) {
     if (!READING_TRACKING_TOGGLE_ENABLED) return;
 
-    setReadingTrackingEnabled(enabled);
     try {
       window.localStorage.setItem(
         READING_TRACKING_STORAGE_KEY,
         enabled ? "true" : "false",
       );
+      window.dispatchEvent(new Event("reading-tracking-change"));
     } catch {
       // Si localStorage no está disponible, la preferencia queda solo en memoria.
     }

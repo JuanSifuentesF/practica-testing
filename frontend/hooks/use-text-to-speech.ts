@@ -183,7 +183,9 @@ export function useTextToSpeech(
     trackingEnabledRef.current = trackingEnabled;
     googleProviderRef.current?.setTrackingEnabled(trackingEnabled);
     if (!trackingEnabled) {
-      resetTrackingState();
+      queueMicrotask(() => {
+        resetTrackingState();
+      });
     }
   }, [trackingEnabled, resetTrackingState]);
 

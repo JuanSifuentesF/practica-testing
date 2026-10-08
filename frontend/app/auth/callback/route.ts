@@ -28,6 +28,29 @@ import { NextResponse } from "next/server";
 // Este archivo se ejecuta en Node.js, no en el navegador.
 import { createClient } from "@/lib/supabase/server";
 
+const DEFAULT_REDIRECT_PATH = "/dashboard";
+
+/**
+ * Evita open redirects: solo acepta rutas relativas del mismo origen.
+ * Rechaza valores como "@evil.com", "//evil.com" o "/\evil.com", que
+ * concatenados al origin terminarían enviando al usuario a otro dominio.
+ */
+function getSafeRedirectPath(rawNext: string | null, origin: string): string {
+  if (!rawNext || !rawNext.startsWith("/") || rawNext.startsWith("//")) {
+    return DEFAULT_REDIRECT_PATH;
+  }
+
+  try {
+    const target = new URL(rawNext, origin);
+    if (target.origin !== origin) {
+      return DEFAULT_REDIRECT_PATH;
+    }
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return DEFAULT_REDIRECT_PATH;
+  }
+}
+
 /**
  * Maneja el GET a /auth/callback.
  *
@@ -49,7 +72,7 @@ export async function GET(request: Request) {
   // `next` es un parámetro opcional que indica a dónde redirigir
   // al usuario después de la autenticación exitosa.
   // Si no se proporciona, por defecto va al dashboard.
-  const next = searchParams.get("next") ?? "/dashboard";
+  const next = getSafeRedirectPath(searchParams.get("next"), origin);
 
   if (code) {
     // Crear el cliente de Supabase para el servidor.
